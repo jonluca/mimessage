@@ -1,6 +1,4 @@
-import type { ThemeOptions } from "@mui/material/styles";
 import { createTheme } from "@mui/material/styles";
-import { merge } from "lodash-es";
 declare module "@mui/material/styles" {
   interface Theme {
     colors: {
@@ -134,7 +132,7 @@ const baseThemeOptions = {
   },
   typography: {
     allVariants: {
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     fontFamily: "arbeit, sans-serif",
     h1: {
@@ -142,42 +140,42 @@ const baseThemeOptions = {
       fontWeight: 600,
       fontSize: "32px",
       lineHeight: "48px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     h2: {
       fontStyle: "normal",
       fontWeight: 400,
       fontSize: "24px",
       lineHeight: "32px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     h3: {
       fontStyle: "normal",
       fontWeight: 400,
       fontSize: "22px",
       lineHeight: "32px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     h4: {
       fontStyle: "normal",
       fontWeight: 400,
       lineHeight: "24px",
       fontSize: "18px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     h6: {
       fontStyle: "normal",
       fontWeight: 400,
       lineHeight: "20px",
       fontSize: "16px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
     h5: {
       fontStyle: "normal",
       fontWeight: 400,
       lineHeight: "17.5px",
       fontSize: "14px",
-      color: "#2a2a2a",
+      color: "#ffffff",
     },
   },
   palette: {
@@ -198,34 +196,6 @@ const baseThemeOptions = {
   },
 };
 
-const lightThemeOptions = {
-  typography: {
-    allVariants: {
-      color: "#2a2a2a",
-    },
-    h1: {
-      color: "#2a2a2a",
-    },
-    h2: {
-      color: "#2a2a2a",
-    },
-    h3: {
-      color: "#2a2a2a",
-    },
-    h4: {
-      color: "#2a2a2a",
-    },
-    h6: {
-      color: "#2a2a2a",
-    },
-    h5: {
-      color: "#2a2a2a",
-    },
-  },
-};
 const DefaultTheme = createTheme(baseThemeOptions);
-const lightOptions: ThemeOptions = merge(baseThemeOptions, lightThemeOptions);
-delete lightOptions.components;
-export const LightTheme = createTheme(lightOptions);
 
 export default DefaultTheme;

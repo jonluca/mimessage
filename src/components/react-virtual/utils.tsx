@@ -6,15 +6,16 @@ export function memo<TDeps extends readonly any[], TResult>(
   getDeps: () => [...TDeps],
   fn: (...args: NoInfer<[...TDeps]>) => TResult,
   opts: {
-    key: any;
+    key: false | string;
     debug?: () => any;
     onChange?: (result: TResult) => void;
+    initialDeps?: TDeps;
   },
-): () => TResult {
-  let deps: any[] = [];
+) {
+  let deps = opts.initialDeps ?? [];
   let result: TResult | undefined;
 
-  return () => {
+  return (): TResult => {
     let depTime: number;
     if (opts.key && opts.debug?.()) {
       depTime = Date.now();
@@ -37,7 +38,6 @@ export function memo<TDeps extends readonly any[], TResult>(
     }
 
     result = fn(...newDeps);
-    opts?.onChange?.(result);
 
     if (opts.key && opts.debug?.()) {
       const depEndTime = Math.round((Date.now() - depTime!) * 100) / 100;
@@ -62,6 +62,18 @@ export function memo<TDeps extends readonly any[], TResult>(
       );
     }
 
+    opts?.onChange?.(result);
+
     return result!;
   };
 }
+
+export function notUndefined<T>(value: T | undefined, msg?: string): T {
+  if (value === undefined) {
+    throw new Error(`Unexpected undefined${msg ? `: ${msg}` : ""}`);
+  } else {
+    return value;
+  }
+}
+
+export const approxEqual = (a: number, b: number) => Math.abs(a - b) < 1;

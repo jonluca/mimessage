@@ -7,7 +7,7 @@ import { styled, ThemeProvider } from "@mui/material/styles";
 import type { EmotionCache } from "@emotion/react";
 import { CacheProvider } from "@emotion/react";
 import createEmotionCache from "../config/emotionCache";
-import theme, { LightTheme } from "../components/theme";
+import theme from "../components/theme";
 import { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -92,7 +92,7 @@ export const ProvidedApp = (props: ProviderProps) => {
 
   return (
     <CacheProvider value={emotionCache}>
-      <ThemeProvider theme={pathname === "/" ? theme : LightTheme}>
+      <ThemeProvider theme={theme}>
         <QueryClientProvider client={queryClient}>
           <MimessageApp {...rest} />
           <ServiceWorkerAndCache />

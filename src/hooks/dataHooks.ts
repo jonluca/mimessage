@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import psl from "psl";
 import type { ChatList } from "../interfaces";
 import type { Contacts } from "../interfaces";
+import type { Contact } from "node-mac-contacts";
 const ipcRenderer = global.ipcRenderer;
 
 const maybeHostname = (url: string) => {
@@ -37,6 +38,29 @@ export const useContacts = () => {
     const resp = (await ipcRenderer.invoke("contacts")) as Contacts;
     return resp;
   });
+};
+
+export const useContactMap = () => {
+  const { data: contacts } = useContacts();
+  return useQuery<Map<string | null, Contact>>(
+    ["contactMap", contacts],
+    async () => {
+      const map = new Map<string | null, Contact>();
+      if (!contacts) {
+        return map;
+      }
+      for (const contact of contacts) {
+        for (const email of contact.emailAddresses || []) {
+          map.set(email, contact);
+        }
+        for (const phone of contact.phoneNumbers || []) {
+          map.set(phone, contact);
+        }
+      }
+      return map;
+    },
+    { placeholderData: new Map() },
+  );
 };
 export const useChatDateRange = () => {
   return useQuery<{ max: Date; min: Date } | null>(["chat-date-range"], async () => {

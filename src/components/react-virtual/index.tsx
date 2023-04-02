@@ -13,9 +13,9 @@ export * from "./core";
 
 //
 
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+const useIsomorphicLayoutEffect = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
-function useVirtualizerBase<TScrollElement, TItemElement = unknown>(
+function useVirtualizerBase<TScrollElement extends Element | Window, TItemElement extends Element>(
   options: VirtualizerOptions<TScrollElement, TItemElement>,
 ): Virtualizer<TScrollElement, TItemElement> {
   const rerender = React.useReducer(() => ({}), {})[1];
@@ -34,7 +34,7 @@ function useVirtualizerBase<TScrollElement, TItemElement = unknown>(
 
   React.useEffect(() => {
     return instance._didMount();
-  }, [instance]);
+  }, []);
 
   useIsomorphicLayoutEffect(() => {
     return instance._willUpdate();
@@ -43,7 +43,7 @@ function useVirtualizerBase<TScrollElement, TItemElement = unknown>(
   return instance;
 }
 
-export function useVirtualizer<TScrollElement, TItemElement = unknown>(
+export function useVirtualizer<TScrollElement extends Element, TItemElement extends Element>(
   options: PartialKeys<
     VirtualizerOptions<TScrollElement, TItemElement>,
     "observeElementRect" | "observeElementOffset" | "scrollToFn"
@@ -57,14 +57,14 @@ export function useVirtualizer<TScrollElement, TItemElement = unknown>(
   });
 }
 
-export function useWindowVirtualizer<TItemElement = unknown>(
+export function useWindowVirtualizer<TItemElement extends Element>(
   options: PartialKeys<
     VirtualizerOptions<Window, TItemElement>,
     "getScrollElement" | "observeElementRect" | "observeElementOffset" | "scrollToFn"
   >,
 ): Virtualizer<Window, TItemElement> {
   return useVirtualizerBase<Window, TItemElement>({
-    getScrollElement: () => (typeof window !== "undefined" ? window : null!),
+    getScrollElement: () => (typeof document !== "undefined" ? window : null),
     observeElementRect: observeWindowRect,
     observeElementOffset: observeWindowOffset,
     scrollToFn: windowScroll,
