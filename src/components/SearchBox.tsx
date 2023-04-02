@@ -63,11 +63,8 @@ export const SearchBar = () => {
     // absolutely center dev
     <Box
       sx={{
-        position: "absolute",
         top: 25,
         transition: "top 0.5s",
-        right: 0,
-        left: 0,
         marginLeft: 0,
         marginRight: 0,
         zIndex: 999,

@@ -7,6 +7,9 @@ import type { Chat } from "../interfaces";
 import Typography from "@mui/material/Typography";
 import { useMimessage } from "../context";
 import { shallow } from "zustand/shallow";
+import { MessageAvatar } from "./Avatar";
+import { getContactName } from "../utils/helpers";
+import { SearchBar } from "./SearchBox";
 
 const CHAT_HEIGHT = 80;
 
@@ -27,54 +30,64 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
   const contactsInChat = (handles || [])
     .map((handle) => {
       const contact = handle.contact;
-      if (!contact) {
-        return "";
-      }
-      if (contact.nickname) {
-        return contact.nickname;
-      } else {
-        if (contact.firstName || contact.lastName) {
-          return `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
-        }
-      }
 
-      return "";
+      return getContactName(contact);
     })
     .filter(Boolean);
+
+  const name = chat.display_name || contactsInChat.join(", ") || chat.chat_identifier || "";
+  const isSingleConvo = handles.length === 1;
 
   return (
     <Box
       sx={{
         display: "flex",
-        flexDirection: "column",
+        flexDirection: "row",
         p: 1,
-        m: 1,
         cursor: "pointer",
         position: "absolute",
         top: 0,
-        left: 0,
-        width: "100%",
+        width: "90%",
         height: `${virtualRow.size}px`,
         transform: `translateY(${virtualRow.start}px)`,
         overflow: "hidden",
-        border: "1px solid grey",
-        background: chatId === chat.chat_id ? "grey" : undefined,
+        background: chatId === chat.chat_id ? "#148aff" : undefined,
+        borderRadius: 2,
+        alignItems: "center",
       }}
       onClick={() => {
         setChatId(chat.chat_id!);
       }}
     >
-      <Typography sx={{ textOverflow: "ellipsis", whiteSpace: "pre", fontWeight: "bold" }} variant={"h5"}>
-        {chat.display_name || contactsInChat.join(", ") || chat.chat_id}
-      </Typography>
-      {chat && (
-        <Typography
-          sx={{ WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis" }}
-          variant={"body2"}
-        >
-          {chat.text}
+      <Box sx={{ mr: 1 }}>
+        <MessageAvatar contact={isSingleConvo ? handles[0].contact : null} />
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <Typography sx={{ textOverflow: "ellipsis", whiteSpace: "pre", fontWeight: "bold" }} variant={"h5"}>
+          {name}
         </Typography>
-      )}
+        {chat && (
+          <Typography
+            sx={{
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              color: "#a8a8a8",
+            }}
+            variant={"body2"}
+          >
+            {chat.text}
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 };
@@ -93,7 +106,6 @@ export const ChatList = () => {
 
   return (
     <Box
-      ref={containerRef}
       display={"flex"}
       sx={{
         display: "flex",
@@ -101,24 +113,37 @@ export const ChatList = () => {
         height: "100%",
         background: "#2c2c2c",
       }}
-      id={"grid-container"}
+      flexDirection={"column"}
     >
+      <SearchBar />
       <Box
+        ref={containerRef}
+        display={"flex"}
         sx={{
           display: "flex",
-          height: `${rowVirtualizer.getTotalSize()}px`,
-          width: 400,
-          position: "relative",
-          flexDirection: "column",
+          overflowY: "auto",
+          height: "100%",
+          background: "#2c2c2c",
         }}
       >
-        {items?.map((virtualRow) => {
-          const chat = data?.[virtualRow.index];
-          if (!chat) {
-            return null;
-          }
-          return <ChatEntry key={chat.guid} virtualRow={virtualRow} chat={chat} />;
-        })}
+        <Box
+          sx={{
+            display: "flex",
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: 400,
+            position: "relative",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          {items?.map((virtualRow) => {
+            const chat = data?.[virtualRow.index];
+            if (!chat) {
+              return null;
+            }
+            return <ChatEntry key={chat.guid} virtualRow={virtualRow} chat={chat} />;
+          })}
+        </Box>
       </Box>
     </Box>
   );

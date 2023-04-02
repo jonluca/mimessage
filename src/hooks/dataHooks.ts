@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ChatList, Contacts } from "../interfaces";
+import type { ChatList, Contacts, Handle } from "../interfaces";
 import type { Contact } from "node-mac-contacts";
 const ipcRenderer = global.ipcRenderer;
 import parsePhoneNumber from "libphonenumber-js";
@@ -46,6 +46,19 @@ export const useChatList = () => {
       }
     }
     return resp;
+  });
+};
+
+export const useHandleMap = () => {
+  const { data: chatList } = useChatList();
+
+  return useQuery<Record<number, Handle> | null>(["useHandleMap", Boolean(chatList), chatList?.length], async () => {
+    const handleMap: Record<number, Handle> | null = {};
+    const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
+    for (const handle of handles) {
+      handleMap[handle.ROWID!] = handle;
+    }
+    return handleMap;
   });
 };
 export const useChatById = (id: number | null) => {

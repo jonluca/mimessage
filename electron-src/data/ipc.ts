@@ -15,6 +15,6 @@ handleIpc("contacts", async () => {
   if (status !== "Authorized") {
     await requestAccess();
   }
-  const contacts = await getAllContacts();
+  const contacts = await getAllContacts(["contactImage", "contactThumbnailImage"]);
   return contacts;
 });

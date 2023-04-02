@@ -9,9 +9,14 @@ declare module "node-mac-contacts" {
     organizationName?: string;
     phoneNumbers?: string[];
     emailAddresses?: string[];
+    socialProfiles?: string[];
+    instantMessageAddresses?: string[];
     birthday?: string;
+    note?: string;
     identifier?: string;
     name?: string;
+    contactThumbnailImage?: Buffer;
+    contactImage?: Buffer;
   }
 
   export type OptionalProperties =

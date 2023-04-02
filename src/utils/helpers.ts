@@ -1,4 +1,5 @@
 import ColorThief from "colorthief/dist/color-thief.mjs";
+import type { Contact } from "node-mac-contacts";
 const colorThief = new ColorThief();
 
 export function getIntervalString(timeDiff: number): string {
@@ -22,6 +23,21 @@ export const cleanFileUrl = (url: string | null | undefined) => {
     return undefined;
   }
   return url.replace("file:", "mimessage-asset:");
+};
+
+export const getContactName = (contact: Contact | null | undefined) => {
+  if (!contact) {
+    return "";
+  }
+  if (contact.nickname) {
+    return contact.nickname;
+  } else {
+    if (contact.firstName || contact.lastName) {
+      return `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
+    }
+  }
+
+  return "";
 };
 
 export const getAverageRGB = async (base64Image: string): Promise<{ r: number; g: number; b: number } | null> => {
