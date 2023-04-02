@@ -1,0 +1,7 @@
+mainConfig:
+  type: esbuild
+  path: esbuild.main.config.ts
+  src: electron-src/index.ts
+  output:
+    dir: build/electron-src
+    filename: index.js

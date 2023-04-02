@@ -1,0 +1,54 @@
+name: CI
+on: push
+jobs:
+  build:
+    name: Build & test
+    strategy:
+      matrix:
+        include:
+          - platform: mac
+            os: "macos-12"
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          clean: false
+      - run: ./bin/build.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.platform }}-distributables
+          path: build.xcarchive/Products/Applications/Replay*
+          if-no-files-found: error
+  publish:
+    name: Publish a release
+    runs-on: "ubuntu-18.04"
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    steps:
+      - name: Get all distributables
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          prerelease: true
+
+      - name: Upload Release Assets
+        id: upload-release-assets
+        uses: dwenegar/upload-release-assets@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ steps.create_release.outputs.id }}
+          assets_path: ./*/

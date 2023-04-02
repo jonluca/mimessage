@@ -1,0 +1,11 @@
+[workspace]
+members = [
+  "imessage-database",
+  "imessage-exporter",
+]
+
+[profile.release]
+# Perform Link Time Optimization
+lto = true
+# Do not unwind stack on crash
+panic = "abort"

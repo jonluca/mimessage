@@ -1,0 +1,63 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "prettier",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:@next/next/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "settings": {
+    "react": { "version": "detect" }
+  },
+  "plugins": ["prettier", "unused-imports", "@typescript-eslint", "react", "react-hooks"],
+  "rules": {
+    "@next/next/no-img-element": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/no-unknown-property": "off",
+    "react/self-closing-comp": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "no-prototype-builtins": "off",
+    "no-html-link-for-pages": "off",
+    "@typescript-eslint/no-use-before-define": "off",
+    "prefer-const": "error",
+    "curly": ["error", "all"],
+    "no-async-promise-executor": "off",
+    "@typescript-eslint/no-this-alias": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "no-empty": "off",
+    "no-case-declarations": "off",
+    "no-control-regex": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports"
+      }
+    ],
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "object-shorthand": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_", "ignoreRestSiblings": true }
+    ],
+    "unused-imports/no-unused-imports-ts": "error"
+  },
+  "ignorePatterns": [".lintstagedrc.js"]
+}
