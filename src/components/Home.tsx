@@ -7,6 +7,7 @@ import { SelectedChat } from "./SelectedChat";
 
 export const Home = () => {
   const search = useMimessage((state) => state.search);
+  const chatId = useMimessage((state) => state.chatId);
   return (
     <Box
       display={"flex"}
@@ -18,7 +19,7 @@ export const Home = () => {
       <NoSsr>
         <ChatList />
       </NoSsr>
-      <SelectedChat />
+      <SelectedChat key={chatId} />
     </Box>
   );
 };

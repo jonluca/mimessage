@@ -10,7 +10,9 @@ import type { KyselyConfig } from "kysely/dist/cjs/kysely";
 import jetpack from "fs-jetpack";
 import { appPath } from "../versions";
 import { handleIpc } from "./ipc";
-
+import { groupBy } from "lodash-es";
+import type { Contact } from "node-mac-contacts";
+import { TypedStreamReader, Unarchiver } from "node-typedstream";
 const debugLoggingEnabled = isDev && process.env.DEBUG_LOGGING === "true";
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
@@ -58,6 +60,14 @@ export class SQLDatabase {
     return this.dbWriter;
   }
 
+  reloadDb = async () => {
+    if (this.dbWriter) {
+      await this.dbWriter.destroy();
+    }
+    this.dbWriter = undefined;
+    this.trySetupDb();
+  };
+
   trySetupDb() {
     try {
       const sqliteDb = new SqliteDb(this.path, { readonly: true });
@@ -72,7 +82,8 @@ export class SQLDatabase {
           log(event): void {
             if (event.level === "query") {
               const { sql, parameters } = event.query;
-              logger.debug(`[Query]: ${sql} ${parameters}`);
+              const { queryDurationMillis } = event;
+              logger.debug(`[Query - ${queryDurationMillis}ms]: ${sql} ${parameters}`);
             }
             if (event.level === "error") {
               logger.debug(`[SQL Error]: ${event.error}`);
@@ -91,10 +102,88 @@ export class SQLDatabase {
 
   getChatList = async () => {
     const db = this.db;
-    const recipients = await db.selectFrom("chat").selectAll().execute();
-    return recipients;
+    const query = db
+      .selectFrom("chat as c")
+      .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
+      .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
+      .innerJoin("message as m", "cmj.message_id", "m.ROWID")
+      .selectAll()
+      .where((eb) => {
+        return eb.cmpr(
+          "cmj.message_date",
+          "=",
+          eb
+            .selectFrom("chat_message_join as cmj2")
+            .select((e) => e.fn.max("cmj2.message_date").as("max_date"))
+            .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
+        );
+      })
+      .orderBy("m.date", "desc");
+    const chats = await query.execute();
+    const handles = await db
+      .selectFrom("handle")
+      .leftJoin("chat_handle_join", "handle.ROWID", "chat_handle_join.handle_id")
+      .selectAll()
+      .execute();
+    type Handles = Array<typeof handles[number] & { contact?: Contact | null }>;
+    type EnhancedChat = typeof chats[number] & { handles: Handles };
+    const handlesByChatId = groupBy(handles, "chat_id");
+    const enhancedChats = chats as EnhancedChat[];
+    for (const chat of enhancedChats) {
+      const chatHandles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
+      chat.handles = chatHandles;
+      if (!chat.text && chat.attributedBody) {
+        const read = new TypedStreamReader(chat.attributedBody);
+        const unarchiver = new Unarchiver(read);
+        const parsed = await unarchiver.decodeAll();
+        chat.text = parsed[0]?.value?.string;
+      }
+    }
+    return enhancedChats;
   };
 
+  getLatestMessageForEachChat = async () => {
+    const db = this.db;
+    const query = db
+      .selectFrom("chat as c")
+      .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
+      .selectAll()
+      .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
+      .innerJoin("message as m", "cmj.message_id", "m.ROWID")
+      .where((eb) => {
+        return eb.cmpr(
+          "cmj.message_date",
+          "=",
+          eb
+            .selectFrom("chat_message_join as cmj2")
+            .select((e) => e.fn.max("cmj2.message_date").as("max_date"))
+            .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
+        );
+      })
+      .orderBy("m.date", "desc");
+    const chats = await query.execute();
+    return chats;
+  };
+
+  getMessagesForChatId = async (chatId: number) => {
+    const db = this.db;
+    const messages = await db
+      .selectFrom("message")
+      .selectAll()
+      .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
+      .where("chat_message_join.chat_id", "is", chatId)
+      .orderBy("date", "asc")
+      .execute();
+    for (const message of messages) {
+      if (!message.text && message.attributedBody) {
+        const read = new TypedStreamReader(message.attributedBody);
+        const unarchiver = new Unarchiver(read);
+        const parsed = await unarchiver.decodeAll();
+        message.text = parsed[0]?.value?.string;
+      }
+    }
+    return messages;
+  };
   // private getJoinedFrameStatement = (
   //   selectedApps: string[] | null,
   //   startDate: string | null,

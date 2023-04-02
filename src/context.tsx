@@ -9,8 +9,8 @@ export interface AppContext {
   setStartDate: (updated: string) => void;
   endDate: string;
   setEndDate: (updated: string) => void;
-  chatId: string | null;
-  setChatId: (updated: string | null) => void;
+  chatId: number | null;
+  setChatId: (updated: number | null) => void;
 }
 const useMimessage = create<AppContext>((set, get) => ({
   search: null,
@@ -20,7 +20,7 @@ const useMimessage = create<AppContext>((set, get) => ({
   endDate: "",
   setEndDate: (endDate: string) => set({ endDate }),
   chatId: null,
-  setChatId: (chatId: string | null) => set({ chatId }),
+  setChatId: (chatId: number | null) => set({ chatId }),
 }));
 
 export const useSelectedChat = (): Chat | null | undefined => {

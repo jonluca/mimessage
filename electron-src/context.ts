@@ -2,7 +2,7 @@ import { showApp } from "./utils/util";
 import type { MenuItemConstructorOptions } from "electron";
 import { app, Menu, shell } from "electron";
 import isDev from "electron-is-dev";
-import { copyLatestDb } from "./data/database";
+import db, { copyLatestDb } from "./data/database";
 
 export const getContextMenu = () => {
   const contextMenu = Menu.buildFromTemplate([
@@ -25,6 +25,7 @@ export const getContextMenu = () => {
       type: "normal",
       click: async () => {
         await copyLatestDb();
+        await db.reloadDb();
       },
     },
     { type: "separator" },

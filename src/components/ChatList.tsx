@@ -1,34 +1,52 @@
 import React, { useRef } from "react";
 import Box from "@mui/material/Box";
-import { useChatList, useContactMap } from "../hooks/dataHooks";
+import { useChatList } from "../hooks/dataHooks";
 import type { VirtualItem } from "./react-virtual";
 import { useVirtualizer } from "./react-virtual";
 import type { Chat } from "../interfaces";
-import type { Contact } from "node-mac-contacts";
+import Typography from "@mui/material/Typography";
+import { useMimessage } from "../context";
+import { shallow } from "zustand/shallow";
 
-const CHAT_HEIGHT = 60;
+const CHAT_HEIGHT = 80;
 
 interface ChatEntryProps {
   virtualRow: VirtualItem;
   chat: Chat;
-  contact: Contact | undefined;
 }
 
-const ChatEntry = ({ chat, contact, virtualRow }: ChatEntryProps) => {
-  let name = chat.chat_identifier;
-  if (contact) {
-    if (contact.nickname) {
-      name = contact.nickname;
-    } else {
-      if (contact.firstName || contact.lastName) {
-        name = `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
+const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
+  const { chatId, setChatId } = useMimessage(
+    (state) => ({
+      chatId: state.chatId,
+      setChatId: state.setChatId,
+    }),
+    shallow,
+  );
+  const handles = chat.handles || [];
+  const contactsInChat = (handles || [])
+    .map((handle) => {
+      const contact = handle.contact;
+      if (!contact) {
+        return "";
       }
-    }
-  }
+      if (contact.nickname) {
+        return contact.nickname;
+      } else {
+        if (contact.firstName || contact.lastName) {
+          return `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
+        }
+      }
+
+      return "";
+    })
+    .filter(Boolean);
+
   return (
     <Box
       sx={{
         display: "flex",
+        flexDirection: "column",
         p: 1,
         m: 1,
         cursor: "pointer",
@@ -38,16 +56,31 @@ const ChatEntry = ({ chat, contact, virtualRow }: ChatEntryProps) => {
         width: "100%",
         height: `${virtualRow.size}px`,
         transform: `translateY(${virtualRow.start}px)`,
+        overflow: "hidden",
+        border: "1px solid grey",
+        background: chatId === chat.chat_id ? "grey" : undefined,
+      }}
+      onClick={() => {
+        setChatId(chat.chat_id!);
       }}
     >
-      {chat.display_name || name}
+      <Typography sx={{ textOverflow: "ellipsis", whiteSpace: "pre", fontWeight: "bold" }} variant={"h5"}>
+        {chat.display_name || contactsInChat.join(", ") || chat.chat_id}
+      </Typography>
+      {chat && (
+        <Typography
+          sx={{ WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis" }}
+          variant={"body2"}
+        >
+          {chat.text}
+        </Typography>
+      )}
     </Box>
   );
 };
 
 export const ChatList = () => {
   const { data } = useChatList();
-  const { data: contacts } = useContactMap();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
@@ -66,6 +99,7 @@ export const ChatList = () => {
         display: "flex",
         overflowY: "auto",
         height: "100%",
+        background: "#2c2c2c",
       }}
       id={"grid-container"}
     >
@@ -83,8 +117,7 @@ export const ChatList = () => {
           if (!chat) {
             return null;
           }
-          const contact = contacts?.get(chat.chat_identifier);
-          return <ChatEntry key={chat.guid} virtualRow={virtualRow} chat={chat} contact={contact} />;
+          return <ChatEntry key={chat.guid} virtualRow={virtualRow} chat={chat} />;
         })}
       </Box>
     </Box>
