@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import type { Message } from "../interfaces";
 import { useHandleMap } from "../hooks/dataHooks";
 import { getContactName } from "../utils/helpers";
+import { MessageAvatar } from "./Avatar";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
@@ -38,11 +39,22 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   }
   return <Box className={"announcement"}>{text}</Box>;
 };
-export const MessageBubble = ({ message }: { message: null | undefined | Message }) => {
+export const MessageBubble = ({
+  showAvatar,
+  message,
+  isGroupedMessage,
+}: {
+  showAvatar: boolean;
+  isGroupedMessage?: boolean;
+  message: null | undefined | Message;
+}) => {
+  const { data: handleMap } = useHandleMap();
+
   if (!message) {
     return null;
   }
-
+  const handle = handleMap?.[message.handle_id!];
+  const contact = handle?.contact;
   const isFromMe = message.is_from_me;
 
   const isIMessage = message.service === "iMessage";
@@ -52,9 +64,19 @@ export const MessageBubble = ({ message }: { message: null | undefined | Message
   }
   return (
     <Box className={"message"}>
-      <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
-        <Box className={"message_part"}>
-          <Box className={"bubble"}>{message.text}</Box>
+      {showAvatar && !isFromMe && (
+        <Box sx={{ pr: 0.5 }}>
+          <MessageAvatar contact={contact} size={28} />
+        </Box>
+      )}
+      <Box className={isFromMe ? "sentContainer" : "container"}>
+        {showAvatar && !isFromMe && !isGroupedMessage && (
+          <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>{getContactName(contact)}</Box>
+        )}
+        <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
+          <Box className={"message_part"}>
+            <Box className={"bubble"}>{message.text}</Box>
+          </Box>
         </Box>
       </Box>
     </Box>

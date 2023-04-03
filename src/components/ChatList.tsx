@@ -11,7 +11,7 @@ import { MessageAvatar } from "./Avatar";
 import { getContactName } from "../utils/helpers";
 import { SearchBar } from "./SearchBox";
 
-const CHAT_HEIGHT = 80;
+export const CHAT_HEIGHT = 70;
 
 interface ChatEntryProps {
   virtualRow: VirtualItem;
@@ -38,6 +38,7 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
   const name = chat.display_name || contactsInChat.join(", ") || chat.chat_identifier || "";
   const isSingleConvo = handles.length === 1;
 
+  const isSelected = chatId === chat.chat_id;
   return (
     <Box
       sx={{
@@ -48,10 +49,10 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
         position: "absolute",
         top: 0,
         width: "90%",
-        height: `${virtualRow.size}px`,
+        height: CHAT_HEIGHT,
         transform: `translateY(${virtualRow.start}px)`,
         overflow: "hidden",
-        background: chatId === chat.chat_id ? "#148aff" : undefined,
+        background: isSelected ? "#148aff" : undefined,
         borderRadius: 2,
         alignItems: "center",
       }}
@@ -80,7 +81,7 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
               overflow: "hidden",
               textOverflow: "ellipsis",
               display: "-webkit-box",
-              color: "#a8a8a8",
+              color: isSelected ? "white" : "#a8a8a8",
             }}
             variant={"body2"}
           >
@@ -100,7 +101,7 @@ export const ChatList = () => {
     count: data?.length ?? 0,
     getScrollElement: () => containerRef.current!,
     estimateSize: () => CHAT_HEIGHT,
-    overscan: 40,
+    overscan: 100,
   });
   const items = rowVirtualizer.getVirtualItems();
 

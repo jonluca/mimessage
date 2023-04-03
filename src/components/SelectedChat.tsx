@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../context";
-import { useMessagesForChatId } from "../hooks/dataHooks";
+import { useChatById, useMessagesForChatId } from "../hooks/dataHooks";
 import { useVirtualizer } from "./react-virtual";
 import { MessageBubble } from "./MessageBubble";
 import { LinearProgress } from "@mui/material";
 
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
+  const chat = useChatById(chatId);
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -22,6 +23,7 @@ export const SelectedChat = () => {
   const items = virtualizer.getVirtualItems();
   const hasItems = items && items.length > 0;
 
+  const isMultiMemberChat = (chat?.handles?.length || 0) > 1;
   useEffect(() => {
     if (count) {
       virtualizer.scrollToIndex(count - 1, { align: "end" });
@@ -38,6 +40,7 @@ export const SelectedChat = () => {
         width: "100%",
         flexDirection: "column",
         p: 2,
+        background: "#1e1e1e",
       }}
     >
       {isLoading && <LinearProgress />}
@@ -94,11 +97,19 @@ export const SelectedChat = () => {
                 transform: `translateY(${items[0].start}px)`,
               }}
             >
-              {items.map((virtualRow) => (
-                <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
-                  <MessageBubble message={messages?.[virtualRow.index]} />
-                </Box>
-              ))}
+              {items.map((virtualRow) => {
+                const message = messages?.[virtualRow.index];
+                const previousMessage = messages?.[virtualRow.index - 1];
+                return (
+                  <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
+                    <MessageBubble
+                      showAvatar={isMultiMemberChat}
+                      message={message}
+                      isGroupedMessage={message?.handle_id === previousMessage?.handle_id}
+                    />
+                  </Box>
+                );
+              })}
             </Box>
           )}
         </Box>

@@ -3,7 +3,7 @@ import type { Contact } from "node-mac-contacts";
 import { Avatar } from "@mui/material";
 import { getContactName } from "../utils/helpers";
 
-export const MessageAvatar = ({ contact }: { contact: null | undefined | Contact }) => {
+export const MessageAvatar = ({ contact, size = 40 }: { size?: number; contact: null | undefined | Contact }) => {
   const getImageData = () => {
     if (!contact) {
       return null;
@@ -22,6 +22,7 @@ export const MessageAvatar = ({ contact }: { contact: null | undefined | Contact
     <Avatar
       alt={getContactName(contact)}
       src={imageData ? `data:image/png;base64, ${Buffer.from(imageData).toString("base64")}` : "/nonexistant.jpg"}
+      sx={{ width: size, height: size }}
     />
   );
 };

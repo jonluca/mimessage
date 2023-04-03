@@ -63,7 +63,7 @@ export const useHandleMap = () => {
 };
 export const useChatById = (id: number | null) => {
   const { data: list } = useChatList();
-  if (id && list) {
+  if (id !== null && list) {
     const chat = list.find((chat) => chat.chat_id === id);
     return chat;
   }
