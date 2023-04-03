@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import Box from "@mui/material/Box";
 import { useChatList } from "../hooks/dataHooks";
 import type { VirtualItem } from "./react-virtual";
@@ -8,8 +8,8 @@ import Typography from "@mui/material/Typography";
 import { useMimessage } from "../context";
 import { shallow } from "zustand/shallow";
 import { MessageAvatar } from "./Avatar";
-import { getContactName } from "../utils/helpers";
 import { SearchBar } from "./SearchBox";
+import Fuse from "fuse.js";
 
 export const CHAT_HEIGHT = 70;
 
@@ -30,8 +30,7 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
   const contactsInChat = (handles || [])
     .map((handle) => {
       const contact = handle.contact;
-
-      return getContactName(contact);
+      return contact?.parsedName;
     })
     .filter(Boolean);
 
@@ -96,9 +95,22 @@ const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
 export const ChatList = () => {
   const { data } = useChatList();
   const containerRef = useRef<HTMLDivElement>(null);
+  const search = useMimessage((state) => state.search);
+
+  const chatsToRender = useMemo(() => {
+    if (search) {
+      const fuse = new Fuse<Chat>(data || [], {
+        keys: ["name", "code", "offer"],
+        shouldSort: true,
+        threshold: 0.2,
+      });
+      return fuse.search(search).map((l) => l.item) || [];
+    }
+    return data;
+  }, [data, search]);
 
   const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    count: data?.length ?? 0,
+    count: chatsToRender?.length ?? 0,
     getScrollElement: () => containerRef.current!,
     estimateSize: () => CHAT_HEIGHT,
     overscan: 100,
@@ -138,7 +150,7 @@ export const ChatList = () => {
           }}
         >
           {items?.map((virtualRow) => {
-            const chat = data?.[virtualRow.index];
+            const chat = chatsToRender?.[virtualRow.index];
             if (!chat) {
               return null;
             }

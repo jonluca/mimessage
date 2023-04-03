@@ -17,6 +17,7 @@ declare module "node-mac-contacts" {
     name?: string;
     contactThumbnailImage?: Buffer;
     contactImage?: Buffer;
+    parsedName?: string;
   }
 
   export type OptionalProperties =

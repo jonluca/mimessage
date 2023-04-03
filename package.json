@@ -27,6 +27,7 @@
     "node-mac-contacts": "^1.6.1"
   },
   "devDependencies": {
+    "fuse.js": "^6.6.2",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.11",

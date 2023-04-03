@@ -6,6 +6,8 @@ import parsePhoneNumber from "libphonenumber-js";
 import type { MessagesForChat } from "../interfaces";
 import type { LatestMessagesForEachChat } from "../interfaces";
 import type { LatestMessage } from "../interfaces";
+import { getContactName } from "../utils/helpers";
+import { uniq } from "lodash-es";
 
 export const useChatList = () => {
   const { data: contacts } = useContactMap();
@@ -73,6 +75,12 @@ export const useChatById = (id: number | null) => {
 export const useContacts = () => {
   return useQuery<Contacts | null>(["contacts"], async () => {
     const resp = (await ipcRenderer.invoke("contacts")) as Contacts;
+    for (const contact of resp) {
+      if (contact.emailAddresses) {
+        contact.emailAddresses = uniq(contact.emailAddresses.flatMap((email) => [email, email.toLowerCase()]));
+      }
+      contact.parsedName = getContactName(contact) || "";
+    }
     return resp;
   });
 };

@@ -1,7 +1,6 @@
 import React from "react";
 import type { Contact } from "node-mac-contacts";
 import { Avatar } from "@mui/material";
-import { getContactName } from "../utils/helpers";
 
 export const MessageAvatar = ({ contact, size = 40 }: { size?: number; contact: null | undefined | Contact }) => {
   const getImageData = () => {
@@ -20,7 +19,7 @@ export const MessageAvatar = ({ contact, size = 40 }: { size?: number; contact: 
   const imageData = getImageData();
   return (
     <Avatar
-      alt={getContactName(contact)}
+      alt={contact?.parsedName}
       src={imageData ? `data:image/png;base64, ${Buffer.from(imageData).toString("base64")}` : "/nonexistant.jpg"}
       sx={{ width: size, height: size }}
     />

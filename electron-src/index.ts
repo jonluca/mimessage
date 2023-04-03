@@ -17,6 +17,11 @@ addFlags(app);
 
 registerContextMenu({
   showSaveImageAs: true,
+  showSaveVideo: true,
+  showSaveImage: true,
+  showSaveVideoAs: true,
+  showCopyLink: true,
+  showSaveLinkAs: true,
 });
 
 // Keep a global reference of the window object, if you don't, the window will

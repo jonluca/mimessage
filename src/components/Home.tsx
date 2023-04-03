@@ -6,7 +6,6 @@ import { ChatList } from "./ChatList";
 import { SelectedChat } from "./SelectedChat";
 
 export const Home = () => {
-  const search = useMimessage((state) => state.search);
   const chatId = useMimessage((state) => state.chatId);
   return (
     <Box
@@ -14,7 +13,7 @@ export const Home = () => {
       flexDirection={"row"}
       width={"100%"}
       height={"100%"}
-      sx={{ background: "none", borderRadius: 1, opacity: search ? 0 : 1 }}
+      sx={{ background: "none", borderRadius: 1 }}
     >
       <NoSsr>
         <ChatList />

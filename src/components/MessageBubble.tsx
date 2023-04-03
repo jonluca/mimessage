@@ -2,7 +2,6 @@ import React from "react";
 import Box from "@mui/material/Box";
 import type { Message } from "../interfaces";
 import { useHandleMap } from "../hooks/dataHooks";
-import { getContactName } from "../utils/helpers";
 import { MessageAvatar } from "./Avatar";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
@@ -13,18 +12,15 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   const { data: handleMap } = useHandleMap();
   const handle = handleMap?.[message.handle_id!];
   const contact = handle?.contact;
-  let name = "You";
-  if (contact) {
-    name = getContactName(contact);
-  }
+  const name = contact?.parsedName || "You";
   let text = "";
   if (itemType == 1 && groupActionType == 1) {
     const otherContact = handleMap?.[otherHandle!]?.contact;
-    const otherName = getContactName(otherContact);
+    const otherName = otherContact?.parsedName || "other";
     text = `${name} removed ${otherName} from the conversation`;
   } else if (itemType == 1 && groupActionType == 0) {
     const otherContact = handleMap?.[otherHandle!]?.contact;
-    const otherName = getContactName(otherContact);
+    const otherName = otherContact?.parsedName || "other";
     text = `${name} added ${otherName} to the conversation`;
   } else if (itemType == 3 && (groupActionType ?? 0) > 0) {
     text = `${name} changed the group photo`;
@@ -71,7 +67,7 @@ export const MessageBubble = ({
       )}
       <Box className={isFromMe ? "sentContainer" : "container"}>
         {showAvatar && !isFromMe && !isGroupedMessage && (
-          <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>{getContactName(contact)}</Box>
+          <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>{contact?.parsedName || ""}</Box>
         )}
         <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
           <Box className={"message_part"}>
