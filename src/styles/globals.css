@@ -93,7 +93,6 @@ div {
 
 /* From imessage-exporter */
 .message {
-  margin: 1%;
   display: flex;
   align-items: end;
   overflow-wrap: break-word;
@@ -300,32 +299,32 @@ div {
   overflow: auto;
 }
 
-span.timestamp {
+.timestamp {
   opacity: 60%;
 }
 
-span.sender {
+.sender {
   opacity: 100%;
 }
 
-span.subject {
+.subject {
   font-weight: 600;
 }
 
-span.bubble {
+.bubble {
   white-space: pre-wrap;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
-span.reply_context {
+.reply_context {
   opacity: 60%;
 }
 
-span.expressive {
+.expressive {
   opacity: 60%;
 }
 
-span.reactions {
+.reactions {
   opacity: 60%;
 }
 
@@ -340,25 +339,9 @@ div.reaction {
 
 .announcement {
   text-align: center;
-  padding: 2vh 1vw 2vh 1vw;
+  padding: 8px;
   word-wrap: break-word;
-}
-
-img {
-  max-width: 100%;
-  max-height: 90vh;
-}
-
-video {
-  max-width: 100%;
-  max-height: 90vh;
-}
-
-audio {
-  width: 90%;
-  margin-left: auto;
-  margin-right: auto;
-  display: block;
+  font-size: 15px;
 }
 
 .sent table {

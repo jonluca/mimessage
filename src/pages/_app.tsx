@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import "../styles/virtualized.css";
 import "../styles/Calendar.css";
+import { register } from "../config/registerEventHandlers";
 import type { AppProps } from "next/app";
 import React, { useEffect, useState } from "react";
 import { styled, ThemeProvider } from "@mui/material/styles";
@@ -84,6 +85,7 @@ export const ProvidedApp = (props: ProviderProps) => {
 
   const { pathname } = useRouter();
   useEffect(() => {
+    register();
     KeyPress.init();
     return () => {
       KeyPress.cleanup();

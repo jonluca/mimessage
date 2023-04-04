@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import type { Message } from "../interfaces";
 import { useHandleMap } from "../hooks/dataHooks";
 import { MessageAvatar } from "./Avatar";
+import { AssetPlayer } from "./AssetPlayer";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
@@ -35,14 +36,17 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   }
   return <Box className={"announcement"}>{text}</Box>;
 };
+
 export const MessageBubble = ({
   showAvatar,
   message,
   isGroupedMessage,
+  showTimes,
 }: {
   showAvatar: boolean;
   isGroupedMessage?: boolean;
   message: null | undefined | Message;
+  showTimes: boolean;
 }) => {
   const { data: handleMap } = useHandleMap();
 
@@ -51,15 +55,31 @@ export const MessageBubble = ({
   }
   const handle = handleMap?.[message.handle_id!];
   const contact = handle?.contact;
-  const isFromMe = message.is_from_me;
+  const isFromMe = Boolean(message.is_from_me);
 
   const isIMessage = message.service === "iMessage";
   const isAnnouncement = message.item_type !== 0;
+  const isMedia = message.attachment_id !== null && message.filename;
   if (isAnnouncement) {
     return <AnnouncementBubble message={message} />;
   }
+
+  const timeText = () => {
+    if (!message.date_obj) {
+      return null;
+    }
+    return (
+      <Box sx={{ pr: 0.5 }}>
+        <span style={{ color: "#909093", fontSize: 9 }}>
+          {message.date_obj.toLocaleDateString()} {message.date_obj.toLocaleTimeString()}
+        </span>
+      </Box>
+    );
+  };
+
   return (
-    <Box className={"message"}>
+    <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
+      {showTimes && !isFromMe && timeText()}
       {showAvatar && !isFromMe && (
         <Box sx={{ pr: 0.5 }}>
           <MessageAvatar contact={contact} size={28} />
@@ -70,11 +90,18 @@ export const MessageBubble = ({
           <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>{contact?.parsedName || ""}</Box>
         )}
         <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
-          <Box className={"message_part"}>
-            <Box className={"bubble"}>{message.text}</Box>
-          </Box>
+          {isMedia ? (
+            <Box sx={{ maxHeight: 400, overflow: "hidden" }}>
+              <AssetPlayer message={message} />
+            </Box>
+          ) : (
+            <Box className={"message_part"}>
+              <Box className={"bubble"}>{message.text}</Box>
+            </Box>
+          )}
         </Box>
       </Box>
+      {showTimes && isFromMe && timeText()}
     </Box>
   );
 };

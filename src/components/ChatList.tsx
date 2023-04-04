@@ -100,7 +100,15 @@ export const ChatList = () => {
   const chatsToRender = useMemo(() => {
     if (search) {
       const fuse = new Fuse<Chat>(data || [], {
-        keys: ["name", "code", "offer"],
+        keys: [
+          "display_name",
+          "chat_identifier",
+          "handles.contact.parsedName",
+          "handles.contact.firstName",
+          "handles.contact.emailAddresses",
+          "handles.contact.phoneNumbers",
+          "handles.contact.lastName",
+        ],
         shouldSort: true,
         threshold: 0.2,
       });

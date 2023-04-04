@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Chat } from "./interfaces";
 import { useChatById } from "./hooks/dataHooks";
+import type { Message } from "./interfaces";
 
 export interface AppContext {
   search: string | null;
@@ -11,6 +12,8 @@ export interface AppContext {
   setEndDate: (updated: string) => void;
   chatId: number | null;
   setChatId: (updated: number | null) => void;
+  highlightedMessage: Message | null;
+  setHighlightedMessage: (updated: Message | null) => void;
 }
 const useMimessage = create<AppContext>((set, get) => ({
   search: null,
@@ -21,6 +24,8 @@ const useMimessage = create<AppContext>((set, get) => ({
   setEndDate: (endDate: string) => set({ endDate }),
   chatId: null,
   setChatId: (chatId: number | null) => set({ chatId }),
+  highlightedMessage: null,
+  setHighlightedMessage: (highlightedMessage: Message | null) => set({ highlightedMessage }),
 }));
 
 export const useSelectedChat = (): Chat | null | undefined => {

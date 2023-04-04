@@ -1,65 +1,38 @@
+import React, { useRef } from "react";
+import type { Message } from "../interfaces";
+import { isProd } from "../config";
+import { useMimessage } from "../context";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import React, { useRef, useState } from "react";
-import { cleanFileUrl } from "../utils/helpers";
-import { CircularProgress } from "@mui/material";
-
 export const WIDTH = "100%";
 export const HEIGHT = "100%";
-const NoData = () => (
-  <Box style={{ width: WIDTH, height: HEIGHT, marginTop: 1 }}>
-    <Typography sx={{ position: "absolute", top: "50%", left: "50%", color: "white" }}>No Data</Typography>
-  </Box>
-);
-export const id = "video-player";
-export const AssetPlayer = ({
-  skipNoData,
-  frame,
-  isPreviewFrame,
-  onError,
-}: {
-  skipNoData?: boolean;
-  frame:
-    | undefined
-    | {
-        filePath?: string | null | undefined;
-        path?: string | null | undefined;
-        videoFrameIndex?: number | null | undefined;
-      }
-    | null;
-  isPreviewFrame?: boolean;
-  onError?: () => void;
-}) => {
+
+export const AssetPlayer = ({ message }: { message: Message }) => {
   const ref = useRef<HTMLVideoElement>(null);
+  const setHighlightedMessage = useMimessage((state) => state.setHighlightedMessage);
 
-  const [isError, setIsError] = useState(false);
+  const filename = ((isProd ? "file://" : "mimessage-asset://") + (message.filename || "")).replace(
+    "~",
+    process.env.HOME!,
+  ) as string;
+  const videoSourcePath = filename.endsWith("mov") || filename.endsWith("mp4");
+  const imageSourcePath =
+    filename.endsWith("png") || filename.endsWith("jpg") || filename.endsWith("jpeg") || filename.endsWith("heic");
 
-  const videoSourcePath = (frame && "filePath" in frame && cleanFileUrl(frame.filePath)) || "";
-  const imageSourcePath = (frame && "path" in frame && cleanFileUrl(frame.path)) || "";
-
-  if (!videoSourcePath && !imageSourcePath) {
-    return skipNoData ? null : <NoData />;
-  }
-
-  const onLoadError = () => {
-    console.log("error loading frame");
-    onError?.();
-    setIsError(true);
+  const showInFinder = () => {
+    console.log(filename);
   };
-  const onLoad = () => {
-    setIsError(false);
-  };
-  const render = () => {
+
+  const renderPlayableAsset = () => {
     if (videoSourcePath) {
       return (
         <video
           ref={ref}
-          id={`${id}-${videoSourcePath}`}
-          src={videoSourcePath}
+          src={filename}
           style={{
             width: WIDTH,
             height: HEIGHT,
-            borderRadius: isPreviewFrame ? 8 : 0,
+            borderRadius: 8,
+            cursor: "pointer",
           }}
           crossOrigin={"anonymous"}
           preload={"auto"}
@@ -67,42 +40,43 @@ export const AssetPlayer = ({
           autoPlay={false}
           controls={false}
           muted={true}
-          onError={onLoadError}
-          onLoad={onLoad}
+          onClick={() => setHighlightedMessage(message)}
         />
       );
     }
 
     if (imageSourcePath) {
       return (
-        <object
-          data={imageSourcePath}
-          type="image/png"
+        <img
+          src={filename}
           style={{
             width: WIDTH,
             height: HEIGHT,
             objectFit: "contain",
+            cursor: "pointer",
           }}
-          onError={onLoadError}
-          onLoad={onLoad}
-        >
-          <CircularProgress
-            sx={{
-              position: "fixed",
-              top: "50%",
-              transition: "top 0.5s",
-              left: "50%",
-              transform: "translate(-50%, 0)",
-              zIndex: 999,
-              display: "flex",
-              justifyContent: "center",
-            }}
-          />
-        </object>
+          onClick={() => setHighlightedMessage(message)}
+        />
       );
     }
-    return skipNoData ? null : <NoData />;
+    return null;
   };
 
-  return <>{render()}</>;
+  return (
+    <>
+      {" "}
+      {renderPlayableAsset() || (
+        <Box className={"message_part"}>
+          <Box className={"bubble"} onClick={showInFinder}>
+            Show in Finder
+          </Box>
+        </Box>
+      )}
+      {message.text && (
+        <Box className={"message_part"}>
+          <Box className={"bubble"}>{message.text}</Box>
+        </Box>
+      )}
+    </>
+  );
 };

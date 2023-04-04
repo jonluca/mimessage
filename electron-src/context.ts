@@ -3,6 +3,7 @@ import type { MenuItemConstructorOptions } from "electron";
 import { app, Menu, shell } from "electron";
 import isDev from "electron-is-dev";
 import db, { copyLatestDb } from "./data/database";
+import { windows } from "./index";
 
 export const getContextMenu = () => {
   const contextMenu = Menu.buildFromTemplate([
@@ -26,6 +27,7 @@ export const getContextMenu = () => {
       click: async () => {
         await copyLatestDb();
         await db.reloadDb();
+        windows[0]?.webContents.send("refreshChats");
       },
     },
     { type: "separator" },

@@ -1,6 +1,6 @@
 import SqliteDb from "better-sqlite3";
 import { app } from "electron";
-import { Kysely, SqliteDialect } from "kysely";
+import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
 import isDev from "electron-is-dev";
 import path from "path";
@@ -13,6 +13,7 @@ import { handleIpc } from "./ipc";
 import { groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { TypedStreamReader, Unarchiver } from "node-typedstream";
+import type { TypedGroup } from "node-typedstream/dist/archiver";
 const debugLoggingEnabled = isDev && process.env.DEBUG_LOGGING === "true";
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
@@ -169,21 +170,52 @@ export class SQLDatabase {
     const db = this.db;
     const messages = await db
       .selectFrom("message")
-      .selectAll()
       .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
+      .leftJoin("message_attachment_join", "message_attachment_join.message_id", "message.ROWID")
+      .leftJoin("attachment", "message_attachment_join.attachment_id", "attachment.ROWID")
+      .selectAll()
+      .select(sql<string>`(date/1000000) + 978307200000`.as("parsed_date"))
+      .select(sql<string>`message.ROWID`.as("message_id"))
       .where("chat_message_join.chat_id", "is", chatId)
       .orderBy("date", "asc")
       .execute();
-    for (const message of messages) {
+
+    type Message = typeof messages[number];
+    interface EnhancedMessage extends Message {
+      attributedBodyParsed?: TypedGroup[] | [any];
+      attachmentMessages?: Message[];
+      date_obj?: Date;
+    }
+    const enhancedMessages = messages as EnhancedMessage[];
+
+    for (const message of enhancedMessages) {
+      message.date_obj = new Date(message.parsed_date);
       if (!message.text && message.attributedBody) {
         const read = new TypedStreamReader(message.attributedBody);
         const unarchiver = new Unarchiver(read);
         const parsed = await unarchiver.decodeAll();
-        message.text = parsed[0]?.value?.string;
+        message.attributedBodyParsed = parsed;
+        message.text = (parsed[0]?.value?.string || "").trim();
       }
     }
-    return messages;
+
+    const groupedMessages = groupBy(enhancedMessages, "message_id");
+
+    const flat = Object.values(groupedMessages).map((messages) => {
+      if (messages.length === 1) {
+        return messages[0];
+      }
+      const messageToUse = messages[0];
+      messageToUse.attachmentMessages = messages.slice(1);
+      return messageToUse;
+    });
+
+    flat.sort((a, b) => {
+      return (a.date || 0) - (b.date || 0);
+    });
+    return flat;
   };
+
   // private getJoinedFrameStatement = (
   //   selectedApps: string[] | null,
   //   startDate: string | null,

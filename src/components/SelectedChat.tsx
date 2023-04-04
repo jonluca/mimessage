@@ -1,17 +1,17 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../context";
 import { useChatById, useMessagesForChatId } from "../hooks/dataHooks";
 import { useVirtualizer } from "./react-virtual";
 import { MessageBubble } from "./MessageBubble";
-import { LinearProgress } from "@mui/material";
+import { Checkbox, FormControlLabel, FormGroup, LinearProgress } from "@mui/material";
 
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
   const chat = useChatById(chatId);
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
   const containerRef = useRef<HTMLDivElement>(null);
-
+  const [showTimes, setShowTimes] = useState(false);
   const count = messages?.length || 0;
   const virtualizer = useVirtualizer({
     count,
@@ -46,20 +46,26 @@ export const SelectedChat = () => {
       {isLoading && <LinearProgress />}
       {hasItems && (
         <Box sx={{ display: "flex", flexDirection: "row" }}>
+          <FormGroup>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  style={{
+                    color: "white",
+                  }}
+                  checked={showTimes}
+                  onChange={() => setShowTimes((v) => !v)}
+                />
+              }
+              label="Show timestamps"
+            />
+          </FormGroup>
           <button
             onClick={() => {
               virtualizer.scrollToIndex(0);
             }}
           >
             scroll to the top
-          </button>
-          <span style={{ padding: "0 4px" }} />
-          <button
-            onClick={() => {
-              virtualizer.scrollToIndex(count / 2);
-            }}
-          >
-            scroll to the middle
           </button>
           <span style={{ padding: "0 4px" }} />
           <button
@@ -77,6 +83,7 @@ export const SelectedChat = () => {
           height: "100%",
           width: "100%",
           overflowY: "auto",
+          overflowX: "hidden",
           contain: "strict",
         }}
       >
@@ -105,6 +112,7 @@ export const SelectedChat = () => {
                     <MessageBubble
                       showAvatar={isMultiMemberChat}
                       message={message}
+                      showTimes={showTimes}
                       isGroupedMessage={message?.handle_id === previousMessage?.handle_id}
                     />
                   </Box>

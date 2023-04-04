@@ -12,6 +12,7 @@ import { showErrorAlert, withRetries } from "../utils/util";
 import prepareNext from "../utils/next-helper";
 import logger from "../utils/logger";
 import { windows } from "../index";
+import { addWebRequestToSession } from "../data/routes";
 
 const createMenubarIcon = () => {
   try {
@@ -85,6 +86,8 @@ export const createMainWindow = async () => {
     height: windowState.height,
     icon: mainAppIconDevPng,
   });
+
+  addWebRequestToSession(mainWindow.webContents.session);
 
   // mainWindow.once("ready-to-show", () => {
   //   if (!isDev) {
