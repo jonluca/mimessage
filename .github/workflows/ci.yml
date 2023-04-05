@@ -20,7 +20,7 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --no-save
+      - run: bun install --no-save --ignore-scripts
       - run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
