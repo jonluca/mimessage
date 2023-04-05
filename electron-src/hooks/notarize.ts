@@ -1,4 +1,4 @@
-import { notarize } from "electron-notarize";
+import { notarize } from "@electron/notarize";
 import { resolve } from "path";
 import path from "path";
 import * as fs from "fs-extra";
@@ -56,7 +56,7 @@ export const findAndNotarize = async function () {
   const notaries = apps.map((app) => {
     return notarize({
       tool: "notarytool",
-      teamId: "8LQ2SQ7R9V",
+      teamId: "F35YQQ5672",
       appBundleId: appPath,
       appPath: app,
       appleId: process.env.APPLE_ID!,

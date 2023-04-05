@@ -1,5 +1,3 @@
-import withWorkbox from "./src/workbox.mjs";
-
 /** @type {import('next').NextConfig} */
 const env = {};
 const disallowedPrefixes = ["NODE_", "__", "NEXT"];
@@ -41,9 +39,4 @@ const nextConfig = {
   },
 };
 
-export default withWorkbox({
-  workbox: {
-    maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
-  },
-  ...nextConfig,
-});
+export default nextConfig;
