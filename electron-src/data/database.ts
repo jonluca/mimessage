@@ -12,8 +12,7 @@ import { appPath } from "../versions";
 import { handleIpc } from "./ipc";
 import { groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
-import { TypedStreamReader, Unarchiver } from "node-typedstream";
-import type { TypedGroup } from "node-typedstream/dist/archiver";
+import { decodeMessageBuffer } from "../utils/util";
 const debugLoggingEnabled = isDev && process.env.DEBUG_LOGGING === "true";
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
@@ -134,9 +133,7 @@ export class SQLDatabase {
       const chatHandles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
       chat.handles = chatHandles;
       if (!chat.text && chat.attributedBody) {
-        const read = new TypedStreamReader(chat.attributedBody);
-        const unarchiver = new Unarchiver(read);
-        const parsed = await unarchiver.decodeAll();
+        const parsed = await decodeMessageBuffer(chat.attributedBody);
         chat.text = parsed[0]?.value?.string;
       }
     }
@@ -175,6 +172,8 @@ export class SQLDatabase {
       .leftJoin("attachment", "message_attachment_join.attachment_id", "attachment.ROWID")
       .selectAll()
       .select(sql<string>`(date/1000000) + 978307200000`.as("parsed_date"))
+      .select(sql<string>`(date_read/1000000) + 978307200000`.as("parsed_date_read"))
+      .select(sql<string>`(date_delivered/1000000) + 978307200000`.as("parsed_date_delivered"))
       .select(sql<string>`message.ROWID`.as("message_id"))
       .where("chat_message_join.chat_id", "is", chatId)
       .orderBy("date", "asc")
@@ -182,19 +181,20 @@ export class SQLDatabase {
 
     type Message = typeof messages[number];
     interface EnhancedMessage extends Message {
-      attributedBodyParsed?: TypedGroup[] | [any];
       attachmentMessages?: Message[];
       date_obj?: Date;
+      date_obj_delivered?: Date;
+      date_obj_read?: Date;
     }
     const enhancedMessages = messages as EnhancedMessage[];
 
     for (const message of enhancedMessages) {
       message.date_obj = new Date(message.parsed_date);
+      message.date_obj_delivered = new Date(message.parsed_date_delivered);
+      message.date_obj_read = new Date(message.parsed_date_read);
+      message.text = (message.text || "").trim().replace("\u{FFFC}", "").replace("\u{FFFD}", "");
       if (!message.text && message.attributedBody) {
-        const read = new TypedStreamReader(message.attributedBody);
-        const unarchiver = new Unarchiver(read);
-        const parsed = await unarchiver.decodeAll();
-        message.attributedBodyParsed = parsed;
+        const parsed = await decodeMessageBuffer(message.attributedBody);
         message.text = (parsed[0]?.value?.string || "").trim();
       }
     }
@@ -215,64 +215,6 @@ export class SQLDatabase {
     });
     return flat;
   };
-
-  // private getJoinedFrameStatement = (
-  //   selectedApps: string[] | null,
-  //   startDate: string | null,
-  //   endDate: string | null,
-  // ) => {
-  //   const db = this.db;
-  //
-  //   let statement = db
-  //     .selectFrom("videoFrame")
-  //     .leftJoin("appSegment", "videoFrame.segmentId", "appSegment.id")
-  //     .leftJoin("appIcon", "appSegment.appId", "appIcon.appIdentifier")
-  //     .leftJoin("videoSegment", "videoFrame.videoId", "videoSegment.id")
-  //     .select([
-  //       "videoFrame.id",
-  //       "videoFrame.segmentId",
-  //       "videoFrame.path",
-  //       "videoFrame.videoId",
-  //       "videoFrame.videoFrameIndex",
-  //       "videoFrame.capturedAt as startTime",
-  //       "appIcon.appIdentifier",
-  //       "videoSegment.filePath",
-  //       "appSegment.startTime as appStartTime",
-  //       "appSegment.endTime as appEndTime",
-  //       "appSegment.browserUrl as url",
-  //     ])
-  //     .where("videoFrame.segmentId", "is not", null)
-  //     .where("appSegment.displayId", "is not", null)
-  //     .whereRef("videoFrame.displayId", "=", "appSegment.displayId");
-  //
-  //   if (selectedApps && selectedApps.length > 0) {
-  //     statement = statement.where("appIcon.appIdentifier", "in", selectedApps);
-  //   }
-  //
-  //   if (startDate) {
-  //     statement = statement.where("videoFrame.capturedAt", ">=", startDate);
-  //   }
-  //
-  //   if (endDate) {
-  //     statement = statement.where("videoFrame.capturedAt", "<=", endDate);
-  //   }
-  //
-  //   return statement;
-  // };
-  //
-  //
-  // getDateRange = async (selectedApps: string[] | null = null) => {
-  //   const statement = this.getJoinedFrameStatement(selectedApps, null, null).limit(1);
-  //   const [min, max] = await Promise.all([
-  //     statement.orderBy("videoFrame.capturedAt", "asc").execute(),
-  //     statement.orderBy("videoFrame.capturedAt", "desc").execute(),
-  //   ]);
-  //
-  //   return {
-  //     min: min[0]?.startTime ? new Date(min[0]?.startTime) : null,
-  //     max: max[0]?.startTime ? new Date(max[0]?.startTime) : null,
-  //   };
-  // };
 }
 
 const excludedProperties = ["initialize", "db", "trySetupDb"];

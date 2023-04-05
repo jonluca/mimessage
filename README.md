@@ -18,8 +18,8 @@ Please note that this application is for viewing and managing iMessage conversat
 To install the iMessage Alternative UI, follow these steps:
 
 1. Clone the repository:
-   git clone https://github.com/yourusername/iMessage-Alternative-UI.git
+   git clone https://github.com/jonluca/mimessage.git
 
-## Inspiration
+## Credits
 
-This was heavily inspired by the work done in https://github.com/ReagentX/imessage-exporter
+A lot of the heavy lifting for the db schema was done by https://github.com/ReagentX/imessage-exporter and https://github.com/BlueBubblesApp/bluebubbles-app

@@ -4,7 +4,8 @@ import { useMimessage } from "../context";
 import { useChatById, useMessagesForChatId } from "../hooks/dataHooks";
 import { useVirtualizer } from "./react-virtual";
 import { MessageBubble } from "./MessageBubble";
-import { Checkbox, FormControlLabel, FormGroup, LinearProgress } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, FormGroup, LinearProgress } from "@mui/material";
+import { ExportChat } from "./ExportChat";
 
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
@@ -12,6 +13,7 @@ export const SelectedChat = () => {
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showTimes, setShowTimes] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const count = messages?.length || 0;
   const virtualizer = useVirtualizer({
     count,
@@ -43,6 +45,7 @@ export const SelectedChat = () => {
         background: "#1e1e1e",
       }}
     >
+      {exportOpen && <ExportChat onClose={() => setExportOpen(false)} />}
       {isLoading && <LinearProgress />}
       {hasItems && (
         <Box sx={{ display: "flex", flexDirection: "row" }}>
@@ -60,21 +63,27 @@ export const SelectedChat = () => {
               label="Show timestamps"
             />
           </FormGroup>
-          <button
+          <Button
             onClick={() => {
               virtualizer.scrollToIndex(0);
             }}
           >
             scroll to the top
-          </button>
-          <span style={{ padding: "0 4px" }} />
-          <button
+          </Button>
+          <Button
             onClick={() => {
               virtualizer.scrollToIndex(count - 1);
             }}
           >
             scroll to the end
-          </button>
+          </Button>
+          <Button
+            onClick={() => {
+              setExportOpen(true);
+            }}
+          >
+            Export
+          </Button>
         </Box>
       )}
       <Box

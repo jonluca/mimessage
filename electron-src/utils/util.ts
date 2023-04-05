@@ -3,6 +3,8 @@ import { app, dialog } from "electron";
 import { windows } from "../index";
 import isDev from "electron-is-dev";
 import { createMainWindow } from "../window/main-window";
+import bplist from "bplist-parser";
+import { TypedStreamReader, Unarchiver } from "node-typedstream";
 
 export interface Deferred<T> {
   resolve: (arg: T) => void;
@@ -38,6 +40,26 @@ export const showApp = () => {
   } else {
     createMainWindow();
   }
+};
+
+export const decodeMessageBuffer = async (buffer: Buffer) => {
+  if (buffer instanceof Buffer) {
+    try {
+      if (buffer.subarray(0, 6).toString() === "bplist") {
+        const parsed = bplist.parseBuffer(buffer);
+        return parsed;
+      }
+
+      const read = new TypedStreamReader(buffer);
+      const unarchiver = new Unarchiver(read);
+      const parsed = await unarchiver.decodeAll();
+      return parsed;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return buffer;
 };
 
 export const withRetries = async (fn: () => Promise<void>, MAX_ERROR_TRIES = 5) => {

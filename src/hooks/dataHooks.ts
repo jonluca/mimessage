@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ChatList, Contacts, Handle } from "../interfaces";
+import type {
+  ChatList,
+  Contacts,
+  Handle,
+  LatestMessage,
+  LatestMessagesForEachChat,
+  MessagesForChat,
+} from "../interfaces";
 import type { Contact } from "node-mac-contacts";
-const ipcRenderer = global.ipcRenderer;
 import parsePhoneNumber from "libphonenumber-js";
-import type { MessagesForChat } from "../interfaces";
-import type { LatestMessagesForEachChat } from "../interfaces";
-import type { LatestMessage } from "../interfaces";
 import { getContactName } from "../utils/helpers";
 import { uniq } from "lodash-es";
+
+const ipcRenderer = global.ipcRenderer;
 
 export const useChatList = () => {
   const { data: contacts } = useContactMap();
@@ -66,8 +71,7 @@ export const useHandleMap = () => {
 export const useChatById = (id: number | null) => {
   const { data: list } = useChatList();
   if (id !== null && list) {
-    const chat = list.find((chat) => chat.chat_id === id);
-    return chat;
+    return list.find((chat) => chat.chat_id === id);
   }
   return null;
 };

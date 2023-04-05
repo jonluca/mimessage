@@ -27,7 +27,7 @@
     "node-mac-contacts": "^1.6.1"
   },
   "devDependencies": {
-    "fuse.js": "^6.6.2",
+    "jsonexport": "^3.2.0",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.11",
@@ -39,6 +39,7 @@
     "@types/app-root-path": "^1.2.4",
     "@types/better-sqlite3": "^7.6.3",
     "@types/eslint": "8.37.0",
+    "@types/jsonexport": "^3.0.2",
     "@types/lodash-es": "^4.17.7",
     "@types/node": "^18.15.11",
     "@types/prettier": "^2.7.2",
@@ -78,7 +79,9 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^2.0.0",
     "execa": "^7.1.1",
+    "file-type": "^18.2.1",
     "fs-jetpack": "^5.1.0",
+    "fuse.js": "^6.6.2",
     "husky": "^8.0.3",
     "kysely": "^0.24.2",
     "kysely-codegen": "^0.10.0",
