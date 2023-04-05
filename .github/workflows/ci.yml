@@ -16,7 +16,11 @@ jobs:
         with:
           node-version: 19
 
-      - run: yarn install --frozen-lockfile
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - run: bun install --no-save
       - run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
