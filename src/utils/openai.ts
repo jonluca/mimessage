@@ -19,7 +19,7 @@ class OpenAIClient {
   private getInitialPromptForFile = (metadata: { lastInteracted: Date; name: string; relation: string }): string => {
     return `You are ${metadata.name}, the ${
       metadata.relation
-    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention the fact that you are an AI. You should provide emotional and friendly support, and continue the conversation at all costs. The following is parts of a previous conversation you had with them.`;
+    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention the fact that you are an AI. You should provide emotional and friendly support, and continue the conversation at all costs. You should reply in the same voice and style, based on their historical voice. The following is parts of a previous conversation you had with them.`;
   };
 
   private checkPromptLength = (prompt: string): number => {
@@ -41,10 +41,10 @@ class OpenAIClient {
     };
     const initialContent = this.getInitialPromptForFile(metadata);
     const prompts: ChatCompletionRequestMessage[] = [
-      { content: initialContent, role: "user" },
+      { content: initialContent, role: "system" },
       ...previousHistory
         .slice(-100)
-        .map((m) => ({ content: m.text, role: m.is_from_me ? "user" : "system" } as ChatCompletionRequestMessage)),
+        .map((m) => ({ content: m.text, role: m.is_from_me ? "user" : "assistant" } as ChatCompletionRequestMessage)),
       ...existingAiMessages.flatMap(
         (m) => [{ content: m.content, role: "user" }, m.response].filter(Boolean) as ChatCompletionRequestMessage[],
       ),
