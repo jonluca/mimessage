@@ -85,7 +85,7 @@ if (!amMainInstance) {
   protocol.registerSchemesAsPrivileged(customSchemes);
   const appReady = getDeferred();
   app.on("ready", async () => {
-    if (isDev && !process.argv.includes("--noDevServer")) {
+    if (isDev && !process.argv.includes("--noDevExtensions")) {
       await installExtensions();
     }
     if (!(await localDbExists())) {

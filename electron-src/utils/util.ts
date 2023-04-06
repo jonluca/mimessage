@@ -1,10 +1,10 @@
 import type { WriteStream } from "fs";
 import { app, dialog } from "electron";
 import { windows } from "../index";
-import isDev from "electron-is-dev";
 import { createMainWindow } from "../window/main-window";
 import bplist from "bplist-parser";
 import { TypedStreamReader, Unarchiver } from "node-typedstream";
+import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-extension-installer";
 
 export interface Deferred<T> {
   resolve: (arg: T) => void;
@@ -76,13 +76,10 @@ export const withRetries = async (fn: () => Promise<void>, MAX_ERROR_TRIES = 5) 
   }
 };
 export const installExtensions = async () => {
-  if (isDev) {
-    const installExtension = await import("electron-devtools-assembler");
-    // to do re-enable this when fixed
-    await installExtension.default(installExtension.REACT_DEVELOPER_TOOLS, {
-      loadExtensionOptions: {
-        allowFileAccess: true,
-      },
-    });
-  }
+  // to do re-enable this when fixed
+  await installExtension(REACT_DEVELOPER_TOOLS, {
+    loadExtensionOptions: {
+      allowFileAccess: true,
+    },
+  });
 };
