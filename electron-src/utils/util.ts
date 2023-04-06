@@ -4,7 +4,7 @@ import { windows } from "../index";
 import { createMainWindow } from "../window/main-window";
 import bplist from "bplist-parser";
 import { TypedStreamReader, Unarchiver } from "node-typedstream";
-import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-extension-installer";
+import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-extension-installer/src/index";
 
 export interface Deferred<T> {
   resolve: (arg: T) => void;

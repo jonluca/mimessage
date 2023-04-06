@@ -564,10 +564,10 @@
   resolved "https://registry.npmjs.org/@next/env/-/env-13.2.4.tgz#8b763700262b2445140a44a8c8d088cef676dbae"
   integrity sha512-+Mq3TtpkeeKFZanPturjcXt+KHfKYnLlX6jMLyCrmpq6OOs4i1GqBOAauSkii9QeKCMTYzGppar21JU57b/GEA==
 
-"@next/eslint-plugin-next@^13.2.4":
-  version "13.2.4"
-  resolved "https://registry.npmjs.org/@next/eslint-plugin-next/-/eslint-plugin-next-13.2.4.tgz#3e124cd10ce24dab5d3448ce04104b4f1f4c6ca7"
-  integrity sha512-ck1lI+7r1mMJpqLNa3LJ5pxCfOB1lfJncKmRJeJxcJqcngaFwylreLP7da6Rrjr6u2gVRTfmnkSkjc80IiQCwQ==
+"@next/eslint-plugin-next@^13.3.0":
+  version "13.3.0"
+  resolved "https://registry.npmjs.org/@next/eslint-plugin-next/-/eslint-plugin-next-13.3.0.tgz#3a4742b0817575cc0dd4d152cb10363584c215ac"
+  integrity sha512-wuGN5qSEjSgcq9fVkH0Y/qIPFjnZtW3ZPwfjJOn7l/rrf6y8J24h/lo61kwqunTyzZJm/ETGfGVU9PUs8cnzEA==
   dependencies:
     glob "7.1.7"
 
@@ -2526,10 +2526,10 @@ electron-esbuild@^7.0.0:
     meow "^11.0.0"
     rimraf "^3.0.2"
 
-electron-extension-installer@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/electron-extension-installer/-/electron-extension-installer-1.0.1.tgz#80868a4197df0a2ef4721f0f72200f8680ae2184"
-  integrity sha512-HSMmrKTsh7H6f4aPGhCTasBeXr2lMzqG3rb2a3EIISibd5IUiJb6SENEtEibqTMWZn4Pxdp6CQ0oeLm0dyPtCA==
+electron-extension-installer@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.npmjs.org/electron-extension-installer/-/electron-extension-installer-1.0.4.tgz#ee0cd69981dafcf2b3c6a6d5af5a9f0ebbe5d346"
+  integrity sha512-jZgCDLpr5tC33ocKK5ZINQgJE7FTDimF1BGQSXOQt1WKWpjEh40owhroVx69Nl7dMUC5QC8y6Ys1WlA0P6Tpcw==
   dependencies:
     "@types/jszip" "^3.4.1"
     "@types/semver" "^7.3.13"
