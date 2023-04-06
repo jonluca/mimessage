@@ -6,11 +6,10 @@ import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils
 import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
 import "./data/ipc";
-import { logPath, logStream } from "./constants";
+import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
 import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
-import { mainAppIconDevPng } from "./window/appMenuBarIcon";
 import db, { copyLatestDb, localDbExists } from "./data/database";
 
 addFlags(app);
@@ -65,6 +64,7 @@ if (!amMainInstance) {
       return { action: "deny" };
     });
   });
+
   // Custom Mac OS dock image
   if (isDev) {
     app.dock.setIcon(mainAppIconDevPng);

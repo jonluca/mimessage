@@ -94,7 +94,7 @@ div {
 /* From imessage-exporter */
 .message {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   overflow-wrap: break-word;
   font-size: 15px;
 }

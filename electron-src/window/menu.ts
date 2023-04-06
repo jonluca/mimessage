@@ -1,10 +1,66 @@
 import * as path from "path";
 import type { MenuItemConstructorOptions } from "electron";
-import { app, Menu, shell } from "electron";
+import { app, dialog, Menu, shell } from "electron";
 import { windows } from "../index";
+import { showApp } from "../utils/util";
+import db, { copyDbAtPath, copyLatestDb } from "../data/database";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [
+    {
+      label: "&App",
+      submenu: [
+        {
+          label: "Show App",
+          type: "normal",
+          click: showApp,
+        },
+        {
+          label: "Load new messages",
+          type: "normal",
+          click: async () => {
+            await copyLatestDb();
+            await db.reloadDb();
+            windows[0]?.webContents.send("refreshChats");
+          },
+        },
+        {
+          label: "Load custom chat.db",
+          type: "normal",
+          click: async () => {
+            const location = await dialog.showOpenDialog({
+              filters: [{ name: "SQlite DB", extensions: ["db"] }],
+              properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory"],
+            });
+            if (location.canceled) {
+              return;
+            }
+            await copyDbAtPath(location.filePaths[0]);
+            await db.reloadDb();
+            windows[0]?.webContents.send("refreshChats");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Submit Feedback",
+          type: "normal",
+          click: () => {
+            shell.openExternal("mailto:mimessage@jonlu.ca");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Quit",
+          type: "normal",
+          click: async () => {
+            app.quit();
+          },
+        },
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+      ],
+    },
     {
       label: "&Edit",
       submenu: [

@@ -2,10 +2,9 @@ import SqliteDb from "better-sqlite3";
 import { app } from "electron";
 import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
-import isDev from "electron-is-dev";
 import path from "path";
 import logger from "../utils/logger";
-import { RESOURCES_PATH } from "../constants";
+import { debugLoggingEnabled, RESOURCES_PATH } from "../constants";
 import type { KyselyConfig } from "kysely/dist/cjs/kysely";
 import jetpack from "fs-jetpack";
 import { appPath } from "../versions";
@@ -13,7 +12,6 @@ import { handleIpc } from "./ipc";
 import { groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { decodeMessageBuffer } from "../utils/util";
-const debugLoggingEnabled = isDev && process.env.DEBUG_LOGGING === "true";
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
 
@@ -227,11 +225,14 @@ const db = new SQLDatabase();
 // monkey patch to handle ipc calls
 
 export const copyLatestDb = async () => {
-  if (!(await jetpack.existsAsync(messagesDb))) {
+  await copyDbAtPath(messagesDb);
+};
+export const copyDbAtPath = async (path: string) => {
+  if (!(await jetpack.existsAsync(path))) {
     throw new Error("Messages DB does not exist");
   }
   logger.info("Copying Messages DB");
-  await jetpack.copyAsync(messagesDb, appMessagesDbCopy, { overwrite: true });
+  await jetpack.copyAsync(path, appMessagesDbCopy, { overwrite: true });
   logger.info("Messages DB copied");
   await db.initialize();
 };

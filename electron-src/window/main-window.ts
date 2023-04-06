@@ -3,29 +3,14 @@ import { app, screen } from "electron";
 import windowStateKeeper from "electron-window-state";
 import createWindow from "./create-window";
 import { join } from "path";
-import { logStream } from "../constants";
+import { logStream, mainAppIconDevPng } from "../constants";
 import isDev from "electron-is-dev";
 import { format } from "url";
-import { appMenuBarIcon, mainAppIconDevPng, setAppIcon, updateMenu } from "./appMenuBarIcon";
-import { getContextMenu } from "../context";
 import { showErrorAlert, withRetries } from "../utils/util";
 import prepareNext from "../utils/next-helper";
 import logger from "../utils/logger";
 import { windows } from "../index";
 import { addWebRequestToSession } from "../data/routes";
-
-const createMenubarIcon = () => {
-  try {
-    setAppIcon();
-    appMenuBarIcon?.setContextMenu(getContextMenu());
-    appMenuBarIcon?.setIgnoreDoubleClickEvents(true);
-    appMenuBarIcon?.on("click", () => {
-      updateMenu();
-    });
-  } catch (e) {
-    console.error(e);
-  }
-};
 
 const setupNext = async () => {
   try {
@@ -107,7 +92,6 @@ export const createMainWindow = async () => {
       });
 
   setupBaseWindowEventHandlers(mainWindow);
-  createMenubarIcon();
   await setupNextPromise;
 
   await mainWindow.loadURL(url);
