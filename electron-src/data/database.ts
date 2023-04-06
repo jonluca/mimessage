@@ -67,6 +67,9 @@ export class SQLDatabase {
     this.dbWriter = undefined;
     this.trySetupDb();
   };
+  doesLocalDbCopyExist = async () => {
+    return localDbExists();
+  };
 
   trySetupDb() {
     try {

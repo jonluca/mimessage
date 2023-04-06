@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import "../styles/virtualized.css";
 import "../styles/Calendar.css";
+import "../styles/ai-magic.css";
 import { register } from "../config/registerEventHandlers";
 import type { AppProps } from "next/app";
 import React, { useEffect } from "react";

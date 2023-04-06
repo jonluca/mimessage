@@ -3,9 +3,10 @@ import Box from "@mui/material/Box";
 import { useMimessage } from "../context";
 import { useChatById, useMessagesForChatId } from "../hooks/dataHooks";
 import { useVirtualizer } from "./react-virtual";
-import { MessageBubble } from "./MessageBubble";
-import { Button, Checkbox, FormControlLabel, FormGroup, LinearProgress } from "@mui/material";
+import { AiMessageBubble, MessageBubble } from "./MessageBubble";
+import { Button, Checkbox, Divider, FormControlLabel, FormGroup, LinearProgress } from "@mui/material";
 import { ExportChat } from "./ExportChat";
+import { SendMessageBox } from "./SendMessageBox";
 
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
@@ -15,6 +16,7 @@ export const SelectedChat = () => {
   const [showTimes, setShowTimes] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const count = messages?.length || 0;
+
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => containerRef.current,
@@ -41,7 +43,7 @@ export const SelectedChat = () => {
         justifyContent: "center",
         width: "100%",
         flexDirection: "column",
-        p: 2,
+        p: 1,
         background: "#1e1e1e",
       }}
     >
@@ -111,19 +113,41 @@ export const SelectedChat = () => {
                 left: 0,
                 width: "100%",
                 transform: `translateY(${items[0].start}px)`,
+                p: 1,
               }}
             >
               {items.map((virtualRow) => {
                 const message = messages?.[virtualRow.index];
                 const previousMessage = messages?.[virtualRow.index - 1];
+
+                if (!message) {
+                  return null;
+                }
+
+                if ("divider" in message) {
+                  return (
+                    <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
+                      <Divider sx={{ height: 3, my: 1, border: "0 none", background: "#2c2c2c" }} />
+                    </Box>
+                  );
+                }
+
                 return (
                   <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
-                    <MessageBubble
-                      showAvatar={isMultiMemberChat}
-                      message={message}
-                      showTimes={showTimes}
-                      isGroupedMessage={message?.handle_id === previousMessage?.handle_id}
-                    />
+                    {"role" in message ? (
+                      <AiMessageBubble message={message} showTimes={showTimes} />
+                    ) : (
+                      <MessageBubble
+                        showAvatar={isMultiMemberChat}
+                        message={message}
+                        showTimes={showTimes}
+                        isGroupedMessage={
+                          previousMessage &&
+                          "handle_id" in previousMessage &&
+                          message?.handle_id === previousMessage?.handle_id
+                        }
+                      />
+                    )}
                   </Box>
                 );
               })}
@@ -131,6 +155,7 @@ export const SelectedChat = () => {
           )}
         </Box>
       </Box>
+      <SendMessageBox />
     </Box>
   );
 };

@@ -11,7 +11,9 @@ import type { Contact } from "node-mac-contacts";
 import parsePhoneNumber from "libphonenumber-js";
 import { getContactName } from "../utils/helpers";
 import { uniq } from "lodash-es";
-
+import type { AiMessage } from "../context";
+import { useMimessage } from "../context";
+import type { Message } from "../interfaces";
 const ipcRenderer = global.ipcRenderer;
 
 export const useChatList = () => {
@@ -88,7 +90,8 @@ export const useContacts = () => {
     return resp;
   });
 };
-export const useMessagesForChatId = (id: number | null) => {
+
+export const useLocalMessagesForChatId = (id: number | null) => {
   return useQuery<MessagesForChat | null>(["getMessagesForChatId", id], async () => {
     if (!id) {
       return null;
@@ -96,6 +99,33 @@ export const useMessagesForChatId = (id: number | null) => {
     const resp = (await ipcRenderer.invoke("getMessagesForChatId", id)) as MessagesForChat;
     return resp;
   });
+};
+
+interface DividerMessage {
+  divider: true;
+}
+
+type ChatListAggregate = Array<Message | DividerMessage | AiMessage>;
+export const useMessagesForChatId = (id: number | null) => {
+  const aiMessages = useAiMessagesForChatId(id);
+  const { data: localMessages } = useLocalMessagesForChatId(id);
+
+  return useQuery<ChatListAggregate>(
+    ["getMessagesForChatIdWithAi", id, aiMessages, localMessages?.length],
+    async () => {
+      const newMessages: ChatListAggregate = [...(aiMessages || [])];
+      if (aiMessages?.length) {
+        newMessages.unshift({ divider: true });
+      }
+
+      return [...(localMessages || []), ...newMessages];
+    },
+  );
+};
+
+export const useAiMessagesForChatId = (id: number | null) => {
+  const extendedConversations = useMimessage((state) => state.extendedConversations);
+  return (id ? extendedConversations[id] : []) || [];
 };
 export const useLatestMessageForEachChat = () => {
   return useQuery<Record<string | number, LatestMessage> | null>(["getLatestMessageForEachChat"], async () => {

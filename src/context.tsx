@@ -2,6 +2,14 @@ import { create } from "zustand";
 import type { Chat } from "./interfaces";
 import { useChatById } from "./hooks/dataHooks";
 import type { Message } from "./interfaces";
+import type { ChatCompletionRequestMessage } from "openai/api";
+
+export interface AiMessage extends ChatCompletionRequestMessage {
+  date: Date;
+  response?: null | ChatCompletionRequestMessage;
+}
+
+type ExtendedConversations = Record<number, AiMessage[]>;
 
 export interface AppContext {
   search: string | null;
@@ -14,6 +22,8 @@ export interface AppContext {
   setChatId: (updated: number | null) => void;
   highlightedMessage: Message | null;
   setHighlightedMessage: (updated: Message | null) => void;
+  extendedConversations: ExtendedConversations;
+  setExtendedConversations: (updated: ExtendedConversations) => void;
 }
 const useMimessage = create<AppContext>((set, get) => ({
   search: null,
@@ -26,6 +36,9 @@ const useMimessage = create<AppContext>((set, get) => ({
   setChatId: (chatId: number | null) => set({ chatId }),
   highlightedMessage: null,
   setHighlightedMessage: (highlightedMessage: Message | null) => set({ highlightedMessage }),
+  setExtendedConversations: (extendedConversations: ExtendedConversations) =>
+    set({ extendedConversations: { ...extendedConversations } }),
+  extendedConversations: {},
 }));
 
 export const useSelectedChat = (): Chat | null | undefined => {

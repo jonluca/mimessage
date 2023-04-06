@@ -4,6 +4,7 @@ import type { Message } from "../interfaces";
 import { useHandleMap } from "../hooks/dataHooks";
 import { MessageAvatar } from "./Avatar";
 import { AssetPlayer } from "./AssetPlayer";
+import type { AiMessage } from "../context";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
@@ -103,5 +104,62 @@ export const MessageBubble = ({
       </Box>
       {showTimes && isFromMe && timeText()}
     </Box>
+  );
+};
+
+export const AiMessageBubble = ({
+  message,
+  showTimes,
+}: {
+  message: null | undefined | AiMessage;
+  showTimes: boolean;
+}) => {
+  if (!message) {
+    return null;
+  }
+  const timeText = () => {
+    if (!message.date) {
+      return null;
+    }
+    return (
+      <Box sx={{ pr: 0.5 }}>
+        <span style={{ color: "#909093", fontSize: 9 }}>
+          {message.date.toLocaleDateString()} {message.date.toLocaleTimeString()}
+        </span>
+      </Box>
+    );
+  };
+
+  return (
+    <>
+      <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
+        <Box className={"sentContainer"}>
+          <Box className={["sent", "imessage"].join(" ")}>
+            <Box className={"message_part"}>
+              <Box className={"bubble"}>{message.content}</Box>
+            </Box>
+          </Box>
+        </Box>
+        {showTimes && timeText()}
+      </Box>
+      <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
+        {showTimes && timeText()}
+        <Box className={"card container"}>
+          <Box className={["received", "imessage"].join(" ")}>
+            {message.response ? (
+              <Box className={"message_part"}>
+                <Box className={"bubble"}>{message.response.content}</Box>
+              </Box>
+            ) : (
+              <div className="typing">
+                <span className="typing__bullet" />
+                <span className="typing__bullet" />
+                <span className="typing__bullet" />
+              </div>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    </>
   );
 };
