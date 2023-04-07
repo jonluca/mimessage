@@ -70,7 +70,7 @@ if (!amMainInstance) {
     app.dock.setIcon(mainAppIconDevPng);
   }
 
-  const customSchemes = ["file", "mimessage-asset"].map((s) => ({
+  const customSchemes = ["file", "mimessage-asset", "devtools"].map((s) => ({
     scheme: s,
     privileges: {
       secure: true,

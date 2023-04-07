@@ -42,6 +42,7 @@
     "no-empty": "off",
     "no-case-declarations": "off",
     "no-control-regex": "off",
+    "@typescript-eslint/no-namespace": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
     "@typescript-eslint/consistent-type-imports": [

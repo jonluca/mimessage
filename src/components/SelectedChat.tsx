@@ -21,7 +21,7 @@ export const SelectedChat = () => {
     count,
     getScrollElement: () => containerRef.current,
     estimateSize: () => 80,
-    overscan: 1000,
+    overscan: 50,
   });
 
   const items = virtualizer.getVirtualItems();

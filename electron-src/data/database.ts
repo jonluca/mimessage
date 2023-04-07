@@ -11,7 +11,9 @@ import { appPath } from "../versions";
 import { handleIpc } from "./ipc";
 import { groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
-import { decodeMessageBuffer } from "../utils/util";
+
+import { decodeMessageBuffer } from "../utils/buffer";
+
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
 
@@ -135,7 +137,9 @@ export class SQLDatabase {
       chat.handles = chatHandles;
       if (!chat.text && chat.attributedBody) {
         const parsed = await decodeMessageBuffer(chat.attributedBody);
-        chat.text = parsed[0]?.value?.string;
+        if (parsed) {
+          chat.text = parsed[0]?.value?.string;
+        }
       }
     }
     return enhancedChats;
@@ -171,13 +175,31 @@ export class SQLDatabase {
       .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
       .leftJoin("message_attachment_join", "message_attachment_join.message_id", "message.ROWID")
       .leftJoin("attachment", "message_attachment_join.attachment_id", "attachment.ROWID")
-      .selectAll()
-      .select(sql<string>`(date/1000000) + 978307200000`.as("parsed_date"))
-      .select(sql<string>`(date_read/1000000) + 978307200000`.as("parsed_date_read"))
-      .select(sql<string>`(date_delivered/1000000) + 978307200000`.as("parsed_date_delivered"))
+      .select([
+        "attachment_id",
+        "attributedBody",
+        "chat_id",
+        "date",
+        "date_delivered",
+        "date_read",
+        "group_action_type",
+        "group_title",
+        "mime_type",
+        "other_handle",
+        "handle_id",
+        "is_from_me",
+        "is_read",
+        "item_type",
+        "filename",
+        "error",
+        "payload_data",
+        "service",
+        "text",
+        "transfer_name",
+        "type",
+      ])
       .select(sql<string>`message.ROWID`.as("message_id"))
       .where("chat_message_join.chat_id", "is", chatId)
-      .orderBy("date", "asc")
       .execute();
 
     type Message = typeof messages[number];
@@ -189,19 +211,30 @@ export class SQLDatabase {
     }
     const enhancedMessages = messages as EnhancedMessage[];
 
-    for (const message of enhancedMessages) {
-      message.date_obj = new Date(message.parsed_date);
-      message.date_obj_delivered = new Date(message.parsed_date_delivered);
-      message.date_obj_read = new Date(message.parsed_date_read);
-      message.text = (message.text || "").trim().replace("\u{FFFC}", "").replace("\u{FFFD}", "");
-      if (!message.text && message.attributedBody) {
-        const parsed = await decodeMessageBuffer(message.attributedBody);
-        message.text = (parsed[0]?.value?.string || "").trim();
-      }
-    }
+    await Promise.all(
+      enhancedMessages.map(async (message) => {
+        if (message.date) {
+          message.date_obj = new Date(message.date / 1000000 + 978307200000);
+        }
+        if (message.date_delivered) {
+          message.date_obj_delivered = new Date(message.date_delivered / 1000000 + 978307200000);
+        }
+        if (message.date_read) {
+          message.date_obj_read = new Date(message.date_read / 1000000 + 978307200000);
+        }
+        if (message.text) {
+          message.text = message.text.replace(/\u{FFFC}|\u{FFFC}/, "");
+        }
 
+        if (!message.text && message.attributedBody) {
+          const parsed = await decodeMessageBuffer(message.attributedBody);
+          if (parsed) {
+            message.text = (parsed[0]?.value?.string || "").trim();
+          }
+        }
+      }),
+    );
     const groupedMessages = groupBy(enhancedMessages, "message_id");
-
     const flat = Object.values(groupedMessages).map((messages) => {
       if (messages.length === 1) {
         return messages[0];
@@ -210,7 +243,6 @@ export class SQLDatabase {
       messageToUse.attachmentMessages = messages.slice(1);
       return messageToUse;
     });
-
     flat.sort((a, b) => {
       return (a.date || 0) - (b.date || 0);
     });

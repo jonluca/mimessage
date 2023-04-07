@@ -59,7 +59,6 @@ export default function createWindow(windowName: string, options: Partial<Electr
       nodeIntegration: false,
       devTools: true,
       contextIsolation: false,
-      webSecurity: false,
       allowRunningInsecureContent: false,
       experimentalFeatures: true,
       preload: join(__dirname, "utils/preload.js"),

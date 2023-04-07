@@ -5,15 +5,24 @@ import db from "./database";
 import { getAllContacts, getAuthStatus, requestAccess } from "node-mac-contacts";
 import fs from "fs-extra";
 import jsonexport from "jsonexport";
-import { decodeMessageBuffer } from "../utils/util";
 import jetpack from "fs-jetpack";
 import path from "path";
 import * as os from "os";
 import { fileTypeFromFile } from "file-type";
+import { debugLoggingEnabled } from "../constants";
+import logger from "../utils/logger";
+import { decodeMessageBuffer } from "../utils/buffer";
 
 export const handleIpc = (event: string, handler: (...args: any[]) => unknown) => {
-  ipcMain.handle(event, async (event: IpcMainInvokeEvent, ...args) => {
+  ipcMain.handle(event, async (e: IpcMainInvokeEvent, ...args) => {
     await db.initializationPromise;
+    if (debugLoggingEnabled) {
+      const now = performance.now();
+      const result = await handler(...args);
+      const time = performance.now() - now;
+      logger.info(`IPC ${event} took ${time}ms`);
+      return result;
+    }
     return handler(...args);
   });
 };
