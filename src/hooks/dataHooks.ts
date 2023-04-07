@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
   ChatList,
   Contacts,
@@ -10,14 +10,21 @@ import type {
 import type { Contact } from "node-mac-contacts";
 import parsePhoneNumber from "libphonenumber-js";
 import { getContactName } from "../utils/helpers";
-import { uniq } from "lodash-es";
+import { cloneDeep, uniq } from "lodash-es";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
+export const useDbChatList = () => {
+  return useQuery<ChatList | null>(["dbChatList"], async () => {
+    const resp = (await ipcRenderer.invoke("getChatList")) as ChatList;
+    return resp;
+  });
+};
 
 export const useChatList = () => {
+  const { data: dbChats } = useDbChatList();
   const { data: contacts } = useContactMap();
 
   const getContactFromHandle = (handle: string) => {
@@ -44,19 +51,22 @@ export const useChatList = () => {
     return contacts.get(lower) || null;
   };
 
-  return useQuery<ChatList | null>(["getChatList", Boolean(contacts), contacts?.size], async () => {
-    const resp = (await ipcRenderer.invoke("getChatList")) as ChatList;
-    if (contacts) {
-      for (const chat of resp || []) {
-        if (chat.handles.length) {
-          for (const handle of chat.handles) {
-            handle.contact = getContactFromHandle(handle.id);
+  return useQuery<ChatList | null>(
+    ["getChatList", Boolean(contacts), Boolean(dbChats), dbChats?.length, contacts?.size],
+    async () => {
+      const chats = cloneDeep(dbChats || []);
+      if (contacts) {
+        for (const chat of chats) {
+          if (chat.handles.length) {
+            for (const handle of chat.handles) {
+              handle.contact = getContactFromHandle(handle.id);
+            }
           }
         }
       }
-    }
-    return resp;
-  });
+      return chats;
+    },
+  );
 };
 
 export const useHandleMap = () => {
@@ -171,6 +181,21 @@ export const useContactMap = () => {
 export const useChatDateRange = () => {
   return useQuery<{ max: Date; min: Date } | null>(["chat-date-range"], async () => {
     return { max: new Date(), min: new Date() };
+  });
+};
+export const useDoesLocalDbExist = () => {
+  return useQuery<boolean>(
+    ["localDbExists"],
+    async () => {
+      const resp = (await ipcRenderer.invoke("doesLocalDbCopyExist")) as boolean;
+      return resp;
+    },
+    { refetchInterval: (data) => (data ? false : 1000) },
+  );
+};
+export const useCopyDbMutation = () => {
+  return useMutation(["copyDb"], async () => {
+    await ipcRenderer.invoke("copyLocalDb");
   });
 };
 

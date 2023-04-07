@@ -29,9 +29,6 @@ export const SelectedChat = () => {
 
   const isMultiMemberChat = (chat?.handles?.length || 0) > 1;
   useEffect(() => {
-    if (count) {
-      virtualizer.scrollToIndex(count - 1, { align: "end" });
-    }
     containerRef.current?.scrollTo(0, containerRef.current.scrollHeight);
   }, [chatId, count, virtualizer]);
 
@@ -67,14 +64,16 @@ export const SelectedChat = () => {
           </FormGroup>
           <Button
             onClick={() => {
-              virtualizer.scrollToIndex(0);
+              // virtualizer.scrollToIndex(0, { align: "start", behavior: "auto" });
+              containerRef.current?.scrollTo(0, 0);
             }}
           >
             scroll to the top
           </Button>
           <Button
             onClick={() => {
-              virtualizer.scrollToIndex(count - 1);
+              // virtualizer.scrollToIndex(count - 1, { align: "end", behavior: "auto" });
+              containerRef.current?.scrollTo(0, containerRef.current.scrollHeight);
             }}
           >
             scroll to the end

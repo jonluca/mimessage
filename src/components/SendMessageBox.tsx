@@ -62,6 +62,8 @@ export const SendMessageBox = () => {
     return null;
   }
 
+  const isAwaitingResponse = Boolean(currConvo.length) && currConvo[currConvo.length - 1].response === null;
+  const tooManyParticipants = (chat?.handles.length || 0) > 1;
   return (
     // absolutely center dev
     <Box sx={{ display: "flex", flexDirection: "row", pt: 1, justifyContent: "center", alignItems: "center" }}>
@@ -75,12 +77,8 @@ export const SendMessageBox = () => {
               ref: inputRef,
               onKeyDown: handleShortcuts,
             }}
-            placeholder={"AI Message"}
-            disabled={
-              (chat?.handles.length || 0) > 1 ||
-              isLoadingMessages ||
-              (Boolean(currConvo.length) && currConvo[currConvo.length - 1].response === null)
-            }
+            placeholder={tooManyParticipants ? "AI Message cannot be used in group chats" : "AI Message"}
+            disabled={tooManyParticipants || isLoadingMessages || isAwaitingResponse}
           />
           <ArrowUpwardIcon
             sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}

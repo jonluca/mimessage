@@ -23,26 +23,7 @@ export class SQLDatabase {
 
   initializationPromise!: Promise<void>;
 
-  initialize = () => {
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
-    this.initializationPromise = new Promise((resolve) => {
-      const success = this.trySetupDb();
-      if (!success) {
-        const interval = setInterval(() => {
-          if (this.trySetupDb()) {
-            resolve();
-            clearInterval(interval);
-          }
-        }, 1000);
-      } else {
-        resolve();
-      }
-    });
-    this.initializationPromise.then(() => {
-      logger.info("DB initialized");
-    });
+  setupHandlers = () => {
     for (const property in db) {
       const prop = property as keyof SQLDatabase;
       const dbElement = db[prop];
@@ -50,6 +31,32 @@ export class SQLDatabase {
         handleIpc(property, dbElement);
       }
     }
+  };
+
+  initialize = () => {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+    this.initializationPromise = new Promise(async (resolve) => {
+      const success = await this.trySetupDb();
+      if (!success) {
+        const startTimeout = () =>
+          setTimeout(async () => {
+            const success = await this.trySetupDb();
+            if (success) {
+              resolve();
+            } else {
+              startTimeout();
+            }
+          }, 1000);
+        startTimeout();
+      } else {
+        resolve();
+      }
+    });
+    this.initializationPromise.then(() => {
+      logger.info("DB initialized");
+    });
 
     return this.initializationPromise;
   };
@@ -65,14 +72,24 @@ export class SQLDatabase {
       await this.dbWriter.destroy();
     }
     this.dbWriter = undefined;
-    this.trySetupDb();
+    await this.trySetupDb();
   };
+  isCopying = false;
   doesLocalDbCopyExist = async () => {
-    return localDbExists();
+    return !this.isCopying && localDbExists();
   };
 
-  trySetupDb() {
+  copyLocalDb = async () => {
+    this.isCopying = true;
+    await copyLatestDb();
+    this.isCopying = false;
+  };
+
+  trySetupDb = async () => {
     try {
+      if (!(await localDbExists())) {
+        return false;
+      }
       const sqliteDb = new SqliteDb(this.path, { readonly: true });
       const dialect = new SqliteDialect({ database: sqliteDb });
       let options: KyselyConfig = {
@@ -100,7 +117,7 @@ export class SQLDatabase {
       console.error(e);
       return false;
     }
-  }
+  };
 
   getChatList = async () => {
     const db = this.db;
@@ -135,9 +152,13 @@ export class SQLDatabase {
       const chatHandles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
       chat.handles = chatHandles;
       if (!chat.text && chat.attributedBody) {
-        const parsed = await decodeMessageBuffer(chat.attributedBody);
-        if (parsed) {
-          chat.text = parsed[0]?.value?.string;
+        try {
+          const parsed = await decodeMessageBuffer(chat.attributedBody);
+          if (parsed) {
+            chat.text = parsed[0]?.value?.string;
+          }
+        } catch (e) {
+          // ignore buffer errors
         }
       }
     }
@@ -165,6 +186,10 @@ export class SQLDatabase {
       .orderBy("m.date", "desc");
     const chats = await query.execute();
     return chats;
+  };
+
+  localDbExists = async () => {
+    return localDbExists();
   };
 
   getMessagesForChatId = async (chatId: number) => {
@@ -269,7 +294,7 @@ export const copyDbAtPath = async (path: string) => {
 };
 
 export const localDbExists = async () => {
-  return await jetpack.existsAsync(appMessagesDbCopy);
+  return Boolean(await jetpack.existsAsync(appMessagesDbCopy));
 };
 
 export default db;

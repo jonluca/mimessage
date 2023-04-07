@@ -10,7 +10,7 @@ import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
 import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
-import db, { copyLatestDb, localDbExists } from "./data/database";
+import db, { localDbExists } from "./data/database";
 
 addFlags(app);
 
@@ -88,10 +88,10 @@ if (!amMainInstance) {
     if (isDev && !process.argv.includes("--noDevExtensions")) {
       await installExtensions();
     }
-    if (!(await localDbExists())) {
-      await copyLatestDb();
+    if (await localDbExists()) {
+      await db.initialize();
     }
-    await db.initialize();
+    db.setupHandlers();
     appReady.resolve();
   });
 
