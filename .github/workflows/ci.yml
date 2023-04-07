@@ -20,6 +20,7 @@ jobs:
         with:
           node-version: 19
 
+      - run: yarn install
       - run: yarn build
       - run: yarn package --${{ matrix.arch }}
         env:
