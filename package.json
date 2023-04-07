@@ -21,9 +21,9 @@
     "typecheck": "tsc -p src --noEmit && tsc --noEmit"
   },
   "dependencies": {
-    "@types/express": "^4.17.17",
     "better-sqlite3": "^8.2.0",
-    "node-mac-contacts": "^1.6.1"
+    "node-mac-contacts": "^1.6.1",
+    "node-mac-permissions": "^2.3.0"
   },
   "devDependencies": {
     "@electron/notarize": "^1.2.3",

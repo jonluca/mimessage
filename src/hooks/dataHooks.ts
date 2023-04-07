@@ -193,9 +193,27 @@ export const useDoesLocalDbExist = () => {
     { refetchInterval: (data) => (data ? false : 1000) },
   );
 };
+
+export const useHasFullDiskAccessPermissions = () => {
+  return useQuery<boolean>(
+    ["fullDiskAccessPerms"],
+    async () => {
+      const resp = (await ipcRenderer.invoke("hasFullDiskAccess")) as boolean;
+      return resp;
+    },
+    { refetchInterval: (data) => (data ? false : 1000) },
+  );
+};
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {
     await ipcRenderer.invoke("copyLocalDb");
+  });
+};
+
+export const useRequestAccessMutation = () => {
+  return useMutation(["requestPerms"], async () => {
+    await ipcRenderer.invoke("fullDiskAccess");
+    await ipcRenderer.invoke("requestContactsPerms");
   });
 };
 

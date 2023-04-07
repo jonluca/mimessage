@@ -12,6 +12,7 @@ import { fileTypeFromFile } from "file-type";
 import { debugLoggingEnabled } from "../constants";
 import logger from "../utils/logger";
 import { decodeMessageBuffer } from "../utils/buffer";
+import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-mac-permissions";
 
 export const handleIpc = (event: string, handler: (...args: any[]) => unknown) => {
   ipcMain.handle(event, async (e: IpcMainInvokeEvent, ...args) => {
@@ -34,6 +35,34 @@ handleIpc("contacts", async () => {
   }
   const contacts = await getAllContacts(["contactImage", "contactThumbnailImage"]);
   return contacts;
+});
+
+handleIpc("requestContactsPerms", async () => {
+  try {
+    const status = getAuthStatus();
+    if (status !== "Authorized") {
+      await requestAccess();
+    }
+    const newStatus = getAuthStatus();
+
+    return newStatus;
+  } catch (e) {
+    logger.error(e);
+    return "unknown";
+  }
+});
+
+handleIpc("fullDiskAccess", async () => {
+  const diskAccessStatus = getPermissionsStatus("full-disk-access");
+  if (diskAccessStatus === "authorized") {
+    return true;
+  }
+  await askForFullDiskAccess();
+  return diskAccessStatus;
+});
+handleIpc("hasFullDiskAccess", async () => {
+  const diskAccessStatus = getPermissionsStatus("full-disk-access");
+  return diskAccessStatus === "authorized";
 });
 
 type EnhancedChat = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>[number];

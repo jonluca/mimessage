@@ -9,7 +9,7 @@ const config: BuildOptions = {
     path.resolve("electron-src/hooks/notarize.ts"),
   ],
   bundle: true,
-  external: ["next", "better-sqlite3", "node-mac-contacts"],
+  external: ["next", "better-sqlite3", "node-mac-contacts", "node-mac-permissions"],
   treeShaking: true,
   target: "node19.4.0", // electron version target
 };
