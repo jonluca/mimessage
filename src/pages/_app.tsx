@@ -24,7 +24,9 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
+import { ToastContainer } from "react-toastify";
 
+import "react-toastify/dist/ReactToastify.css";
 const Container = styled("div")`
   width: 100%;
   height: 100%;
@@ -52,6 +54,7 @@ export const MimessageApp = ({ Component, pageProps }: AppProps) => {
   return (
     <Container>
       <Component {...pageProps} />
+      <ToastContainer />
     </Container>
   );
 };

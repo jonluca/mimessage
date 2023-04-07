@@ -6,7 +6,7 @@ import type { ChatCompletionRequestMessage } from "openai/api";
 
 export interface AiMessage extends ChatCompletionRequestMessage {
   date: Date;
-  response?: null | ChatCompletionRequestMessage;
+  response?: null | ChatCompletionRequestMessage | { errored: true };
 }
 
 type ExtendedConversations = Record<number, AiMessage[]>;
@@ -15,6 +15,8 @@ export interface AppContext {
   search: string | null;
   setSearch: (updated: string | null) => void;
   startDate: string;
+  openAiKey: string | null;
+  setOpenAiKey: (key: string | null) => void;
   setStartDate: (updated: string) => void;
   endDate: string;
   setEndDate: (updated: string) => void;
@@ -25,13 +27,23 @@ export interface AppContext {
   extendedConversations: ExtendedConversations;
   setExtendedConversations: (updated: ExtendedConversations) => void;
 }
+const openAiLocalStorageKey = "openai-key";
 const useMimessage = create<AppContext>((set, get) => ({
   search: null,
   setSearch: (search: string | null) => set({ search }),
   startDate: "",
   setStartDate: (startDate: string) => set({ startDate }),
   endDate: "",
+  openAiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(openAiLocalStorageKey) ?? null,
   setEndDate: (endDate: string) => set({ endDate }),
+  setOpenAiKey: (openAiKey: string | null) => {
+    if (openAiKey) {
+      localStorage.setItem(openAiLocalStorageKey, openAiKey);
+    } else {
+      localStorage.removeItem(openAiLocalStorageKey);
+    }
+    return set({ openAiKey });
+  },
   chatId: null,
   setChatId: (chatId: number | null) => set({ chatId }),
   highlightedMessage: null,

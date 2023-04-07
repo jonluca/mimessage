@@ -4,17 +4,26 @@ import axios from "axios";
 import type { ChatCompletionRequestMessage } from "openai/api";
 import type { ChatList, MessagesForChat } from "../interfaces";
 import type { AiMessage } from "../context";
+import { useMimessage } from "../context";
 class OpenAIClient {
-  openai: OpenAIApi;
+  openai: OpenAIApi | null = null;
   encoder: GPT4Tokenizer;
+  configuration: Configuration | null = null;
 
   constructor() {
-    const configuration = new Configuration({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    this.openai = new OpenAIApi(configuration);
+    this.setConfiguration();
     this.encoder = new GPT4Tokenizer({ type: "gpt3" }); // or 'codex'
   }
+
+  setConfiguration = () => {
+    const key = process.env.OPENAI_API_KEY || useMimessage.getState().openAiKey || "";
+    if (key) {
+      this.configuration = new Configuration({
+        apiKey: key,
+      });
+      this.openai = new OpenAIApi(this.configuration);
+    }
+  };
 
   private getInitialPromptForFile = (metadata: { lastInteracted: Date; name: string; relation: string }): string => {
     return `You are ${metadata.name}, the ${
@@ -56,6 +65,10 @@ class OpenAIClient {
     messages: Array<ChatCompletionRequestMessage>,
   ): Promise<ChatCompletionRequestMessage | undefined | null> => {
     try {
+      this.setConfiguration();
+      if (!this.openai) {
+        return null;
+      }
       const completion = await this.openai.createChatCompletion({
         model: "gpt-4",
         messages,

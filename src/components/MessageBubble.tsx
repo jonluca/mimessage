@@ -148,7 +148,11 @@ export const AiMessageBubble = ({
           <Box className={["received", "imessage"].join(" ")}>
             {message.response ? (
               <Box className={"message_part"}>
-                <Box className={"bubble"}>{message.response.content}</Box>
+                {"errored" in message.response ? (
+                  <Box className={"bubble"}>{message.response.errored}</Box>
+                ) : (
+                  <Box className={"bubble"}>{message.response.content}</Box>
+                )}
               </Box>
             ) : (
               <div className="typing">
