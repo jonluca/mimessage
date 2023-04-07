@@ -6,8 +6,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: mac
-            os: "macos-12"
+          - os: macos-12
+            arch: arm64
+            platform: darwin
+          - os: macos-12
+            arch: x64
+            platform: darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -16,11 +20,7 @@ jobs:
         with:
           node-version: 19
 
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - run: bun install --no-save --ignore-scripts
+      - run: yarn electron-rebuild --module-dir app --arch ${{ matrix.arch }}
       - run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.platform }}-distributables
+          name: ${{ matrix.platform }}-${{ matrix.arch }}-distributables
           path: dist/Mimessage-*
           if-no-files-found: error
 
