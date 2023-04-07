@@ -68,6 +68,7 @@ if (!amMainInstance) {
   // Custom Mac OS dock image
   if (isDev) {
     app.dock.setIcon(mainAppIconDevPng);
+    app.setName("MiMessage Dev");
   }
 
   const customSchemes = ["file", "mimessage-asset", "devtools"].map((s) => ({
