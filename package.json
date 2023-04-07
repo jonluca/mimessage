@@ -8,9 +8,7 @@
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
-    "build": "yarn make:sqlite-extension && yarn build:app",
-    "make:sqlite-extension": "gcc -Wall -Werror -bundle -fPIC -Isqlite3 -o assets/fts4-rank.sqlext scripts/fts4-rank.c",
-    "build:app": "concurrently \"yarn build:electron\" \"yarn build:ui\"",
+    "build": "concurrently \"yarn build:electron\" \"yarn build:ui\"",
     "build:electron": "APP_ENV=production electron-esbuild build",
     "build:ui": "APP_ENV=production next build src && APP_ENV=production next export src",
     "package": "electron-builder build",

@@ -4,7 +4,7 @@ import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
 import path from "path";
 import logger from "../utils/logger";
-import { debugLoggingEnabled, RESOURCES_PATH } from "../constants";
+import { debugLoggingEnabled } from "../constants";
 import type { KyselyConfig } from "kysely/dist/cjs/kysely";
 import jetpack from "fs-jetpack";
 import { appPath } from "../versions";
@@ -74,7 +74,6 @@ export class SQLDatabase {
   trySetupDb() {
     try {
       const sqliteDb = new SqliteDb(this.path, { readonly: true });
-      sqliteDb.loadExtension(path.join(RESOURCES_PATH, "assets/fts4-rank.sqlext"));
       const dialect = new SqliteDialect({ database: sqliteDb });
       let options: KyselyConfig = {
         dialect,
