@@ -19,8 +19,12 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 19
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-      - run: yarn install
+      - run: bun install --no-save --ignore-scripts
+      - run: yarn postinstall --arch ${{ matrix.arch }}
       - run: yarn build
       - run: yarn package --${{ matrix.arch }}
         env:
