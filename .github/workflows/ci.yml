@@ -20,8 +20,8 @@ jobs:
         with:
           node-version: 19
 
-      - run: yarn electron-rebuild --module-dir app --arch ${{ matrix.arch }}
       - run: yarn build
+      - run: yarn package --${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
