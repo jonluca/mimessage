@@ -34,7 +34,7 @@ function useVirtualizerBase<TScrollElement extends Element | Window, TItemElemen
 
   React.useEffect(() => {
     return instance._didMount();
-  }, []);
+  }, [instance]);
 
   useIsomorphicLayoutEffect(() => {
     return instance._willUpdate();

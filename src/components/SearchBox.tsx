@@ -1,7 +1,7 @@
 import Search from "@mui/icons-material/Search";
 import InputBase from "@mui/material/InputBase";
 import { styled } from "@mui/material/styles";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import theme from "./theme";
 import { useMimessage } from "../context";
 import Box from "@mui/material/Box";
@@ -31,31 +31,6 @@ export const SearchBar = () => {
     setSearch(value || "");
   }, [setSearch]);
   const onSearchChangeDebounced = useMemo(() => debounce(onSearchChange, 450), [onSearchChange]);
-
-  const exitSearch = () => {
-    setSearch(null);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  };
-  const handleShortcuts = (event: KeyboardEvent) => {
-    if (inputRef.current) {
-      if (event.metaKey && event.key === "f") {
-        // command + f
-        inputRef.current.focus();
-      } else if (event.key === "Escape") {
-        // esc
-        inputRef.current.blur();
-        exitSearch();
-      }
-    }
-  };
-  useEffect(() => {
-    document.addEventListener("keydown", handleShortcuts);
-    return () => {
-      document.removeEventListener("keydown", handleShortcuts);
-    };
-  }, [handleShortcuts]);
 
   return (
     // absolutely center dev

@@ -2,6 +2,7 @@
   "extends": "../tsconfig.json",
   "include": ["../electron-src/**/*.ts", "**/*.ts", "**/*.tsx"],
   "compilerOptions": {
+    "experimentalDecorators": true,
     "incremental": true,
     "jsx": "preserve"
   }

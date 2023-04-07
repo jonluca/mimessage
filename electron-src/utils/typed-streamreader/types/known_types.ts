@@ -13,7 +13,7 @@ export type KnownArchivedObjectDerived = { new (): KnownArchivedObject } & typeo
 export const archivedClassesByName = new Map<string, KnownArchivedObjectDerived>();
 
 export function archivedClass(archivedName: string) {
-  return (target: KnownArchivedObjectDerived, _: unknown) => {
+  return (target: KnownArchivedObjectDerived) => {
     target.archivedName = archivedName;
     target.consumeEnd = false;
     archivedClassesByName.set(archivedName, target);

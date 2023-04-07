@@ -1598,7 +1598,7 @@ better-sqlite3@^8.2.0:
     bindings "^1.5.0"
     prebuild-install "^7.1.0"
 
-big-integer@1.6.x, big-integer@^1.6.51:
+big-integer@^1.6.51:
   version "1.6.51"
   resolved "https://registry.npmjs.org/big-integer/-/big-integer-1.6.51.tgz#0df92a5d9880560d3ff2d5fd20245c889d130686"
   integrity sha512-GPEid2Y9QU1Exl1rpO9B2IPJGHPSupF5GnVIP0blYvNOMer2bTvSWs1jGOUg04hTmu67nmLsQ9TBo1puaotBHg==
@@ -1640,13 +1640,6 @@ boolean@^3.0.1:
   version "3.2.0"
   resolved "https://registry.npmjs.org/boolean/-/boolean-3.2.0.tgz#9e5294af4e98314494cbb17979fa54ca159f116b"
   integrity sha512-d0II/GO9uf9lfUHH2BQsjxzRJZBdsjgsBiW4BvhWk/3qoKwQFjIDVN19PfX8F2D/r9PCMTtLWjYVCFrpeYUzsw==
-
-bplist-parser@^0.3.2:
-  version "0.3.2"
-  resolved "https://registry.npmjs.org/bplist-parser/-/bplist-parser-0.3.2.tgz#3ac79d67ec52c4c107893e0237eb787cbacbced7"
-  integrity sha512-apC2+fspHGI3mMKj+dGevkGo/tCqVB8jMb6i+OX+E29p0Iposz07fABkRIfVUPNd5A5VbuOz1bZbnmkKLYF+wQ==
-  dependencies:
-    big-integer "1.6.x"
 
 bplist-universal@^1.1.0:
   version "1.1.0"
@@ -5085,13 +5078,6 @@ node-source-walk@^4.0.0, node-source-walk@^4.2.0, node-source-walk@^4.2.2:
   integrity sha512-8Q1hXew6ETzqKRAs3jjLioSxNfT1cx74ooiF8RlAONwVMcfq+UdzLC2eB5qcPldUxaE5w3ytLkrmV1TGddhZTA==
   dependencies:
     "@babel/parser" "^7.0.0"
-
-node-typedstream@^1.4.1:
-  version "1.4.1"
-  resolved "https://registry.npmjs.org/node-typedstream/-/node-typedstream-1.4.1.tgz#019f5dc505e76381c0aa76d36827dbf88962cb01"
-  integrity sha512-W9zcPlI3RRPOmwaDjwRyr7aYLoJFbvLIIHluFM3I+KZjAlbyhG4L3jSTEJlQmDqrMRQlFVTmivgJWgFlvWXx2Q==
-  dependencies:
-    bplist-parser "^0.3.2"
 
 nopt@^5.0.0:
   version "5.0.0"

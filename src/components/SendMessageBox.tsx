@@ -24,36 +24,36 @@ export const SendMessageBox = () => {
   const chat = useChatById(chatId);
   const { data: localMessages, isLoading: isLoadingMessages } = useLocalMessagesForChatId(chatId);
 
-  const currConvo = extendedConversations[chatId!] ?? [];
-
-  const handleShortcuts = async (event: KeyboardEvent) => {
-    if (inputRef.current && chatId) {
-      if (event.key === "Enter") {
-        // submit message
-        const newMessage = {
-          role: "user",
-          content: inputRef.current.value,
-          date: new Date(),
-        } as AiMessage;
-        inputRef.current.value = "";
-        extendedConversations[chatId] = [...currConvo, newMessage];
-        setExtendedConversations(extendedConversations);
-
-        const prompts = openai.generatePrompts(newMessage, currConvo, localMessages!, chat!);
-        const response = await openai.runCompletion(prompts);
-        newMessage.response = response;
-        extendedConversations[chatId] = [...currConvo, newMessage];
-        setExtendedConversations(extendedConversations);
-      }
-    }
-  };
+  const currConvo = React.useMemo(() => extendedConversations[chatId!] ?? [], [chatId, extendedConversations]);
 
   useEffect(() => {
-    inputRef.current?.addEventListener("keydown", handleShortcuts);
-    return () => {
-      inputRef.current?.removeEventListener("keydown", handleShortcuts);
+    const current = inputRef.current;
+    const handleShortcuts = async (event: KeyboardEvent) => {
+      if (current && chatId) {
+        if (event.key === "Enter") {
+          // submit message
+          const newMessage = {
+            role: "user",
+            content: current.value,
+            date: new Date(),
+          } as AiMessage;
+          current.value = "";
+          extendedConversations[chatId] = [...currConvo, newMessage];
+          setExtendedConversations(extendedConversations);
+
+          const prompts = openai.generatePrompts(newMessage, currConvo, localMessages!, chat!);
+          const response = await openai.runCompletion(prompts);
+          newMessage.response = response;
+          extendedConversations[chatId] = [...currConvo, newMessage];
+          setExtendedConversations(extendedConversations);
+        }
+      }
     };
-  }, [handleShortcuts]);
+    current?.addEventListener("keydown", handleShortcuts);
+    return () => {
+      current?.removeEventListener("keydown", handleShortcuts);
+    };
+  }, [chat, chatId, currConvo, extendedConversations, localMessages, setExtendedConversations]);
 
   if (!chatId) {
     return null;

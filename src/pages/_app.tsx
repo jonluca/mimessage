@@ -20,7 +20,6 @@ import utc from "dayjs/plugin/utc";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { isProd } from "../config";
 import { KeyPress } from "../utils/KeyPress";
-import { useRouter } from "next/router";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(duration);
@@ -83,7 +82,6 @@ export const MimessageApp = ({ Component, pageProps }: AppProps) => {
 export const ProvidedApp = (props: ProviderProps) => {
   const { emotionCache = clientSideEmotionCache, ...rest } = props;
 
-  const { pathname } = useRouter();
   useEffect(() => {
     register();
     KeyPress.init();
