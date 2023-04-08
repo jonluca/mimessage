@@ -12,7 +12,7 @@ import {
 } from "../hooks/dataHooks";
 import { Check, Close } from "@mui/icons-material";
 
-const PermissionsDialog = ({ denied, allowed, copy }: { denied: boolean; allowed: boolean; copy: text }) => {
+const PermissionsDialog = ({ denied, allowed, copy }: { denied: boolean; allowed: boolean; copy: string }) => {
   return (
     <Box display={"flex"} justifyContent={"center"}>
       {denied ? (

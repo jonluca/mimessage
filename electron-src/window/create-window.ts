@@ -52,6 +52,7 @@ export default function createWindow(windowName: string, options: Partial<Electr
     ...options,
     ...state,
     frame: false,
+    titleBarStyle: "hiddenInset",
     // transparent: true,
     backgroundColor: "#000000",
     title: "Mimessage",

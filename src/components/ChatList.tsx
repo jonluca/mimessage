@@ -133,6 +133,7 @@ export const ChatList = () => {
         overflowY: "auto",
         height: "100%",
         background: "#2c2c2c",
+        pt: 3,
       }}
       flexDirection={"column"}
     >

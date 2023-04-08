@@ -15,6 +15,7 @@ import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
 import type { PermissionType } from "node-mac-permissions";
+import Fuse from "fuse.js";
 
 const ipcRenderer = global.ipcRenderer;
 export const useDbChatList = () => {
@@ -120,19 +121,46 @@ interface DividerMessage {
 type ChatListAggregate = Array<Message | DividerMessage | AiMessage>;
 export const useMessagesForChatId = (id: number | null) => {
   const aiMessages = useAiMessagesForChatId(id);
-  const { data: localMessages } = useLocalMessagesForChatId(id);
+  const { data: localMessages, isLoading } = useLocalMessagesForChatId(id);
+  const filter = useMimessage((state) => state.filter);
+  const regexSearch = useMimessage((state) => state.regexSearch);
 
-  return useQuery<ChatListAggregate>(
-    ["getMessagesForChatIdWithAi", id, aiMessages, localMessages?.length],
+  const data = useQuery<ChatListAggregate>(
+    ["getMessagesForChatIdWithAi", id, aiMessages, localMessages?.length, filter],
     async () => {
       const newMessages: ChatListAggregate = [...(aiMessages || [])];
       if (aiMessages?.length) {
         newMessages.unshift({ divider: true });
       }
 
+      if (filter) {
+        if (regexSearch) {
+          try {
+            const regex = new RegExp(filter, "i");
+            const filtered = (localMessages || []).filter((l) => regex.test(l.text || ""));
+            return [...filtered, ...newMessages];
+          } catch (e) {
+            // maybe we alert the user?
+            return [...(localMessages || []), ...newMessages];
+          }
+        }
+        const fuse = new Fuse(localMessages || [], {
+          keys: ["text"],
+          threshold: 0.2,
+          shouldSort: false,
+        });
+        const filtered = fuse.search(filter);
+        const filteredItems = (filtered || [])
+          .map((l) => l.item)
+          .sort((a, b) => {
+            return (a.date || 0) - (b.date || 0);
+          });
+        return [...filteredItems, ...newMessages];
+      }
       return [...(localMessages || []), ...newMessages];
     },
   );
+  return { ...data, isLoading: data.isLoading || isLoading };
 };
 
 export const useAiMessagesForChatId = (id: number | null) => {

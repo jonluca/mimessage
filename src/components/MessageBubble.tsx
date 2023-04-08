@@ -5,7 +5,7 @@ import { useHandleMap } from "../hooks/dataHooks";
 import { MessageAvatar } from "./Avatar";
 import { AssetPlayer } from "./AssetPlayer";
 import type { AiMessage } from "../context";
-
+import dayjs from "dayjs";
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
   const groupActionType = message?.group_action_type;
@@ -38,15 +38,18 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   return <Box className={"announcement"}>{text}</Box>;
 };
 
+const NINETY_MINUTES_NANOS = 1_000_000_000 * 60 * 90;
 export const MessageBubble = ({
   showAvatar,
   message,
+  previousMessage,
   isGroupedMessage,
   showTimes,
 }: {
   showAvatar: boolean;
   isGroupedMessage?: boolean;
   message: null | undefined | Message;
+  previousMessage: null | undefined | Message;
   showTimes: boolean;
 }) => {
   const { data: handleMap } = useHandleMap();
@@ -78,32 +81,41 @@ export const MessageBubble = ({
     );
   };
 
+  const showDateOfMessage = (message?.date || 0) - (previousMessage?.date || 0) > NINETY_MINUTES_NANOS;
+
   return (
-    <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
-      {showTimes && !isFromMe && timeText()}
-      {showAvatar && !isFromMe && (
-        <Box sx={{ pr: 0.5 }}>
-          <MessageAvatar contact={contact} size={28} />
-        </Box>
+    <>
+      {showDateOfMessage && message.date_obj && (
+        <Box className={"time-dif"}>{dayjs(message.date_obj).format("dddd, MMMM D, YYYY HH:mm A")}</Box>
       )}
-      <Box className={isFromMe ? "sentContainer" : "container"}>
-        {showAvatar && !isFromMe && !isGroupedMessage && (
-          <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>{contact?.parsedName || ""}</Box>
+      <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
+        {showTimes && !isFromMe && timeText()}
+        {showAvatar && !isFromMe && (
+          <Box sx={{ pr: 0.5 }}>
+            <MessageAvatar contact={contact} size={28} />
+          </Box>
         )}
-        <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
-          {isMedia ? (
-            <Box sx={{ maxHeight: 400, overflow: "hidden" }}>
-              <AssetPlayer message={message} />
-            </Box>
-          ) : (
-            <Box className={"message_part"}>
-              <Box className={"bubble"}>{message.text}</Box>
+        <Box className={isFromMe ? "sentContainer" : "container"}>
+          {showAvatar && !isFromMe && !isGroupedMessage && (
+            <Box sx={{ fontSize: 10, color: "#909093", paddingLeft: "12px", pb: 0.25 }}>
+              {contact?.parsedName || ""}
             </Box>
           )}
+          <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
+            {isMedia ? (
+              <Box sx={{ maxHeight: 400, overflow: "hidden" }}>
+                <AssetPlayer message={message} />
+              </Box>
+            ) : (
+              <Box className={"message_part"}>
+                <Box className={"bubble"}>{message.text}</Box>
+              </Box>
+            )}
+          </Box>
         </Box>
+        {showTimes && isFromMe && timeText()}
       </Box>
-      {showTimes && isFromMe && timeText()}
-    </Box>
+    </>
   );
 };
 

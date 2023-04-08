@@ -344,6 +344,14 @@ div.reaction {
   font-size: 15px;
 }
 
+.time-dif {
+  text-align: center;
+  padding: 14px 8px 8px;
+  color: #9a9a9a;
+  word-wrap: break-word;
+  font-size: 11px;
+}
+
 .sent table {
   color: white;
 }
