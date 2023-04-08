@@ -47,16 +47,7 @@ export const MessageBubbleText = ({ text }: { text: string | null }) => {
   return (
     <Box className={"message_part"}>
       <Box className={"bubble"}>
-        {filter ? (
-          <Highlighter
-            highlightClassName="YourHighlightClass"
-            searchWords={[filter]}
-            autoEscape={true}
-            textToHighlight={text || ""}
-          />
-        ) : (
-          text
-        )}
+        {filter ? <Highlighter searchWords={[filter]} autoEscape={true} textToHighlight={text || ""} /> : text}
       </Box>
     </Box>
   );

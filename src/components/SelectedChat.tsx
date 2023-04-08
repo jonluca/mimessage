@@ -165,6 +165,7 @@ export const SelectedChat = () => {
           overflowY: "auto",
           overflowX: "hidden",
           contain: "strict",
+          pt: 1,
         }}
       >
         <Box
