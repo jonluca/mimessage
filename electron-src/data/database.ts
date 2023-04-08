@@ -250,11 +250,15 @@ export class SQLDatabase {
           message.text = message.text.replace(/\u{FFFC}|\u{FFFC}/, "");
         }
 
-        if (!message.text && message.attributedBody) {
-          const parsed = await decodeMessageBuffer(message.attributedBody);
-          if (parsed) {
-            message.text = (parsed[0]?.value?.string || "").trim();
+        try {
+          if (!message.text && message.attributedBody) {
+            const parsed = await decodeMessageBuffer(message.attributedBody);
+            if (parsed) {
+              message.text = (parsed[0]?.value?.string || "").trim();
+            }
           }
+        } catch {
+          // ignore
         }
       }),
     );
@@ -274,7 +278,7 @@ export class SQLDatabase {
   };
 }
 
-const excludedProperties = ["initialize", "db", "trySetupDb"];
+const excludedProperties = ["initialize", "db", "trySetupDb", "setupHandlers"];
 
 const db = new SQLDatabase();
 

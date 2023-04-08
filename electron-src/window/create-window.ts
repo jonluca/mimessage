@@ -51,7 +51,7 @@ export default function createWindow(windowName: string, options: Partial<Electr
   const win = new BrowserWindow({
     ...options,
     ...state,
-    // frame: false,
+    frame: false,
     // transparent: true,
     backgroundColor: "#000000",
     title: "Mimessage",

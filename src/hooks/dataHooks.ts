@@ -14,6 +14,7 @@ import { cloneDeep, uniq } from "lodash-es";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
+import type { PermissionType } from "node-mac-permissions";
 
 const ipcRenderer = global.ipcRenderer;
 export const useDbChatList = () => {
@@ -184,24 +185,27 @@ export const useChatDateRange = () => {
   });
 };
 export const useDoesLocalDbExist = () => {
-  return useQuery<boolean>(
-    ["localDbExists"],
-    async () => {
-      const resp = (await ipcRenderer.invoke("doesLocalDbCopyExist")) as boolean;
-      return resp;
-    },
-    { refetchInterval: (data) => (data ? false : 1000) },
-  );
+  return useQuery<boolean>(["localDbExists"], async () => {
+    const resp = (await ipcRenderer.invoke("doesLocalDbCopyExist")) as boolean;
+    return resp;
+  });
 };
 
-export const useHasFullDiskAccessPermissions = () => {
-  return useQuery<boolean>(
+interface Permissions {
+  contactsStatus: PermissionType | "not determined";
+  diskAccessStatus: PermissionType | "not determined";
+}
+export const useHasAllowedPermissions = () => {
+  return useQuery<Permissions>(
     ["fullDiskAccessPerms"],
     async () => {
-      const resp = (await ipcRenderer.invoke("hasFullDiskAccess")) as boolean;
+      const resp = (await ipcRenderer.invoke("checkPermissions")) as Permissions;
       return resp;
     },
-    { refetchInterval: (data) => (data ? false : 1000) },
+    {
+      refetchInterval: (data) =>
+        data && data.contactsStatus === "authorized" && data.diskAccessStatus === "authorized" ? false : 1000,
+    },
   );
 };
 export const useCopyDbMutation = () => {

@@ -44,8 +44,7 @@ handleIpc("requestContactsPerms", async () => {
       await requestAccess();
     }
     const newStatus = getAuthStatus();
-
-    return newStatus;
+    return newStatus === "Authorized";
   } catch (e) {
     logger.error(e);
     return "unknown";
@@ -60,9 +59,10 @@ handleIpc("fullDiskAccess", async () => {
   await askForFullDiskAccess();
   return diskAccessStatus;
 });
-handleIpc("hasFullDiskAccess", async () => {
+handleIpc("checkPermissions", async () => {
   const diskAccessStatus = getPermissionsStatus("full-disk-access");
-  return diskAccessStatus === "authorized";
+  const contactsStatus = getPermissionsStatus("contacts");
+  return { contactsStatus, diskAccessStatus };
 });
 
 type EnhancedChat = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>[number];
@@ -141,10 +141,18 @@ handleIpc(
               const k = key as keyof typeof obj;
               const entry = obj[k];
               if (entry instanceof Buffer) {
-                obj[k] = await decodeMessageBuffer(entry);
+                try {
+                  obj[k] = await decodeMessageBuffer(entry);
+                } catch {
+                  // ignore
+                }
               }
               if (Array.isArray(obj[key]) && Buffer.from(obj[key].slice(0, 6)).toString() === "bplist") {
-                obj[key] = await decodeMessageBuffer(Buffer.from(obj[key]));
+                try {
+                  obj[key] = await decodeMessageBuffer(Buffer.from(obj[key]));
+                } catch {
+                  // ignore
+                }
               }
               if (obj[key] !== null) {
                 await iterate(obj[key]);
