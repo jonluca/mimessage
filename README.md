@@ -2,6 +2,8 @@
 
 Welcome to the iMessage Alternative UI project! This is an open-source alternative user interface for Apple's native iMessage application, built using TypeScript, Electron, and Kysely.
 
+![App screenshot](img.png?raw=true "Mimessage App")
+
 ## Features
 
 This alternative UI provides several advanced features, including:

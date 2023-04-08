@@ -120,8 +120,7 @@ export const ChatList = () => {
   const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: chatsToRender?.length ?? 0,
     getScrollElement: () => containerRef.current!,
-    estimateSize: () => CHAT_HEIGHT,
-    estimateSizeNum: CHAT_HEIGHT,
+    estimateSize: CHAT_HEIGHT,
     overscan: 100,
   });
   const items = rowVirtualizer.getVirtualItems();

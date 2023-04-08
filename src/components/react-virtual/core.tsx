@@ -199,8 +199,7 @@ export interface VirtualizerOptions<TScrollElement extends Element | Window, TIt
   // Required from the user
   count: number;
   getScrollElement: () => TScrollElement | null;
-  estimateSize: (index: number) => number;
-  estimateSizeNum?: number | undefined;
+  estimateSize: number | ((index: number) => number);
 
   // Required from the framework adapter (but can be overridden)
   scrollToFn: (
@@ -468,7 +467,9 @@ export class Virtualizer<TScrollElement extends Element | Window, TItemElement e
         const size =
           typeof measuredSize === "number"
             ? measuredSize
-            : this.options.estimateSizeNum ?? this.options.estimateSize(i);
+            : typeof this.options.estimateSize === "number"
+            ? this.options.estimateSize
+            : this.options.estimateSize(i);
 
         const end = start + size;
 

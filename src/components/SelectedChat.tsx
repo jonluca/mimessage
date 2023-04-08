@@ -129,8 +129,7 @@ export const SelectedChat = () => {
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => containerRef.current,
-    estimateSize: (idx) => 80,
-    estimateSizeNum: 80,
+    estimateSize: 80,
     overscan: 100,
   });
 
