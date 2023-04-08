@@ -46,7 +46,7 @@ const FilterBar = ({
       </Button>
       <Button
         variant="contained"
-        sx={{ ml: 1 }}
+        sx={{ ml: 1.5 }}
         title={"Export chat"}
         onClick={() => {
           setExportOpen(true);
@@ -119,6 +119,7 @@ const FilterBar = ({
 };
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
+  const filter = useMimessage((state) => state.filter);
   const chat = useChatById(chatId);
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,7 +154,9 @@ export const SelectedChat = () => {
       }}
     >
       {isLoading && <LinearProgress />}
-      {hasItems && <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} element={containerRef.current} />}
+      {(hasItems || filter) && (
+        <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} element={containerRef.current} />
+      )}
       <Box
         ref={containerRef}
         style={{

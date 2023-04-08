@@ -94,7 +94,7 @@ export const Filter = () => {
         defaultValue={filter || ""}
         sx={{
           width: "100%",
-          mx: 1.25,
+          mx: 1.5,
           px: 1,
           height: 45,
           background: "#3a3e44",

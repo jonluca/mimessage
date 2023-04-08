@@ -92,6 +92,7 @@
     "react": "^18.2.0",
     "react-calendar": "^4.2.1",
     "react-dom": "^18.2.0",
+    "react-highlight-words": "^0.20.0",
     "react-toastify": "^9.1.2",
     "rimraf": "^4.4.1",
     "skip-postinstall": "^1.0.0",

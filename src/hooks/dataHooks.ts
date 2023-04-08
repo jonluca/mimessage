@@ -126,7 +126,7 @@ export const useMessagesForChatId = (id: number | null) => {
   const regexSearch = useMimessage((state) => state.regexSearch);
 
   const data = useQuery<ChatListAggregate>(
-    ["getMessagesForChatIdWithAi", id, aiMessages, localMessages?.length, filter],
+    ["getMessagesForChatIdWithAi", id, aiMessages, localMessages?.length, filter, regexSearch],
     async () => {
       const newMessages: ChatListAggregate = [...(aiMessages || [])];
       if (aiMessages?.length) {
@@ -146,7 +146,7 @@ export const useMessagesForChatId = (id: number | null) => {
         }
         const fuse = new Fuse(localMessages || [], {
           keys: ["text"],
-          threshold: 0.2,
+          threshold: 0.4,
           shouldSort: false,
         });
         const filtered = fuse.search(filter);

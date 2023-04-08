@@ -6,6 +6,9 @@ import { MessageAvatar } from "./Avatar";
 import { AssetPlayer } from "./AssetPlayer";
 import type { AiMessage } from "../context";
 import dayjs from "dayjs";
+import Highlighter from "react-highlight-words";
+import { useMimessage } from "../context";
+
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
   const groupActionType = message?.group_action_type;
@@ -38,6 +41,26 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   return <Box className={"announcement"}>{text}</Box>;
 };
 
+export const MessageBubbleText = ({ text }: { text: string | null }) => {
+  const filter = useMimessage((state) => state.filter);
+
+  return (
+    <Box className={"message_part"}>
+      <Box className={"bubble"}>
+        {filter ? (
+          <Highlighter
+            highlightClassName="YourHighlightClass"
+            searchWords={[filter]}
+            autoEscape={true}
+            textToHighlight={text || ""}
+          />
+        ) : (
+          text
+        )}
+      </Box>
+    </Box>
+  );
+};
 const NINETY_MINUTES_NANOS = 1_000_000_000 * 60 * 90;
 export const MessageBubble = ({
   showAvatar,
@@ -107,9 +130,7 @@ export const MessageBubble = ({
                 <AssetPlayer message={message} />
               </Box>
             ) : (
-              <Box className={"message_part"}>
-                <Box className={"bubble"}>{message.text}</Box>
-              </Box>
+              <MessageBubbleText text={message.text} />
             )}
           </Box>
         </Box>
@@ -142,14 +163,13 @@ export const AiMessageBubble = ({
     );
   };
 
+  const response = message.response;
   return (
     <>
       <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
         <Box className={"sentContainer"}>
           <Box className={["sent", "imessage"].join(" ")}>
-            <Box className={"message_part"}>
-              <Box className={"bubble"}>{message.content}</Box>
-            </Box>
+            <MessageBubbleText text={message.content} />
           </Box>
         </Box>
         {showTimes && timeText()}
@@ -158,14 +178,8 @@ export const AiMessageBubble = ({
         {showTimes && timeText()}
         <Box className={"card container"}>
           <Box className={["received", "imessage"].join(" ")}>
-            {message.response ? (
-              <Box className={"message_part"}>
-                {"errored" in message.response ? (
-                  <Box className={"bubble"}>{message.response.errored}</Box>
-                ) : (
-                  <Box className={"bubble"}>{message.response.content}</Box>
-                )}
-              </Box>
+            {response ? (
+              <MessageBubbleText text={"errored" in response ? "Error" : response.content} />
             ) : (
               <div className="typing">
                 <span className="typing__bullet" />

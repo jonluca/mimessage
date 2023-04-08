@@ -3,6 +3,7 @@ import type { Message } from "../interfaces";
 import { isProd } from "../config";
 import { useMimessage } from "../context";
 import Box from "@mui/material/Box";
+import { MessageBubbleText } from "./MessageBubble";
 export const WIDTH = "100%";
 export const HEIGHT = "100%";
 
@@ -64,7 +65,6 @@ export const AssetPlayer = ({ message }: { message: Message }) => {
 
   return (
     <>
-      {" "}
       {renderPlayableAsset() || (
         <Box className={"message_part"}>
           <Box className={"bubble"} onClick={showInFinder}>
@@ -72,11 +72,7 @@ export const AssetPlayer = ({ message }: { message: Message }) => {
           </Box>
         </Box>
       )}
-      {message.text && (
-        <Box className={"message_part"}>
-          <Box className={"bubble"}>{message.text}</Box>
-        </Box>
-      )}
+      {message.text && <MessageBubbleText text={message.text} />}
     </>
   );
 };
