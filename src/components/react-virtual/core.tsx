@@ -200,6 +200,7 @@ export interface VirtualizerOptions<TScrollElement extends Element | Window, TIt
   count: number;
   getScrollElement: () => TScrollElement | null;
   estimateSize: (index: number) => number;
+  estimateSizeNum?: number | undefined;
 
   // Required from the framework adapter (but can be overridden)
   scrollToFn: (
@@ -464,7 +465,10 @@ export class Virtualizer<TScrollElement extends Element | Window, TItemElement e
         const start = furthestMeasurement ? furthestMeasurement.end : paddingStart + scrollMargin;
 
         const measuredSize = itemSizeCache.get(key);
-        const size = typeof measuredSize === "number" ? measuredSize : this.options.estimateSize(i);
+        const size =
+          typeof measuredSize === "number"
+            ? measuredSize
+            : this.options.estimateSizeNum ?? this.options.estimateSize(i);
 
         const end = start + size;
 

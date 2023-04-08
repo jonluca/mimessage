@@ -46,7 +46,7 @@ const FilterBar = ({
       </Button>
       <Button
         variant="contained"
-        sx={{ ml: 1.5 }}
+        sx={{ mx: 1.5 }}
         title={"Export chat"}
         onClick={() => {
           setExportOpen(true);
@@ -129,8 +129,9 @@ export const SelectedChat = () => {
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 80,
-    overscan: 50,
+    estimateSize: (idx) => 80,
+    estimateSizeNum: 80,
+    overscan: 100,
   });
 
   const items = virtualizer.getVirtualItems();
