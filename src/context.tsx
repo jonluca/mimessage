@@ -14,9 +14,11 @@ type ExtendedConversations = Record<number, AiMessage[]>;
 export interface AppContext {
   search: string | null;
   filter: string | null;
+  relation: string;
   regexSearch: boolean;
   setRegexSearch: (updated: boolean) => void;
   setSearch: (updated: string | null) => void;
+  setRelation: (updated: string) => void;
   setFilter: (updated: string | null) => void;
   startDate: string;
   openAiKey: string | null;
@@ -39,7 +41,9 @@ const useMimessage = create<AppContext>((set, get) => ({
   setRegexSearch: (regexSearch: boolean) => set({ regexSearch }),
   setSearch: (search: string | null) => set({ search }),
   setFilter: (filter: string | null) => set({ filter }),
+  setRelation: (relation: string) => set({ relation }),
   startDate: "",
+  relation: "friend",
   setStartDate: (startDate: string) => set({ startDate }),
   endDate: "",
   openAiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(openAiLocalStorageKey) ?? null,

@@ -247,7 +247,7 @@ export class SQLDatabase {
           message.date_obj_read = new Date(message.date_read / 1000000 + 978307200000);
         }
         if (message.text) {
-          message.text = message.text.replace(/\u{FFFC}|\u{FFFC}/, "");
+          message.text = message.text.replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
         }
 
         try {

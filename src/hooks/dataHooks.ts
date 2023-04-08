@@ -146,7 +146,7 @@ export const useMessagesForChatId = (id: number | null) => {
         }
         const fuse = new Fuse(localMessages || [], {
           keys: ["text"],
-          threshold: 0.4,
+          threshold: 0.3,
           shouldSort: false,
         });
         const filtered = fuse.search(filter);

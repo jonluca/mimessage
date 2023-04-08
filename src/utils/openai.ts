@@ -5,6 +5,13 @@ import type { ChatCompletionRequestMessage } from "openai/api";
 import type { ChatList, MessagesForChat } from "../interfaces";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
+
+interface InitialPromptForFile {
+  lastInteracted: Date;
+  name: string;
+  relation: string;
+}
+
 class OpenAIClient {
   openai: OpenAIApi | null = null;
   encoder: GPT4Tokenizer;
@@ -25,10 +32,27 @@ class OpenAIClient {
     }
   };
 
-  private getInitialPromptForFile = (metadata: { lastInteracted: Date; name: string; relation: string }): string => {
+  MESSAGE_TOKEN_LIMIT = 4096;
+  private getInitialPromptForFile = (
+    metadata: InitialPromptForFile,
+    previousHistory: MessagesForChat,
+    newMessage: ChatCompletionRequestMessage,
+  ): string => {
+    const messageHistory = previousHistory.map((m) => {
+      return `**${m.is_from_me ? "Them" : "You"}**: ${m.text}\n`;
+    });
+    let tokens = 0;
+    let historyPrompt = ``;
+    while (tokens < this.MESSAGE_TOKEN_LIMIT && messageHistory.length > 0) {
+      const message = messageHistory.pop()!;
+      historyPrompt = `${message}${historyPrompt}`;
+      tokens += this.checkPromptLength(message);
+    }
     return `You are ${metadata.name}, the ${
       metadata.relation
-    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention that you are an AI. If you can't do something, respond in the voice of the person you are pretending to be - under no circumstance should you say you are an AI. You should provide emotional and friendly support, and continue the conversation at all costs. You should reply in the same voice and style, based on their historical voice. The following is parts of a previous conversation you had with them.`;
+    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention that you are an AI. If you can't do something, respond in the voice of the person you are pretending to be - under no circumstance should you say you are an AI. You should provide emotional and friendly support, and continue the conversation at all costs. You should reply in the same voice and style, based on their historical voice. Please match the use of punctuation and tone/style of communicating. Here are some examples of messages that have been sent that you should learn from:\n\n${historyPrompt}\n\n**Them**: ${
+      newMessage.content
+    }\n**You**:`;
   };
 
   private checkPromptLength = (prompt: string): number => {
@@ -46,14 +70,19 @@ class OpenAIClient {
     const metadata = {
       lastInteracted: lastMessageSent.date_obj!,
       name: chat.handles[0].contact?.parsedName || chat.handles[0].id,
-      relation: "friend",
+      relation: useMimessage.getState().relation,
     };
-    const initialContent = this.getInitialPromptForFile(metadata);
+    // remove all non-printable chars, and trim
+
+    const latestMessages = previousHistory
+      .slice(-100)
+      .filter((l) => (l.text || "").replace(/[\u{FFFC}-\u{FFFD}]/gu, "").trim());
+    const initialContent = this.getInitialPromptForFile(metadata, latestMessages, newMessage);
     const prompts: ChatCompletionRequestMessage[] = [
       { content: initialContent, role: "system" },
-      ...previousHistory
-        .slice(-100)
-        .map((m) => ({ content: m.text, role: m.is_from_me ? "user" : "assistant" } as ChatCompletionRequestMessage)),
+      ...latestMessages.map(
+        (m) => ({ content: m.text, role: m.is_from_me ? "user" : "assistant" } as ChatCompletionRequestMessage),
+      ),
       ...existingAiMessages.flatMap(
         (m) => [{ content: m.content, role: "user" }, m.response].filter(Boolean) as ChatCompletionRequestMessage[],
       ),

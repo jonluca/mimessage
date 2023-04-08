@@ -10,12 +10,91 @@ import { useChatById, useLocalMessagesForChatId } from "../hooks/dataHooks";
 import openai from "../utils/openai";
 import { SetOpenAiKey } from "./SetOpenAiKey";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import { Button } from "@mui/material";
+import Popover from "@mui/material/Popover";
+import Typography from "@mui/material/Typography";
+import { Check } from "@mui/icons-material";
+
 const SearchInput = styled(InputBase)<{ light?: boolean }>`
   display: flex;
   border-radius: 5px;
   color: ${(p) => (p.light ? undefined : theme.colors.white)};
   background: #3a3e44;
 `;
+
+const RELATION_OPTIONS = [
+  "Friend",
+  "Girlfriend",
+  "Boyfriend",
+  "Husband",
+  "Wife",
+  "Mother",
+  "Father",
+  "Brother",
+  "Sister",
+  "Grandmother",
+  "Grandfather",
+];
+
+const SetRelationButton = () => {
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  const relation = useMimessage((state) => state.relation);
+  const setRelation = useMimessage((state) => state.setRelation);
+
+  const handleChangeRelation = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? "relation-button" : undefined;
+
+  return (
+    <>
+      <Button aria-describedby={id} variant="contained" title={"Change AI Relation"} onClick={handleChangeRelation}>
+        <ManageAccountsIcon sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }} />
+      </Button>
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+        transformOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
+        PaperProps={{
+          sx: { p: 2, backgroundColor: "#2c2c2c" },
+        }}
+      >
+        <Box display={"flex"} flexDirection={"column"}>
+          <Typography variant={"h4"}>Set Persons Relation To You</Typography>
+          {RELATION_OPTIONS.map((option) => (
+            <Button
+              key={option}
+              variant={"contained"}
+              sx={{ my: 0.5 }}
+              onClick={() => {
+                setRelation(option);
+              }}
+            >
+              {relation === option && <Check />}
+              {option}
+            </Button>
+          ))}
+        </Box>
+      </Popover>
+    </>
+  );
+};
 
 export const SendMessageBox = () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -85,6 +164,7 @@ export const SendMessageBox = () => {
             titleAccess={"send"}
             onClick={submit}
           />
+          <SetRelationButton />
           <Cross
             sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
             titleAccess={"Clear API Key"}
