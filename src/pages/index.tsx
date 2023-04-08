@@ -7,7 +7,9 @@ import { Onboarding } from "../components/Onboarding";
 
 const Index = () => {
   const { data: localDbExists } = useDoesLocalDbExist();
-  const { data: hasFullDiskAccess } = useHasAllowedPermissions();
+  const { data: permissions } = useHasAllowedPermissions();
+  const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
+  const hasContactsAccess = permissions?.contactsStatus === "authorized";
 
   return (
     <Box
@@ -19,7 +21,7 @@ const Index = () => {
       alignContent={"center"}
       sx={{ background: "black" }}
     >
-      {localDbExists === false || !hasFullDiskAccess ? (
+      {localDbExists === false || !hasDiskAccess || !hasContactsAccess ? (
         <Onboarding />
       ) : localDbExists === true ? (
         <Home />

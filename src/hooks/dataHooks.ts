@@ -233,12 +233,23 @@ export const useHasAllowedPermissions = () => {
     {
       refetchInterval: (data) =>
         data && data.contactsStatus === "authorized" && data.diskAccessStatus === "authorized" ? false : 1000,
+      refetchOnWindowFocus: (query) => {
+        const data = query.state.data;
+        return data && data.contactsStatus === "authorized" && data.diskAccessStatus === "authorized"
+          ? false
+          : "always";
+      },
     },
   );
 };
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {
     await ipcRenderer.invoke("copyLocalDb");
+  });
+};
+export const useSkipContactsCheck = () => {
+  return useMutation(["skipContactsCheck"], async () => {
+    await ipcRenderer.invoke("skipContactsCheck");
   });
 };
 

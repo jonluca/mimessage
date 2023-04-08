@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Backdrop from "@mui/material/Backdrop";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -9,6 +9,7 @@ import {
   useDoesLocalDbExist,
   useHasAllowedPermissions,
   useRequestAccessMutation,
+  useSkipContactsCheck,
 } from "../hooks/dataHooks";
 import { Check, Close } from "@mui/icons-material";
 
@@ -16,9 +17,9 @@ const PermissionsDialog = ({ denied, allowed, copy }: { denied: boolean; allowed
   return (
     <Box display={"flex"} justifyContent={"center"}>
       {denied ? (
-        <Close sx={{ color: "green" }} />
+        <Close sx={{ color: "red" }} />
       ) : allowed ? (
-        <Check sx={{ color: "red" }} />
+        <Check sx={{ color: "green" }} />
       ) : (
         <CircularProgress color={"secondary"} size={"20px"} />
       )}
@@ -30,17 +31,18 @@ const PermissionsDialog = ({ denied, allowed, copy }: { denied: boolean; allowed
 };
 export const Onboarding = () => {
   const { isLoading, refetch } = useDoesLocalDbExist();
-  const { data: permissions, isLoading: isLoadingPerms } = useHasAllowedPermissions();
+  const { data: permissions, isLoading: isLoadingPerms, refetch: refetchPerms } = useHasAllowedPermissions();
   const { mutateAsync: copyDb, isLoading: isCopying } = useCopyDbMutation();
+  const { mutateAsync: skipContactsCheck } = useSkipContactsCheck();
   const { mutateAsync: requestPerms, isLoading: isRequestingPerms } = useRequestAccessMutation();
-
+  const [skipContacts, setSkipContacts] = useState(false);
   const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
   const hasContactsAccess = permissions?.contactsStatus === "authorized";
 
   const diskIsDenied = permissions?.diskAccessStatus === "denied";
   const contactsIsDenied = permissions?.contactsStatus === "denied";
 
-  const isPastPermissions = hasDiskAccess && hasContactsAccess;
+  const isPastPermissions = hasDiskAccess && (hasContactsAccess || skipContacts);
   const onCopy = async () => {
     if (isPastPermissions) {
       await copyDb();
@@ -88,6 +90,20 @@ export const Onboarding = () => {
           <Button disabled={showSpinner} onClick={onCopy} variant={"contained"}>
             {showSpinner ? <CircularProgress color={"secondary"} /> : <>{isPastPermissions ? "Go" : "Grant Access"}</>}
           </Button>
+        </Box>
+        <Box>
+          {hasDiskAccess && !hasContactsAccess && !isPastPermissions && (
+            <Button
+              onClick={async () => {
+                await skipContactsCheck();
+                setSkipContacts(true);
+                await refetchPerms();
+              }}
+              variant={"outlined"}
+            >
+              Skip Contacts Permissions (No names will be shown in application)
+            </Button>
+          )}
         </Box>
       </Box>
     </Backdrop>

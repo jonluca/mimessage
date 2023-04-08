@@ -4,6 +4,8 @@ import { app, dialog, Menu, shell } from "electron";
 import { windows } from "../index";
 import { showApp } from "../utils/util";
 import db, { copyDbAtPath, copyLatestDb } from "../data/database";
+import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc";
+import { clearSkipContactsPermsCheck } from "../data/options";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [
@@ -38,6 +40,16 @@ export const getMenu = () => {
             await copyDbAtPath(location.filePaths[0]);
             await db.reloadDb();
             windows[0]?.webContents.send("refreshChats");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Re-Request App Permissions",
+          type: "normal",
+          click: async () => {
+            clearSkipContactsPermsCheck();
+            await requestContactsPerms();
+            await requestFullDiskAccess();
           },
         },
         { type: "separator" },
