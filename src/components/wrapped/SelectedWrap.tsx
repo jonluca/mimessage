@@ -28,7 +28,7 @@ const TopConversationPartners = () => {
   return (
     <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
       <EntryHeader />
-      <Typography>Your most-messaged contacts weere</Typography>
+      <Typography>Your most-messaged contacts were</Typography>
       {wrappedStats?.contactInteractions.slice(0, 5).map((contactInteraction) => (
         <Box key={contactInteraction.contact?.identifier || contactInteraction.handle_identifier}>
           <Typography>{contactInteraction.contact?.parsedName || contactInteraction.handle_identifier}: </Typography>
