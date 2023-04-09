@@ -3,16 +3,15 @@ import { useMimessage } from "../../context";
 import Box from "@mui/material/Box";
 import { MessageAvatar } from "../message/Avatar";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import type { Contact } from "node-mac-contacts";
+import type { VirtualItem } from "../react-virtual";
 
 export const CHAT_HEIGHT = 65;
 
 interface ChatEntryProps {
-  setRowHeight: (num: number, height: number) => void;
+  virtualRow: VirtualItem;
   chat: Chat;
-  index: number;
-  style: React.CSSProperties;
 }
 
 export const ChatEntryRenderer = ({
@@ -82,9 +81,7 @@ export const ChatEntryRenderer = ({
     </Box>
   );
 };
-export const ChatEntry = ({ chat, style, index, setRowHeight }: ChatEntryProps) => {
-  const rowRef = useRef<HTMLDivElement>(null);
-
+export const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
   const chatId = useMimessage((state) => state.chatId);
   const setChatId = useMimessage((state) => state.setChatId);
 
@@ -100,17 +97,14 @@ export const ChatEntry = ({ chat, style, index, setRowHeight }: ChatEntryProps) 
   const isSingleConvo = handles.length === 1;
 
   const isSelected = chatId === chat.chat_id;
-
-  useEffect(() => {
-    if (rowRef.current) {
-      setRowHeight(index, rowRef.current.clientHeight);
-    }
-    // eslint-disable-next-line
-  }, [rowRef]);
-
   return (
     <ChatEntryRenderer
-      extraStyles={style}
+      extraStyles={{
+        cursor: "pointer",
+        position: "absolute",
+        top: 0,
+        transform: `translateY(${virtualRow.start}px)`,
+      }}
       isSelected={isSelected}
       onClick={() => {
         setChatId(chat.chat_id!);

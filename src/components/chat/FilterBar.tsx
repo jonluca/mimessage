@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
 import React, { useState } from "react";
-import type { VariableSizeList } from "react-window";
 import { useMimessage } from "../../context";
 import Box from "@mui/material/Box";
 import { ExportChat } from "./ExportChat";
@@ -15,12 +14,10 @@ export const FilterBar = ({
   showTimes,
   setShowTimes,
   element,
-  scrollToEnd,
 }: {
   showTimes: boolean;
   setShowTimes: Dispatch<SetStateAction<boolean>>;
-  element: VariableSizeList | null;
-  scrollToEnd: () => void;
+  element: HTMLDivElement | null;
 }) => {
   const [exportOpen, setExportOpen] = useState(false);
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
@@ -110,12 +107,18 @@ export const FilterBar = ({
           </FormGroup>
           <Button
             onClick={() => {
-              element?.scrollTo(0);
+              element?.scrollTo(0, 0);
             }}
           >
             scroll to the top
           </Button>
-          <Button onClick={scrollToEnd}>scroll to the end</Button>
+          <Button
+            onClick={() => {
+              element?.scrollTo(0, element.scrollHeight);
+            }}
+          >
+            scroll to the end
+          </Button>
         </Box>
       </Popover>
     </Box>
