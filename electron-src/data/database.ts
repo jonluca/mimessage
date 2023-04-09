@@ -336,15 +336,140 @@ ORDER BY message_count DESC;
     const result = await query.execute();
     return result;
   };
+
+  private countMessagesByWeekday = async (year: number) => {
+    /*
+select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+           when 0 then 'Sunday'
+           when 1 then 'Monday'
+           when 2 then 'Tuesday'
+           when 3 then 'Wednesday'
+           when 4 then 'Thursday'
+           when 5 then 'Friday'
+           else 'Saturday' end as weekday
+from message as m
+group by  weekday
+limit 10
+     */
+
+    const getByOriginator = (fromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year)
+        .select((e) => e.fn.count("message.ROWID").as("message_count"))
+        .select(
+          sql<string>`case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+           when 0 then 'Sunday'
+           when 1 then 'Monday'
+           when 2 then 'Tuesday'
+           when 3 then 'Wednesday'
+           when 4 then 'Thursday'
+           when 5 then 'Friday'
+           else 'Saturday' end`.as("weekday"),
+        )
+        .where("is_from_me", "=", Number(fromMe))
+        .groupBy("weekday")
+        .orderBy("message_count", "desc");
+      return query;
+    };
+
+    const received = await getByOriginator(false).execute();
+    const sent = await getByOriginator(true).execute();
+    return { received, sent };
+  };
+
+  private countMessagesByMonth = async (year: number) => {
+    /*
+select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+           when 0 then 'Sunday'
+           when 1 then 'Monday'
+           when 2 then 'Tuesday'
+           when 3 then 'Wednesday'
+           when 4 then 'Thursday'
+           when 5 then 'Friday'
+           else 'Saturday' end as weekday
+from message as m
+group by  weekday
+limit 10
+     */
+
+    const getByOriginator = (fromMe: boolean) => {
+      return this.getMessageQueryByYear(year)
+        .select((e) => e.fn.count("message.ROWID").as("message_count"))
+        .select(
+          sql<string>`case cast(strftime('%m', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+           when 1 then 'January'
+           when 2 then 'February'
+           when 3 then 'March'
+           when 4 then 'April'
+           when 5 then 'May'
+           when 6 then 'June'
+           when 7 then 'July'
+           when 8 then 'August'
+           when 9 then 'September'
+           when 10 then 'October'
+           when 11 then 'November'
+           else 'December' end`.as("month"),
+        )
+        .where("is_from_me", "=", Number(fromMe))
+        .groupBy("month")
+        .orderBy("message_count", "desc");
+    };
+
+    const received = await getByOriginator(false).execute();
+    const sent = await getByOriginator(true).execute();
+    return { received, sent };
+  };
+
+  private lateNightMessenger = async (year: number) => {
+    /*
+select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+           when 0 then 'Sunday'
+           when 1 then 'Monday'
+           when 2 then 'Tuesday'
+           when 3 then 'Wednesday'
+           when 4 then 'Thursday'
+           when 5 then 'Friday'
+           else 'Saturday' end as weekday
+from message as m
+group by  weekday
+limit 10
+     */
+
+    const getByOriginator = (fromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year)
+        .innerJoin("handle", "handle.ROWID", "message.handle_id")
+        .select((e) => e.fn.count("message.ROWID").as("message_count"))
+        .select("handle.id as handle_identifier")
+        .select(
+          sql<number>`cast(strftime('%H', DATETIME(date / 1000000000 + 978307200, 'unixepoch')) as integer)`.as("hour"),
+        )
+        // @ts-ignore
+        .where(({ or, cmpr }) => or([cmpr("hour", ">", 22), cmpr("hour", "<", 5)]))
+        .where("is_from_me", "=", Number(fromMe))
+        .groupBy("handle_identifier")
+        .orderBy("message_count", "desc");
+
+      return query;
+    };
+
+    const received = await getByOriginator(false).execute();
+    const sent = await getByOriginator(true).execute();
+    return { received, sent };
+  };
   calculateWrappedStats = async (year: number) => {
     const messageCountSent = await this.countMessagesByYear(year, true);
     const messageCountReceived = await this.countMessagesByYear(year, false);
     const handleInteractions = await this.countMessagesByHandle(year);
 
+    const weekdayInteractions = await this.countMessagesByWeekday(year);
+    const monthlyInteractions = await this.countMessagesByMonth(year);
+    const lateNightInteractions = await this.lateNightMessenger(year);
     return {
       messageCountSent,
       messageCountReceived,
       handleInteractions,
+      weekdayInteractions,
+      monthlyInteractions,
+      lateNightInteractions,
     };
   };
 }
