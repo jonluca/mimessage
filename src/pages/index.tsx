@@ -20,6 +20,7 @@ const Index = () => {
       alignItems={"center"}
       alignContent={"center"}
       sx={{ background: "black" }}
+      overflow={"hidden"}
     >
       {localDbExists === false || !hasDiskAccess || !hasContactsAccess ? (
         <Onboarding />

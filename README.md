@@ -2,7 +2,7 @@
 
 Welcome to the iMessage Alternative UI project! This is an open-source alternative user interface for Apple's native iMessage application, built using TypeScript, Electron, and Kysely.
 
-![App screenshot](img.png?raw=true "Mimessage App")
+![App screenshot](readme-assets/img.png?raw=true "Mimessage App")
 
 ## Features
 
@@ -15,6 +15,14 @@ This alternative UI provides several advanced features, including:
 5. **AI Conversation**: Have a conversation with anyone you've talked to before, in their voice
 
 Please note that this application is for viewing and managing iMessage conversations only. It does **NOT** allow you to send messages.
+
+### Wrapped
+
+Mimessage also creates an "iMessage Wrapped" - a Spotify Wrapped, but for your conversations. It will generate some statistics about your conversations.
+
+Fun sidenote: ChatGPT actually came up with a lot of the stats that would be interesting to see.
+
+![ChatGPT ideas](readme-assets/chatgpt.png?raw=true "ChatGPT generated the stats")
 
 ## Installation
 
@@ -37,4 +45,5 @@ Important note: your IDE or your terminal must have full disk access enabled in 
 
 ## Credits
 
-A lot of the heavy lifting for the db schema was done by https://github.com/ReagentX/imessage-exporter and https://github.com/BlueBubblesApp/bluebubbles-app
+- [imessage-exporter](https://github.com/ReagentX/imessage-exporter) was used to help understand the database schema
+- [BlueBubbles](https://github.com/BlueBubblesApp/bluebubbles-app) was used to understand some messages specific types and enums

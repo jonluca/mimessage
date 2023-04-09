@@ -1,8 +1,8 @@
 import Search from "@mui/icons-material/Search";
 import InputBase from "@mui/material/InputBase";
 import React, { useCallback, useMemo, useRef } from "react";
-import theme from "./theme";
-import { useMimessage } from "../context";
+import theme from "../theme";
+import { useMimessage } from "../../context";
 import Box from "@mui/material/Box";
 import { shallow } from "zustand/shallow";
 import { debounce } from "lodash-es";
@@ -86,6 +86,7 @@ export const Filter = () => {
         display: "flex",
         justifyContent: "center",
         width: "100%",
+        height: "fit-content",
       }}
     >
       <InputBase
@@ -96,14 +97,14 @@ export const Filter = () => {
           width: "100%",
           mx: 1.5,
           px: 1,
-          height: 45,
-          background: "#3a3e44",
+          height: 30,
+          background: "#2c2c2c",
           display: "flex",
           borderRadius: "5px",
           color: "white",
         }}
         inputProps={{
-          sx: { p: 0, height: 45, color: theme.colors.white, background: "#3a3e44", borderRadius: "5px" },
+          sx: { p: 0, height: 30, color: theme.colors.white, background: "#2c2c2c", borderRadius: "5px" },
           ref: inputRef,
         }}
         onChange={onChangeDebounced}

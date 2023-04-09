@@ -1,10 +1,10 @@
-import { useMimessage } from "../context";
+import { useMimessage } from "../../context";
 import React, { useState } from "react";
 import Backdrop from "@mui/material/Backdrop";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
-import { useChatById } from "../hooks/dataHooks";
+import { useChatById } from "../../hooks/dataHooks";
 
 export const ExportChat = ({ onClose }: { onClose: () => void }) => {
   const chatId = useMimessage((state) => state.chatId);

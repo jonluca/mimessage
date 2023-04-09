@@ -1,13 +1,13 @@
 import React from "react";
 import Box from "@mui/material/Box";
-import type { Message } from "../interfaces";
-import { useHandleMap } from "../hooks/dataHooks";
+import type { Message } from "../../interfaces";
+import { useHandleMap } from "../../hooks/dataHooks";
 import { MessageAvatar } from "./Avatar";
-import { AssetPlayer } from "./AssetPlayer";
-import type { AiMessage } from "../context";
+import { AttachmentView } from "./AttachmentView";
+import type { AiMessage } from "../../context";
 import dayjs from "dayjs";
 import Highlighter from "react-highlight-words";
-import { useMimessage } from "../context";
+import { useMimessage } from "../../context";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
@@ -59,12 +59,14 @@ export const MessageBubble = ({
   previousMessage,
   isGroupedMessage,
   showTimes,
+  recalcSize,
 }: {
   showAvatar: boolean;
   isGroupedMessage?: boolean;
   message: null | undefined | Message;
   previousMessage: null | undefined | Message;
   showTimes: boolean;
+  recalcSize?: () => void | undefined;
 }) => {
   const { data: handleMap } = useHandleMap();
 
@@ -115,10 +117,15 @@ export const MessageBubble = ({
               {contact?.parsedName || ""}
             </Box>
           )}
-          <Box className={[isFromMe ? "sent" : "received", isIMessage ? "imessage" : "sms"].join(" ")}>
+          <Box
+            className={[
+              isFromMe ? "sent" : isMedia ? "" : "received",
+              isMedia ? "media-attachment" : isIMessage ? "imessage" : "sms",
+            ].join(" ")}
+          >
             {isMedia ? (
-              <Box sx={{ maxHeight: 400, overflow: "hidden" }}>
-                <AssetPlayer message={message} />
+              <Box sx={{ overflow: "hidden", maxHeight: 400 }}>
+                <AttachmentView recalcSize={recalcSize} message={message} />
               </Box>
             ) : (
               <MessageBubbleText text={message.text} />

@@ -99,11 +99,11 @@ div {
   font-size: 15px;
 }
 
-.message .sent.imessage {
+.imessage {
   background-color: #1982fc;
 }
 
-.message .sent.sms {
+.sms {
   background-color: #65c466;
 }
 
@@ -411,4 +411,15 @@ td {
   body {
     background: transparent;
   }
+}
+
+.draggable {
+  -webkit-app-region: drag;
+}
+.draggable > * {
+  -webkit-app-region: no-drag;
+}
+
+.media-attachment {
+  border-radius: 20px;
 }

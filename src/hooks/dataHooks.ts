@@ -118,7 +118,7 @@ interface DividerMessage {
   divider: true;
 }
 
-type ChatListAggregate = Array<Message | DividerMessage | AiMessage>;
+export type ChatListAggregate = Array<Message | DividerMessage | AiMessage>;
 export const useMessagesForChatId = (id: number | null) => {
   const aiMessages = useAiMessagesForChatId(id);
   const { data: localMessages, isLoading } = useLocalMessagesForChatId(id);
@@ -257,6 +257,11 @@ export const useRequestAccessMutation = () => {
   return useMutation(["requestPerms"], async () => {
     await ipcRenderer.invoke("fullDiskAccess");
     await ipcRenderer.invoke("requestContactsPerms");
+  });
+};
+export const useOpenFileAtLocation = () => {
+  return useMutation(["fileAtLocation"], async (path: string) => {
+    await ipcRenderer.invoke("openFileAtFolder", path);
   });
 };
 

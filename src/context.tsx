@@ -3,6 +3,7 @@ import type { Chat } from "./interfaces";
 import { useChatById } from "./hooks/dataHooks";
 import type { Message } from "./interfaces";
 import type { ChatCompletionRequestMessage } from "openai/api";
+import type { WrappedEntry } from "./components/wrapped/WrappedList";
 
 export interface AiMessage extends ChatCompletionRequestMessage {
   date: Date;
@@ -32,6 +33,9 @@ export interface AppContext {
   setHighlightedMessage: (updated: Message | null) => void;
   extendedConversations: ExtendedConversations;
   setExtendedConversations: (updated: ExtendedConversations) => void;
+  // wrapped
+  wrappedEntry: WrappedEntry | null;
+  setWrappedEntry: (entry: WrappedEntry | null) => void;
 }
 const openAiLocalStorageKey = "openai-key";
 const useMimessage = create<AppContext>((set, get) => ({
@@ -63,6 +67,8 @@ const useMimessage = create<AppContext>((set, get) => ({
   setExtendedConversations: (extendedConversations: ExtendedConversations) =>
     set({ extendedConversations: { ...extendedConversations } }),
   extendedConversations: {},
+  wrappedEntry: null,
+  setWrappedEntry: (wrappedEntry: WrappedEntry | null) => set({ wrappedEntry }),
 }));
 
 export const useSelectedChat = (): Chat | null | undefined => {

@@ -232,6 +232,7 @@ export class SQLDatabase {
       date_obj?: Date;
       date_obj_delivered?: Date;
       date_obj_read?: Date;
+      attributedBodyParsed?: any;
     }
     const enhancedMessages = messages as EnhancedMessage[];
 
@@ -251,11 +252,12 @@ export class SQLDatabase {
         }
 
         try {
-          if (!message.text && message.attributedBody) {
+          if (message.attributedBody && (!message.text || message.filename)) {
             const parsed = await decodeMessageBuffer(message.attributedBody);
             if (parsed) {
               message.text = (parsed[0]?.value?.string || "").trim();
             }
+            message.attributedBodyParsed = parsed;
           }
         } catch {
           // ignore

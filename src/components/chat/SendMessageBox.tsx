@@ -2,12 +2,12 @@ import InputBase from "@mui/material/InputBase";
 import { styled } from "@mui/material/styles";
 import Cross from "@mui/icons-material/Close";
 import React, { useRef } from "react";
-import theme from "./theme";
+import theme from "../theme";
 import Box from "@mui/material/Box";
-import type { AiMessage } from "../context";
-import { useMimessage } from "../context";
-import { useChatById, useLocalMessagesForChatId } from "../hooks/dataHooks";
-import openai from "../utils/openai";
+import type { AiMessage } from "../../context";
+import { useMimessage } from "../../context";
+import { useChatById, useLocalMessagesForChatId } from "../../hooks/dataHooks";
+import openai from "../../utils/openai";
 import { SetOpenAiKey } from "./SetOpenAiKey";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
@@ -143,6 +143,7 @@ export const SendMessageBox = () => {
 
   const isAwaitingResponse = Boolean(currConvo.length) && currConvo[currConvo.length - 1].response === null;
   const tooManyParticipants = (chat?.handles.length || 0) > 1;
+  const isDisabled = tooManyParticipants || isLoadingMessages || isAwaitingResponse;
   return (
     // absolutely center dev
     <Box sx={{ display: "flex", flexDirection: "row", pt: 1, justifyContent: "center", alignItems: "center" }}>
@@ -156,22 +157,26 @@ export const SendMessageBox = () => {
               ref: inputRef,
               onKeyDown: handleShortcuts,
             }}
-            placeholder={tooManyParticipants ? "AI Message cannot be used in group chats" : "AI Message"}
-            disabled={tooManyParticipants || isLoadingMessages || isAwaitingResponse}
+            placeholder={tooManyParticipants ? "AI message cannot be used in group chats" : "AI message"}
+            disabled={isDisabled}
           />
-          <ArrowUpwardIcon
-            sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
-            titleAccess={"send"}
-            onClick={submit}
-          />
-          <SetRelationButton />
-          <Cross
-            sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
-            titleAccess={"Clear API Key"}
-            onClick={() => {
-              setOpenAiKey(null);
-            }}
-          />
+          {!tooManyParticipants && (
+            <>
+              <ArrowUpwardIcon
+                sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
+                titleAccess={"send"}
+                onClick={submit}
+              />
+              <SetRelationButton />
+              <Cross
+                sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
+                titleAccess={"Clear API Key"}
+                onClick={() => {
+                  setOpenAiKey(null);
+                }}
+              />
+            </>
+          )}
         </>
       ) : (
         <SetOpenAiKey />

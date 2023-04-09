@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
-import { useMimessage } from "../context";
+import { useMimessage } from "../../context";
 import { Button } from "@mui/material";
 import Backdrop from "@mui/material/Backdrop";
 import Typography from "@mui/material/Typography";
