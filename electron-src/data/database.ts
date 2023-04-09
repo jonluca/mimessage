@@ -339,7 +339,7 @@ limit 10
       const query = this.getMessageQueryByYear(year)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
-          sql<string>`case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+          sql<string>`case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch', 'localtime')) as integer)
            when 0 then 'Sunday'
            when 1 then 'Monday'
            when 2 then 'Tuesday'
@@ -378,7 +378,7 @@ limit 10
       return this.getMessageQueryByYear(year)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
-          sql<string>`case cast(strftime('%m', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
+          sql<string>`case cast(strftime('%m', DATE(date / 1000000000 + 978307200, 'unixepoch', 'localtime')) as integer)
            when 1 then 'January'
            when 2 then 'February'
            when 3 then 'March'
@@ -422,7 +422,9 @@ limit 10
         .select("c.ROWID as chat_id")
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
-          sql<number>`cast(strftime('%H', DATETIME(date / 1000000000 + 978307200, 'unixepoch')) as integer)`.as("hour"),
+          sql<number>`cast(strftime('%H', DATETIME(date / 1000000000 + 978307200, 'unixepoch', 'localtime')) as integer)`.as(
+            "hour",
+          ),
         )
         // @ts-ignore
         .where(({ or, cmpr }) => or([cmpr("hour", ">", 22), cmpr("hour", "<", 5)]))
