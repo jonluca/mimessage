@@ -11,7 +11,7 @@ export interface AiMessage extends ChatCompletionRequestMessage {
 }
 
 type ExtendedConversations = Record<number, AiMessage[]>;
-
+export const WRAPPED_ALL_TIME_YEAR = 0;
 export interface AppContext {
   search: string | null;
   filter: string | null;
@@ -36,6 +36,8 @@ export interface AppContext {
   // wrapped
   wrappedEntry: WrappedEntry | null;
   setWrappedEntry: (entry: WrappedEntry | null) => void;
+  wrappedYear: number;
+  setWrappedYear: (year: number) => void;
 }
 const openAiLocalStorageKey = "openai-key";
 const useMimessage = create<AppContext>((set, get) => ({
@@ -67,8 +69,11 @@ const useMimessage = create<AppContext>((set, get) => ({
   setExtendedConversations: (extendedConversations: ExtendedConversations) =>
     set({ extendedConversations: { ...extendedConversations } }),
   extendedConversations: {},
+  // wrapped
   wrappedEntry: null,
   setWrappedEntry: (wrappedEntry: WrappedEntry | null) => set({ wrappedEntry }),
+  wrappedYear: WRAPPED_ALL_TIME_YEAR,
+  setWrappedYear: (wrappedYear: number) => set({ wrappedYear }),
 }));
 
 export const useSelectedChat = (): Chat | null | undefined => {

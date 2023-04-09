@@ -6,6 +6,7 @@ import { useMimessage } from "../../context";
 import Box from "@mui/material/Box";
 import { shallow } from "zustand/shallow";
 import { debounce } from "lodash-es";
+export const SEARCH_BAR_HEIGHT = 40;
 
 export const SearchBar = () => {
   const { search, setSearch } = useMimessage(
@@ -31,7 +32,7 @@ export const SearchBar = () => {
         zIndex: 999,
         display: "flex",
         justifyContent: "center",
-        height: 30,
+        height: SEARCH_BAR_HEIGHT,
         my: 1.25,
       }}
     >
@@ -43,14 +44,20 @@ export const SearchBar = () => {
         sx={{
           width: 300,
           mx: 1.25,
-          height: 30,
+          height: SEARCH_BAR_HEIGHT,
           background: "#3a3e44",
           display: "flex",
           borderRadius: "5px",
           color: "white",
         }}
         inputProps={{
-          sx: { p: 0, height: 30, color: theme.colors.white, background: "#3a3e44", borderRadius: "5px" },
+          sx: {
+            p: 0,
+            height: SEARCH_BAR_HEIGHT,
+            color: theme.colors.white,
+            background: "#3a3e44",
+            borderRadius: "5px",
+          },
           ref: inputRef,
         }}
         onChange={onSearchChange}

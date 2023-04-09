@@ -4,6 +4,7 @@ import { ImessageWrapped } from "../chat-list/ImessageWrapped";
 import { CHAT_CONTAINER_STYLE, ChatListWrapper } from "../chat-list/ChatList";
 import { ChatEntryRenderer } from "../chat-list/ChatEntry";
 import { useMimessage } from "../../context";
+import { YearSelector } from "./YearSelector";
 
 const WRAPPED_ENTRIES = [
   {
@@ -96,7 +97,7 @@ const WrappedEntry = ({ entry }: { entry: WrappedEntry }) => {
 export const WrappedList = () => {
   return (
     <ChatListWrapper>
-      <Box sx={{ minHeight: 50 }}>YEAR SELECTOR</Box>
+      <YearSelector />
       <ImessageWrapped back />
       <Box
         display={"flex"}
@@ -104,6 +105,7 @@ export const WrappedList = () => {
           display: "flex",
           overflowY: "auto",
           height: "100%",
+          background: "#2c2c2c",
         }}
       >
         <Box

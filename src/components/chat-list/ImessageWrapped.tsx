@@ -4,10 +4,13 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import theme from "../theme";
 import React from "react";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useMimessage } from "../../context";
 export const ImessageWrapped = ({ back }: { back?: boolean }) => {
   const router = useRouter();
+  const setChatId = useMimessage((state) => state.setChatId);
+
   const openImessageWrapped = () => {
-    // do
+    setChatId(null);
     router.push(back ? "/" : "/wrapped");
   };
   const Icon = back ? ArrowBackIcon : AutoFixHighIcon;

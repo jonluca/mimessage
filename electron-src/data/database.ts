@@ -165,6 +165,19 @@ export class SQLDatabase {
     return enhancedChats;
   };
 
+  getEarliestMessageDate = async () => {
+    const db = this.db;
+    const query = db
+      .selectFrom("message")
+      .select((e) => e.fn.min("date").as("min_date"))
+      .selectAll();
+    const result = await query.execute();
+    const minDate = result[0]?.min_date;
+    if (!minDate) {
+      return new Date();
+    }
+    return new Date(minDate / 1000000 + 978307200000);
+  };
   getLatestMessageForEachChat = async () => {
     const db = this.db;
     const query = db
@@ -277,6 +290,32 @@ export class SQLDatabase {
       return (a.date || 0) - (b.date || 0);
     });
     return flat;
+  };
+
+  private countMessagesByYear = async (year: number) => {
+    // calculate number of messages sent that year
+    const db = this.db;
+
+    const startOfYear = new Date(year, 0, 1).getTime();
+    const endOfYear = new Date(year + 1, 0, 1).getTime();
+
+    const startOffset = startOfYear * 1000000 + 978307200000;
+    const endOffset = endOfYear * 1000000 + 978307200000;
+    const query = db
+      .selectFrom("message")
+      .select((e) => e.fn.count("ROWID").as("count"))
+      .where("date", ">", startOffset)
+      .where("date", "<", endOffset);
+    const result = await query.execute();
+    const count = result[0]?.count;
+    return count || 0;
+  };
+  calculateWrappedStats = async (year: number) => {
+    const messageCount = await this.countMessagesByYear(year);
+
+    return {
+      messageCount,
+    };
   };
 }
 

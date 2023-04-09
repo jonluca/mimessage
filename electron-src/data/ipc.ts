@@ -3,7 +3,6 @@ import { dialog, ipcMain, shell } from "electron"; // deconstructing assignment
 
 import type { SQLDatabase } from "./database";
 import db from "./database";
-import { getAllContacts, getAuthStatus, requestAccess } from "node-mac-contacts";
 import fs from "fs-extra";
 import jsonexport from "jsonexport";
 import jetpack from "fs-jetpack";
@@ -13,8 +12,6 @@ import { fileTypeFromFile } from "file-type";
 import { debugLoggingEnabled } from "../constants";
 import logger from "../utils/logger";
 import { decodeMessageBuffer } from "../utils/buffer";
-import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-mac-permissions";
-import { setSkipContactsPermsCheck, shouldSkipContactsCheck } from "./options";
 export const handleIpc = (event: string, handler: (...args: any[]) => unknown) => {
   ipcMain.handle(event, async (e: IpcMainInvokeEvent, ...args) => {
     await db.initializationPromise;
@@ -31,54 +28,6 @@ export const handleIpc = (event: string, handler: (...args: any[]) => unknown) =
 
 handleIpc("openFileAtFolder", (filePath: string) => {
   shell.showItemInFolder(filePath);
-});
-handleIpc("contacts", async () => {
-  const status = getAuthStatus();
-  if (status !== "Authorized") {
-    await requestAccess();
-  }
-  const contacts = await getAllContacts(["contactImage", "contactThumbnailImage"]);
-  return contacts;
-});
-handleIpc("skipContactsCheck", () => {
-  setSkipContactsPermsCheck();
-});
-
-export const requestContactsPerms = async () => {
-  try {
-    const skipContactsCheck = shouldSkipContactsCheck();
-    if (skipContactsCheck) {
-      return true;
-    }
-    const status = getAuthStatus();
-    if (status !== "Authorized") {
-      await requestAccess();
-    }
-    const newStatus = getAuthStatus();
-
-    return newStatus === "Authorized";
-  } catch (e) {
-    logger.error(e);
-    return "unknown";
-  }
-};
-handleIpc("requestContactsPerms", requestContactsPerms);
-
-export const requestFullDiskAccess = async () => {
-  const diskAccessStatus = getPermissionsStatus("full-disk-access");
-  if (diskAccessStatus === "authorized") {
-    return true;
-  }
-  await askForFullDiskAccess();
-  return diskAccessStatus;
-};
-handleIpc("fullDiskAccess", requestFullDiskAccess);
-handleIpc("checkPermissions", async () => {
-  const diskAccessStatus = getPermissionsStatus("full-disk-access");
-  const contactsStatus = getPermissionsStatus("contacts");
-  const skipContactsCheck = shouldSkipContactsCheck();
-
-  return { contactsStatus: skipContactsCheck ? "authorized" : contactsStatus, diskAccessStatus };
 });
 
 type EnhancedChat = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>[number];

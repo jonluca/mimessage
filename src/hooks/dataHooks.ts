@@ -16,6 +16,7 @@ import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
 import type { PermissionType } from "node-mac-permissions";
 import Fuse from "fuse.js";
+import type { WrappedStats } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
 export const useDbChatList = () => {
@@ -215,6 +216,21 @@ export const useChatDateRange = () => {
 export const useDoesLocalDbExist = () => {
   return useQuery<boolean>(["localDbExists"], async () => {
     const resp = (await ipcRenderer.invoke("doesLocalDbCopyExist")) as boolean;
+    return resp;
+  });
+};
+
+export const useEarliestMessageDate = () => {
+  return useQuery<Date>(["getEarliestMessageDate"], async () => {
+    const resp = (await ipcRenderer.invoke("getEarliestMessageDate")) as Date;
+    return resp;
+  });
+};
+export const useWrappedStats = () => {
+  const wrappedYear = useMimessage((state) => state.wrappedYear);
+
+  return useQuery<WrappedStats>(["calculateWrappedStats", wrappedYear], async () => {
+    const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
     return resp;
   });
 };

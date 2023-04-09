@@ -4,7 +4,7 @@ import { app, dialog, Menu, shell } from "electron";
 import { windows } from "../index";
 import { showApp } from "../utils/util";
 import db, { copyDbAtPath, copyLatestDb } from "../data/database";
-import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc";
+import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../data/options";
 
 export const getMenu = () => {

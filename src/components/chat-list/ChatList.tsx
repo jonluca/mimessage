@@ -32,7 +32,10 @@ export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
 };
 
 export const CHAT_CONTAINER_STYLE = {
-  height: "100%",
+  display: "flex",
+  position: "relative",
+  flexDirection: "column",
+  alignItems: "center",
   width: CHAT_LIST_WIDTH,
   minWidth: CHAT_LIST_WIDTH,
 } as React.CSSProperties;
@@ -86,12 +89,8 @@ export const ChatList = () => {
       >
         <Box
           sx={{
-            display: "flex",
+            ...CHAT_CONTAINER_STYLE,
             height: `${rowVirtualizer.getTotalSize()}px`,
-            width: 400,
-            position: "relative",
-            flexDirection: "column",
-            alignItems: "center",
           }}
         >
           {items?.map((virtualRow) => {
