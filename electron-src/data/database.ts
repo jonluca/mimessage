@@ -9,11 +9,11 @@ import type { KyselyConfig } from "kysely/dist/cjs/kysely";
 import jetpack from "fs-jetpack";
 import { appPath } from "../versions";
 import { handleIpc } from "./ipc";
-import { groupBy } from "lodash-es";
+import { countBy, groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
 
-import { decodeMessageBuffer } from "../utils/buffer";
+import { getTextFromBuffer } from "../utils/buffer";
 
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
@@ -122,15 +122,20 @@ export class SQLDatabase {
       return false;
     }
   };
-
-  getChatList = async () => {
+  private getChatsWithMessagesQuery = () => {
     const db = this.db;
     const query = db
       .selectFrom("chat as c")
       .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
       .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
       .innerJoin("message as m", "cmj.message_id", "m.ROWID")
-      .select(["m.date as latest_message_date", "text", "attributedBody", "chat_identifier", "display_name"])
+      .select(["m.date as latest_message_date", "text", "attributedBody", "chat_identifier", "display_name"]);
+    return query;
+  };
+
+  getChatList = async () => {
+    const db = this.db;
+    const query = this.getChatsWithMessagesQuery()
       .where((eb) => {
         return eb.cmpr(
           "cmj.message_date",
@@ -156,14 +161,7 @@ export class SQLDatabase {
       const chatHandles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
       chat.handles = chatHandles;
       if (!chat.text && chat.attributedBody) {
-        try {
-          const parsed = await decodeMessageBuffer(chat.attributedBody);
-          if (parsed) {
-            chat.text = parsed[0]?.value?.string;
-          }
-        } catch (e) {
-          // ignore buffer errors
-        }
+        chat.text = await getTextFromBuffer(chat.attributedBody);
       }
     }
     return enhancedChats;
@@ -227,7 +225,6 @@ export class SQLDatabase {
       date_obj?: Date;
       date_obj_delivered?: Date;
       date_obj_read?: Date;
-      attributedBodyParsed?: any;
     }
     const enhancedMessages = messages as EnhancedMessage[];
 
@@ -248,11 +245,7 @@ export class SQLDatabase {
 
         try {
           if (message.attributedBody && (!message.text || message.filename)) {
-            const parsed = await decodeMessageBuffer(message.attributedBody);
-            if (parsed) {
-              message.text = (parsed[0]?.value?.string || "").trim();
-            }
-            message.attributedBodyParsed = parsed;
+            message.text = await getTextFromBuffer(message.attributedBody);
           }
         } catch {
           // ignore
@@ -444,6 +437,44 @@ limit 10
     const sent = await getByOriginator(true).execute();
     return { received, sent };
   };
+
+  private getMostPopularOpeners = async (year: number) => {
+    const query = this.getMessageQueryByYear(year)
+      .select(["text", "attributedBody"])
+      .where((eb) => {
+        return eb.cmpr(
+          "cmj.message_date",
+          "=",
+          eb
+            .selectFrom("chat_message_join as cmj2")
+            .select((e) => e.fn.min("cmj2.message_date").as("min_date"))
+            .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
+        );
+      })
+      .orderBy("message.date", "asc");
+
+    const chats = await query.execute();
+    for (const chat of chats) {
+      if (!chat.text && chat.attributedBody) {
+        chat.text = await getTextFromBuffer(chat.attributedBody);
+      }
+    }
+    const openers: string[] = chats
+      .map((chat) => {
+        return (chat.text || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
+      })
+      .filter(Boolean) as string[];
+    const counted = countBy(openers, (o) => o);
+    for (const key of Object.keys(counted)) {
+      if (counted[key] < 2) {
+        delete counted[key];
+      }
+    }
+    return counted;
+  };
   calculateWrappedStats = async (year: number) => {
     const [
       messageCountSent,
@@ -452,6 +483,7 @@ limit 10
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,
+      mostPopularOpeners,
     ] = await Promise.all([
       this.countMessagesByYear(year, true),
       this.countMessagesByYear(year, false),
@@ -459,6 +491,7 @@ limit 10
       this.countMessagesByWeekday(year),
       this.countMessagesByMonth(year),
       this.lateNightMessenger(year),
+      this.getMostPopularOpeners(year),
     ]);
     return {
       messageCountSent,
@@ -467,6 +500,7 @@ limit 10
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,
+      mostPopularOpeners,
     };
   };
 }

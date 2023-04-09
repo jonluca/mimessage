@@ -61,6 +61,10 @@ const DayInteraction = ({ day }: { day: WrappedStats["weekdayInteractions"]["sen
 const MonthInteraction = ({ month }: { month: WrappedStats["monthlyInteractions"]["sent"][number] }) => {
   return <GenericValue text={month.month} number={month.message_count || 0} />;
 };
+
+const OpenerCount = ({ opener, count }: { opener: string; count: number }) => {
+  return <GenericValue text={opener} number={count || 0} />;
+};
 const BusiestDay = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.weekdayInteractions;
@@ -91,6 +95,20 @@ const BusiestMonth = () => {
       <Typography>While you were sent the most messages on</Typography>
       {interactions?.received.slice(0, 5).map((d) => (
         <MonthInteraction key={d.month} month={d} />
+      ))}
+    </Box>
+  );
+};
+const MostPopularOpeners = () => {
+  const { data: wrappedStats } = useWrappedStats();
+  const openers = wrappedStats?.mostPopularOpeners;
+  const keys = Object.keys(openers || {}).sort((a, b) => (openers?.[b] || 0) - (openers?.[a] || 0));
+  return (
+    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
+      <EntryHeader />
+      <Typography>Your favorite first messages were</Typography>
+      {keys.slice(0, 5).map((key) => (
+        <OpenerCount key={key} opener={key} count={openers![key] ?? 0} />
       ))}
     </Box>
   );
@@ -137,6 +155,10 @@ const EntryHeader = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   return <Typography variant={"h1"}>{wrappedYear === WRAPPED_ALL_TIME_YEAR ? "All Time" : wrappedYear}</Typography>;
 };
+
+const NotImplemented = () => {
+  return <Typography>Not implemented yet</Typography>;
+};
 export const SelectedWrap = () => {
   const wrappedEntry = useMimessage((state) => state.wrappedEntry);
 
@@ -155,21 +177,23 @@ export const SelectedWrap = () => {
       case "BUSIEST_MONTH":
         return <BusiestMonth />;
       case "MOST_USED_EMOJIS":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
       case "MOST_COMMON_WORDS":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
       case "LONGEST_CONVERSATION_STREAK":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
+      case "FIRST_MESSAGE":
+        return <MostPopularOpeners />;
       case "LATE_NIGHT_CHATTER":
         return <LateNightChatter />;
       case "WORD_CLOUD":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
       case "CONVERSATION_STARTERS":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
       case "GROUP_CHAT_ACTIVITY":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
       case "FASTEST_RESPONSE_TIME":
-        return <TopConversationPartners />;
+        return <NotImplemented />;
     }
     return null;
   };
@@ -183,12 +207,13 @@ export const SelectedWrap = () => {
         width: "100%",
         flexDirection: "column",
         background: "#1e1e1e",
+        alignItems: "center",
       }}
     >
       <Box
         sx={{
           height: "100%",
-          width: "100%",
+          width: "80%",
           overflowY: "auto",
           overflowX: "hidden",
           contain: "strict",

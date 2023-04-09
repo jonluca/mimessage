@@ -23,3 +23,19 @@ export const decodeMessageBuffer = async (buffer: Buffer | Uint8Array | undefine
   }
   return buffer;
 };
+
+export const getTextFromBuffer = async (buffer: Buffer | Uint8Array | undefined) => {
+  try {
+    const parsed = await decodeMessageBuffer(buffer);
+    if (parsed) {
+      const string = parsed[0]?.value?.string;
+      if (string) {
+        return (string || "").trim().replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
+      }
+    }
+  } catch {
+    //skip
+  }
+
+  return null;
+};

@@ -57,6 +57,10 @@ const WRAPPED_ENTRIES = [
     key: "FASTEST_RESPONSE_TIME",
     title: "Fastest response time",
   },
+  {
+    key: "FIRST_MESSAGE",
+    title: "Your favorite opening messages",
+  },
 ] as const;
 /**
  * Total messages sent and received: Showcase the number of messages you've exchanged with friends, family, and colleagues throughout the year.
