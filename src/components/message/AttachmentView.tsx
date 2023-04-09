@@ -54,6 +54,7 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
       return (
         <img
           src={filename}
+          alt={"img"}
           style={{
             width: ASSET_WIDTH,
             height: ASSET_HEIGHT,
@@ -69,7 +70,7 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
     }
     if (message.text) {
       try {
-        const url = new URL(message.text);
+        new URL(message.text);
 
         return (
           <Box>
@@ -86,7 +87,7 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
   const renderText = () => {
     if (message.text) {
       try {
-        const url = new URL(filename);
+        new URL(filename);
         return null;
       } catch {
         // skip

@@ -64,7 +64,7 @@ export const YearSelector = () => {
       { value: WRAPPED_ALL_TIME_YEAR, label: "All Time" },
       ...sortedYears.map((year) => ({ value: year, label: year.toString() })),
     ];
-  }, []);
+  }, [earliestDate]);
 
   return (
     <Box sx={{ m: 1.25 }}>

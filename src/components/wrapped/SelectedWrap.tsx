@@ -30,7 +30,7 @@ const TopConversationPartners = () => {
       <EntryHeader />
       <Typography>Your most-messaged contacts weere</Typography>
       {wrappedStats?.contactInteractions.slice(0, 5).map((contactInteraction) => (
-        <Box>
+        <Box key={contactInteraction.contact?.identifier || contactInteraction.handle_identifier}>
           <Typography>{contactInteraction.contact?.parsedName || contactInteraction.handle_identifier}: </Typography>
           <ChunkyNumber number={contactInteraction.message_count || 0} />
         </Box>
