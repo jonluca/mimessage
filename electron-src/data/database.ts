@@ -292,29 +292,59 @@ export class SQLDatabase {
     return flat;
   };
 
-  private countMessagesByYear = async (year: number) => {
-    // calculate number of messages sent that year
+  private getMessageQueryByYear = (year: number) => {
     const db = this.db;
 
-    const startOfYear = new Date(year, 0, 1).getTime();
-    const endOfYear = new Date(year + 1, 0, 1).getTime();
+    const query = db.selectFrom("message");
+    if (year !== 0) {
+      const startOfYear = new Date(year, 0, 1).getTime();
+      const endOfYear = new Date(year + 1, 0, 1).getTime();
 
-    const startOffset = startOfYear * 1000000 + 978307200000;
-    const endOffset = endOfYear * 1000000 + 978307200000;
-    const query = db
-      .selectFrom("message")
+      const startOffset = (startOfYear - 978307200000) * 1000000;
+      const endOffset = (endOfYear - 978307200000) * 1000000;
+      return query.where("date", ">", startOffset).where("date", "<", endOffset);
+    }
+    return query;
+  };
+
+  private countMessagesByYear = async (year: number, isFromMe: boolean) => {
+    const query = this.getMessageQueryByYear(year)
       .select((e) => e.fn.count("ROWID").as("count"))
-      .where("date", ">", startOffset)
-      .where("date", "<", endOffset);
+      .where("is_from_me", "=", Number(isFromMe));
+
     const result = await query.execute();
     const count = result[0]?.count;
-    return count || 0;
+    return Number(count || 0);
+  };
+
+  private countMessagesByHandle = async (year: number) => {
+    /*
+    SELECT h.id AS handle_identifier, COUNT(m.ROWID) AS message_count
+FROM message m
+JOIN handle h ON m.handle_id = h.ROWID
+GROUP BY h.id
+ORDER BY message_count DESC;
+     */
+    const query = this.getMessageQueryByYear(year)
+      .innerJoin("handle", "handle.ROWID", "message.handle_id")
+      .select((e) => e.fn.count("message.ROWID").as("message_count"))
+      .select("handle.id as handle_identifier")
+      .where("is_from_me", "=", 0)
+      .groupBy("handle_identifier")
+      .orderBy("message_count", "desc");
+
+    const result = await query.execute();
+    return result;
   };
   calculateWrappedStats = async (year: number) => {
-    const messageCount = await this.countMessagesByYear(year);
+    const messageCountSent = await this.countMessagesByYear(year, true);
+    const messageCountReceived = await this.countMessagesByYear(year, false);
+    const handleInteractions = await this.countMessagesByHandle(year);
 
     return {
-      messageCount,
+      messageCountSent,
+      messageCountReceived,
+      handleInteractions,
     };
   };
 }

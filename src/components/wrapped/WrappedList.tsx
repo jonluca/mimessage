@@ -5,10 +5,12 @@ import { CHAT_CONTAINER_STYLE, ChatListWrapper } from "../chat-list/ChatList";
 import { ChatEntryRenderer } from "../chat-list/ChatEntry";
 import { useMimessage } from "../../context";
 import { YearSelector } from "./YearSelector";
+import { useWrappedStats } from "../../hooks/dataHooks";
+import { LinearProgress } from "@mui/material";
 
 const WRAPPED_ENTRIES = [
   {
-    key: "COUNT_SENT",
+    key: "MESSAGE_COUNTS",
     title: "Messages sent and received",
   },
   {
@@ -95,10 +97,13 @@ const WrappedEntry = ({ entry }: { entry: WrappedEntry }) => {
 };
 
 export const WrappedList = () => {
+  const { isLoading } = useWrappedStats();
+
   return (
     <ChatListWrapper>
       <YearSelector />
       <ImessageWrapped back />
+      {isLoading && <LinearProgress />}
       <Box
         display={"flex"}
         sx={{

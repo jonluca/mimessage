@@ -10,7 +10,7 @@ import type {
 import type { Contact } from "node-mac-contacts";
 import parsePhoneNumber from "libphonenumber-js";
 import { getContactName } from "../utils/helpers";
-import { cloneDeep, uniq } from "lodash-es";
+import { cloneDeep, groupBy, uniq } from "lodash-es";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
@@ -26,33 +26,33 @@ export const useDbChatList = () => {
   });
 };
 
+const getContactFromHandle = (handle: string, contacts: Map<string | null, Contact>) => {
+  if (!contacts) {
+    return null;
+  }
+  const baseContact = contacts.get(handle);
+  if (baseContact) {
+    return baseContact;
+  }
+  const parsedPhoneNumber = parsePhoneNumber(handle);
+  if (parsedPhoneNumber) {
+    const phoneContact =
+      contacts.get(parsedPhoneNumber.formatNational()) ||
+      contacts.get(parsedPhoneNumber.formatInternational()) ||
+      contacts.get(parsedPhoneNumber.number) ||
+      contacts.get(parsedPhoneNumber.nationalNumber);
+    if (phoneContact) {
+      return phoneContact;
+    }
+  }
+  const lower = handle.toLowerCase();
+
+  return contacts.get(lower) || null;
+};
+
 export const useChatList = () => {
   const { data: dbChats } = useDbChatList();
   const { data: contacts } = useContactMap();
-
-  const getContactFromHandle = (handle: string) => {
-    if (!contacts) {
-      return null;
-    }
-    const baseContact = contacts.get(handle);
-    if (baseContact) {
-      return baseContact;
-    }
-    const parsedPhoneNumber = parsePhoneNumber(handle);
-    if (parsedPhoneNumber) {
-      const phoneContact =
-        contacts.get(parsedPhoneNumber.formatNational()) ||
-        contacts.get(parsedPhoneNumber.formatInternational()) ||
-        contacts.get(parsedPhoneNumber.number) ||
-        contacts.get(parsedPhoneNumber.nationalNumber);
-      if (phoneContact) {
-        return phoneContact;
-      }
-    }
-    const lower = handle.toLowerCase();
-
-    return contacts.get(lower) || null;
-  };
 
   return useQuery<ChatList | null>(
     ["getChatList", Boolean(contacts), Boolean(dbChats), dbChats?.length, contacts?.size],
@@ -62,7 +62,7 @@ export const useChatList = () => {
         for (const chat of chats) {
           if (chat.handles.length) {
             for (const handle of chat.handles) {
-              handle.contact = getContactFromHandle(handle.id);
+              handle.contact = getContactFromHandle(handle.id, contacts);
             }
           }
         }
@@ -226,13 +226,40 @@ export const useEarliestMessageDate = () => {
     return resp;
   });
 };
+
+export interface WrappedStatsEnhanced extends WrappedStats {
+  contactInteractions: Array<WrappedStats["handleInteractions"][number] & { contact: Contact | null }>;
+}
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const { data: contacts } = useContactMap();
 
-  return useQuery<WrappedStats>(["calculateWrappedStats", wrappedYear], async () => {
-    const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
-    return resp;
-  });
+  return useQuery<WrappedStatsEnhanced>(
+    ["calculateWrappedStats", wrappedYear, Boolean(contacts), contacts?.size],
+    async () => {
+      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStatsEnhanced;
+      resp.contactInteractions = resp.handleInteractions.map((i) => ({ ...i, contact: null }));
+      // dedupe our handles, as one contact can have multiple handles
+      if (contacts && contacts.size > 0) {
+        const withContacts = resp.handleInteractions.map((i) => {
+          const contact = getContactFromHandle(i.handle_identifier, contacts);
+          return { ...i, contact };
+        });
+        const grouped = groupBy(withContacts, (e) => e.contact?.identifier || e.handle_identifier);
+        const contactInteractions = Object.values(grouped).map((handles) => {
+          const realCount = handles.reduce((acc, cur) => acc + Number(cur.message_count), 0);
+          return {
+            message_count: realCount,
+            contact: handles[0].contact,
+            handle_identifier: handles[0].handle_identifier,
+          };
+        });
+        resp.contactInteractions = contactInteractions.sort((a, b) => b.message_count - a.message_count);
+      }
+      console.log(resp);
+      return resp;
+    },
+  );
 };
 
 interface Permissions {

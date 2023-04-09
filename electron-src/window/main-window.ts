@@ -84,7 +84,7 @@ export const createMainWindow = async () => {
   windowState.manage(mainWindow);
 
   const url = isDev
-    ? "http://localhost:3000/"
+    ? "http://localhost:3000/wrapped"
     : format({
         pathname: join(__dirname, "../../src/out/index.html"),
         protocol: "file:",
