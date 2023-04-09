@@ -11,6 +11,7 @@ import { appPath } from "../versions";
 import { handleIpc } from "./ipc";
 import { groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
+import { format } from "sql-formatter";
 
 import { decodeMessageBuffer } from "../utils/buffer";
 
@@ -99,13 +100,16 @@ export class SQLDatabase {
         options = {
           ...options,
           log(event): void {
+            const { sql, parameters } = event.query;
+            const { queryDurationMillis } = event;
+            const duration = queryDurationMillis.toFixed(2);
+            const params = (parameters as string[]) || [];
+            const formattedSql = format(sql, { params: params.map((l) => String(l)), language: "sqlite" });
             if (event.level === "query") {
-              const { sql, parameters } = event.query;
-              const { queryDurationMillis } = event;
-              logger.debug(`[Query - ${queryDurationMillis}ms]: ${sql} ${parameters}`);
+              logger.debug(`[Query - ${duration}ms]:\n${formattedSql}\n`);
             }
             if (event.level === "error") {
-              logger.debug(`[SQL Error]: ${event.error}`);
+              logger.error(`[SQL Error - ${duration}ms]: ${event.error}\n\n${formattedSql}\n`);
             }
           },
         };
@@ -126,7 +130,7 @@ export class SQLDatabase {
       .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
       .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
       .innerJoin("message as m", "cmj.message_id", "m.ROWID")
-      .selectAll()
+      .select(["m.date as latest_message_date", "text", "attributedBody", "chat_identifier", "display_name"])
       .where((eb) => {
         return eb.cmpr(
           "cmj.message_date",
@@ -145,7 +149,7 @@ export class SQLDatabase {
       .selectAll()
       .execute();
     type Handles = Array<typeof handles[number] & { contact?: Contact | null }>;
-    type EnhancedChat = typeof chats[number] & { handles: Handles };
+    type EnhancedChat = typeof chats[number] & { handles: Handles; name: string; sameParticipantChatIds: number[] };
     const handlesByChatId = groupBy(handles, "chat_id");
     const enhancedChats = chats as EnhancedChat[];
     for (const chat of enhancedChats) {
@@ -178,34 +182,12 @@ export class SQLDatabase {
     }
     return new Date(minDate / 1000000 + 978307200000);
   };
-  getLatestMessageForEachChat = async () => {
-    const db = this.db;
-    const query = db
-      .selectFrom("chat as c")
-      .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
-      .selectAll()
-      .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
-      .innerJoin("message as m", "cmj.message_id", "m.ROWID")
-      .where((eb) => {
-        return eb.cmpr(
-          "cmj.message_date",
-          "=",
-          eb
-            .selectFrom("chat_message_join as cmj2")
-            .select((e) => e.fn.max("cmj2.message_date").as("max_date"))
-            .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
-        );
-      })
-      .orderBy("m.date", "desc");
-    const chats = await query.execute();
-    return chats;
-  };
 
   localDbExists = async () => {
     return localDbExists();
   };
 
-  getMessagesForChatId = async (chatId: number) => {
+  getMessagesForChatId = async (chatId: number | number[]) => {
     const db = this.db;
     const messages = await db
       .selectFrom("message")
@@ -236,7 +218,7 @@ export class SQLDatabase {
         "type",
       ])
       .select(sql<string>`message.ROWID`.as("message_id"))
-      .where("chat_message_join.chat_id", "is", chatId)
+      .where("chat_message_join.chat_id", "in", [chatId].flat())
       .execute();
 
     type Message = typeof messages[number];
@@ -295,7 +277,11 @@ export class SQLDatabase {
   private getMessageQueryByYear = (year: number) => {
     const db = this.db;
 
-    const query = db.selectFrom("message");
+    // we want every query to have its associated handles/chats
+    const query = db
+      .selectFrom("message")
+      .innerJoin("chat_message_join as cmj", "cmj.message_id", "message.ROWID")
+      .innerJoin("chat as c", "c.ROWID", "cmj.chat_id");
     if (year !== 0) {
       const startOfYear = new Date(year, 0, 1).getTime();
       const endOfYear = new Date(year + 1, 0, 1).getTime();
@@ -309,7 +295,7 @@ export class SQLDatabase {
 
   private countMessagesByYear = async (year: number, isFromMe: boolean) => {
     const query = this.getMessageQueryByYear(year)
-      .select((e) => e.fn.count("ROWID").as("count"))
+      .select((e) => e.fn.count("message.ROWID").as("count"))
       .where("is_from_me", "=", Number(isFromMe));
 
     const result = await query.execute();
@@ -325,16 +311,20 @@ JOIN handle h ON m.handle_id = h.ROWID
 GROUP BY h.id
 ORDER BY message_count DESC;
      */
-    const query = this.getMessageQueryByYear(year)
-      .innerJoin("handle", "handle.ROWID", "message.handle_id")
-      .select((e) => e.fn.count("message.ROWID").as("message_count"))
-      .select("handle.id as handle_identifier")
-      .where("is_from_me", "=", 0)
-      .groupBy("handle_identifier")
-      .orderBy("message_count", "desc");
 
-    const result = await query.execute();
-    return result;
+    const queryByOriginator = (isFromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year)
+        .select((e) => e.fn.count("message.ROWID").as("message_count"))
+        .select("c.ROWID as chat_id")
+        .where("is_from_me", "=", Number(isFromMe))
+        .groupBy("chat_id")
+        .orderBy("message_count", "desc");
+      return query;
+    };
+
+    const sent = await queryByOriginator(true).execute();
+    const received = await queryByOriginator(false).execute();
+    return { sent, received };
   };
 
   private countMessagesByWeekday = async (year: number) => {
@@ -436,16 +426,15 @@ limit 10
 
     const getByOriginator = (fromMe: boolean) => {
       const query = this.getMessageQueryByYear(year)
-        .innerJoin("handle", "handle.ROWID", "message.handle_id")
+        .select("c.ROWID as chat_id")
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
-        .select("handle.id as handle_identifier")
         .select(
           sql<number>`cast(strftime('%H', DATETIME(date / 1000000000 + 978307200, 'unixepoch')) as integer)`.as("hour"),
         )
         // @ts-ignore
         .where(({ or, cmpr }) => or([cmpr("hour", ">", 22), cmpr("hour", "<", 5)]))
         .where("is_from_me", "=", Number(fromMe))
-        .groupBy("handle_identifier")
+        .groupBy("chat_id")
         .orderBy("message_count", "desc");
 
       return query;
@@ -456,17 +445,25 @@ limit 10
     return { received, sent };
   };
   calculateWrappedStats = async (year: number) => {
-    const messageCountSent = await this.countMessagesByYear(year, true);
-    const messageCountReceived = await this.countMessagesByYear(year, false);
-    const handleInteractions = await this.countMessagesByHandle(year);
-
-    const weekdayInteractions = await this.countMessagesByWeekday(year);
-    const monthlyInteractions = await this.countMessagesByMonth(year);
-    const lateNightInteractions = await this.lateNightMessenger(year);
+    const [
+      messageCountSent,
+      messageCountReceived,
+      chatInteractions,
+      weekdayInteractions,
+      monthlyInteractions,
+      lateNightInteractions,
+    ] = await Promise.all([
+      this.countMessagesByYear(year, true),
+      this.countMessagesByYear(year, false),
+      this.countMessagesByHandle(year),
+      this.countMessagesByWeekday(year),
+      this.countMessagesByMonth(year),
+      this.lateNightMessenger(year),
+    ]);
     return {
       messageCountSent,
       messageCountReceived,
-      handleInteractions,
+      chatInteractions,
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,

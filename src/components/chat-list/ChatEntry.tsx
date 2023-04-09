@@ -5,12 +5,11 @@ import { MessageAvatar } from "../message/Avatar";
 import Typography from "@mui/material/Typography";
 import React from "react";
 import type { Contact } from "node-mac-contacts";
-import type { VirtualItem } from "../react-virtual";
 
 export const CHAT_HEIGHT = 65;
 
 interface ChatEntryProps {
-  virtualRow: VirtualItem;
+  style: React.CSSProperties;
   chat: Chat;
 }
 
@@ -20,14 +19,14 @@ export const ChatEntryRenderer = ({
   text,
   isSelected,
   onClick,
-  extraStyles,
+  style,
 }: {
   name: string;
   isSelected: boolean;
   onClick: () => void;
   text?: string | undefined | null;
   contact?: Contact | null | undefined;
-  extraStyles?: React.CSSProperties;
+  style?: React.CSSProperties;
 }) => {
   return (
     <Box
@@ -45,8 +44,8 @@ export const ChatEntryRenderer = ({
         overflow: "hidden",
         borderRadius: 1,
         alignItems: "center",
-        ...extraStyles,
       }}
+      style={style}
       onClick={onClick}
     >
       <Box sx={{ mr: 1 }}>
@@ -81,30 +80,19 @@ export const ChatEntryRenderer = ({
     </Box>
   );
 };
-export const ChatEntry = ({ chat, virtualRow }: ChatEntryProps) => {
+
+export const ChatEntry = ({ chat, style }: ChatEntryProps) => {
   const chatId = useMimessage((state) => state.chatId);
   const setChatId = useMimessage((state) => state.setChatId);
 
   const handles = chat.handles || [];
-  const contactsInChat = (handles || [])
-    .map((handle) => {
-      const contact = handle.contact;
-      return contact?.parsedName;
-    })
-    .filter(Boolean);
-
-  const name = chat.display_name || contactsInChat.join(", ") || chat.chat_identifier || "";
+  const name = chat.name;
   const isSingleConvo = handles.length === 1;
-
   const isSelected = chatId === chat.chat_id;
+
   return (
     <ChatEntryRenderer
-      extraStyles={{
-        cursor: "pointer",
-        position: "absolute",
-        top: 0,
-        transform: `translateY(${virtualRow.start}px)`,
-      }}
+      style={style}
       isSelected={isSelected}
       onClick={() => {
         setChatId(chat.chat_id!);

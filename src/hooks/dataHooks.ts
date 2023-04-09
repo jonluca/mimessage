@@ -1,53 +1,69 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type {
-  ChatList,
-  Contacts,
-  Handle,
-  LatestMessage,
-  LatestMessagesForEachChat,
-  MessagesForChat,
-} from "../interfaces";
+import type { ChatList, Contacts, Handle, MessagesForChat } from "../interfaces";
 import type { Contact } from "node-mac-contacts";
 import parsePhoneNumber from "libphonenumber-js";
 import { getContactName } from "../utils/helpers";
-import { cloneDeep, groupBy, uniq } from "lodash-es";
+import { groupBy, uniq } from "lodash-es";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
 import type { PermissionType } from "node-mac-permissions";
 import Fuse from "fuse.js";
 import type { WrappedStats } from "../interfaces";
+import type { Chat } from "../interfaces";
+import React from "react";
 
 const ipcRenderer = global.ipcRenderer;
-export const useDbChatList = () => {
+const useDbChatList = () => {
   return useQuery<ChatList | null>(["dbChatList"], async () => {
     const resp = (await ipcRenderer.invoke("getChatList")) as ChatList;
     return resp;
   });
 };
 
-const getContactFromHandle = (handle: string, contacts: Map<string | null, Contact>) => {
-  if (!contacts) {
+export const getChatName = (chat: Chat | null | undefined) => {
+  if (!chat) {
+    return "";
+  }
+  if (chat.display_name) {
+    return chat.display_name;
+  }
+  const handles = chat.handles || [];
+  const contactsInChat = handles
+    .map((handle) => {
+      const contact = handle.contact;
+      return contact?.parsedName;
+    })
+    .filter(Boolean);
+
+  return contactsInChat.join(", ") || chat.chat_identifier || "";
+};
+
+const getContactFromHandle = (handle: string | null, contacts: Map<string | null, Contact>) => {
+  if (!handle || !contacts) {
     return null;
   }
-  const baseContact = contacts.get(handle);
+  const baseContact = contacts.get(handle) || contacts.get(handle.toLowerCase());
   if (baseContact) {
     return baseContact;
   }
-  const parsedPhoneNumber = parsePhoneNumber(handle);
-  if (parsedPhoneNumber) {
-    const phoneContact =
-      contacts.get(parsedPhoneNumber.formatNational()) ||
-      contacts.get(parsedPhoneNumber.formatInternational()) ||
-      contacts.get(parsedPhoneNumber.number) ||
-      contacts.get(parsedPhoneNumber.nationalNumber);
-    if (phoneContact) {
-      return phoneContact;
+  try {
+    const parsedPhoneNumber = parsePhoneNumber(handle);
+    if (parsedPhoneNumber) {
+      const phoneContact =
+        contacts.get(parsedPhoneNumber.formatNational()) ||
+        contacts.get(parsedPhoneNumber.formatInternational()) ||
+        contacts.get(parsedPhoneNumber.number) ||
+        contacts.get(parsedPhoneNumber.nationalNumber);
+      if (phoneContact) {
+        return phoneContact;
+      }
     }
+  } catch {
+    // ignore
   }
-  const lower = handle.toLowerCase();
 
-  return contacts.get(lower) || null;
+  return null;
 };
 
 export const useChatList = () => {
@@ -57,19 +73,51 @@ export const useChatList = () => {
   return useQuery<ChatList | null>(
     ["getChatList", Boolean(contacts), Boolean(dbChats), dbChats?.length, contacts?.size],
     async () => {
-      const chats = cloneDeep(dbChats || []);
-      if (contacts) {
-        for (const chat of chats) {
+      const chats = dbChats || [];
+      for (const chat of chats) {
+        if (contacts) {
           if (chat.handles.length) {
             for (const handle of chat.handles) {
               handle.contact = getContactFromHandle(handle.id, contacts);
             }
           }
         }
+
+        // add chat ids with exactly the same participant contacts together
+        const grouped = groupBy(chats, (chat) =>
+          chat.handles.map((h) => h.contact?.identifier || h.handle_id).join(", "),
+        );
+        const sameParticipantChats = Object.values(grouped);
+        for (const chats of sameParticipantChats) {
+          if (chats.length > 1 && chats[0].handles.length === 1) {
+            const chatIds = chats.map((chat) => chat.chat_id).sort() as number[];
+            for (const chat of chats) {
+              chat.sameParticipantChatIds = chatIds;
+            }
+          }
+        }
+        chat.name = getChatName(chat);
       }
-      return chats;
+      // allocate a new object to trigger a re-render
+      return chats.map((c) => ({ ...c }));
     },
   );
+};
+
+export const useChatMap = () => {
+  const { data: chats } = useChatList();
+
+  return React.useMemo(() => {
+    const chatMap = new Map<number, ChatList[number]>();
+    if (chats) {
+      for (const chat of chats) {
+        if (chat.chat_id) {
+          chatMap.set(chat.chat_id, chat);
+        }
+      }
+    }
+    return chatMap;
+  }, [chats, chats?.length]);
 };
 
 export const useHandleMap = () => {
@@ -106,11 +154,15 @@ export const useContacts = () => {
 };
 
 export const useLocalMessagesForChatId = (id: number | null) => {
-  return useQuery<MessagesForChat | null>(["getMessagesForChatId", id], async () => {
+  const chatMap = useChatMap();
+
+  const chat = chatMap?.get(id!);
+  const sameParticipantChatIds = chat?.sameParticipantChatIds;
+  return useQuery<MessagesForChat | null>(["getMessagesForChatId", id, sameParticipantChatIds], async () => {
     if (!id) {
       return null;
     }
-    const resp = (await ipcRenderer.invoke("getMessagesForChatId", id)) as MessagesForChat;
+    const resp = (await ipcRenderer.invoke("getMessagesForChatId", sameParticipantChatIds || id)) as MessagesForChat;
     return resp;
   });
 };
@@ -168,15 +220,6 @@ export const useAiMessagesForChatId = (id: number | null) => {
   const extendedConversations = useMimessage((state) => state.extendedConversations);
   return (id ? extendedConversations[id] : []) || [];
 };
-export const useLatestMessageForEachChat = () => {
-  return useQuery<Record<string | number, LatestMessage> | null>(["getLatestMessageForEachChat"], async () => {
-    const resp = (await ipcRenderer.invoke("getLatestMessageForEachChat")) as LatestMessagesForEachChat;
-    return resp.reduce((acc, cur) => {
-      acc[cur.chat_id as keyof typeof acc] = cur;
-      return acc;
-    }, {} as Record<string | number, LatestMessage>);
-  });
-};
 
 export const useContactMap = () => {
   const { data: contacts } = useContacts();
@@ -227,39 +270,14 @@ export const useEarliestMessageDate = () => {
   });
 };
 
-export interface WrappedStatsEnhanced extends WrappedStats {
-  contactInteractions: Array<WrappedStats["handleInteractions"][number] & { contact: Contact | null }>;
-}
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
-  const { data: contacts } = useContactMap();
 
-  return useQuery<WrappedStatsEnhanced>(
-    ["calculateWrappedStats", wrappedYear, Boolean(contacts), contacts?.size],
-    async () => {
-      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStatsEnhanced;
-      resp.contactInteractions = resp.handleInteractions.map((i) => ({ ...i, contact: null }));
-      // dedupe our handles, as one contact can have multiple handles
-      if (contacts && contacts.size > 0) {
-        const withContacts = resp.handleInteractions.map((i) => {
-          const contact = getContactFromHandle(i.handle_identifier, contacts);
-          return { ...i, contact };
-        });
-        const grouped = groupBy(withContacts, (e) => e.contact?.identifier || e.handle_identifier);
-        const contactInteractions = Object.values(grouped).map((handles) => {
-          const realCount = handles.reduce((acc, cur) => acc + Number(cur.message_count), 0);
-          return {
-            message_count: realCount,
-            contact: handles[0].contact,
-            handle_identifier: handles[0].handle_identifier,
-          };
-        });
-        resp.contactInteractions = contactInteractions.sort((a, b) => b.message_count - a.message_count);
-      }
-      console.log(resp);
-      return resp;
-    },
-  );
+  return useQuery<WrappedStats>(["calculateWrappedStats", wrappedYear], async () => {
+    const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
+    console.log(resp);
+    return resp;
+  });
 };
 
 interface Permissions {

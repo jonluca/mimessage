@@ -99,6 +99,7 @@
     "react-toastify": "^9.1.2",
     "rimraf": "^4.4.1",
     "skip-postinstall": "^1.0.0",
+    "sql-formatter": "^12.2.0",
     "sqlite3": "^5.1.6",
     "ts-node": "10.9.1",
     "typescript": "5.0.4",

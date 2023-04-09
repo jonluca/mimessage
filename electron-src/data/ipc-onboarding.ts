@@ -10,7 +10,7 @@ handleIpc("contacts", async () => {
   if (status !== "Authorized") {
     await requestAccess();
   }
-  const contacts = await getAllContacts(["contactImage", "contactThumbnailImage"]);
+  const contacts = await getAllContacts(["contactThumbnailImage"]);
   return contacts;
 });
 handleIpc("skipContactsCheck", () => {

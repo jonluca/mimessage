@@ -40,9 +40,57 @@ export const CHAT_CONTAINER_STYLE = {
   minWidth: CHAT_LIST_WIDTH,
 } as React.CSSProperties;
 
+const VirtualizedList = ({ chats }: { chats: Chat[] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const count = chats?.length ?? 0;
+  const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
+    count,
+    getScrollElement: () => containerRef.current!,
+    estimateSize: CHAT_HEIGHT,
+    overscan: 100,
+  });
+  const items = rowVirtualizer.getVirtualItems();
+
+  return (
+    <Box
+      ref={containerRef}
+      display={"flex"}
+      sx={{
+        display: "flex",
+        overflowY: "auto",
+        height: "100%",
+        background: "#2c2c2c",
+      }}
+      key={count}
+    >
+      <Box
+        sx={{
+          ...CHAT_CONTAINER_STYLE,
+          height: `${rowVirtualizer.getTotalSize()}px`,
+        }}
+      >
+        {items?.map((virtualRow) => {
+          const chat = chats?.[virtualRow.index];
+          if (!chat) {
+            return null;
+          }
+
+          const style = {
+            cursor: "pointer",
+            position: "absolute",
+            top: 0,
+            transform: `translateY(${virtualRow.start}px)`,
+          } as React.CSSProperties;
+          return <ChatEntry key={`${chat.chat_id}-${virtualRow.index}`} style={style} chat={chat} />;
+        })}
+      </Box>
+    </Box>
+  );
+};
+
 export const ChatList = () => {
   const { data } = useChatList();
-  const containerRef = useRef<HTMLDivElement>(null);
   const search = useMimessage((state) => state.search);
 
   const chatsToRender = useMemo(() => {
@@ -65,43 +113,28 @@ export const ChatList = () => {
     return data || [];
   }, [data, search]);
 
-  const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    count: chatsToRender?.length ?? 0,
-    getScrollElement: () => containerRef.current!,
-    estimateSize: CHAT_HEIGHT,
-    overscan: 100,
-  });
-  const items = rowVirtualizer.getVirtualItems();
+  const deduplicatedIndividualChats = useMemo(() => {
+    const toExclude = new Set<number>();
+    return chatsToRender
+      .map((c) => {
+        if (!c || toExclude.has(c.chat_id!)) {
+          return null;
+        }
+        if (c.sameParticipantChatIds) {
+          c.sameParticipantChatIds.forEach((id) => {
+            toExclude.add(id);
+          });
+        }
+        return c;
+      })
+      .filter(Boolean) as Chat[];
+  }, [chatsToRender]);
 
   return (
     <ChatListWrapper>
       <SearchBar />
       <ImessageWrapped />
-      <Box
-        ref={containerRef}
-        display={"flex"}
-        sx={{
-          display: "flex",
-          overflowY: "auto",
-          height: "100%",
-          background: "#2c2c2c",
-        }}
-      >
-        <Box
-          sx={{
-            ...CHAT_CONTAINER_STYLE,
-            height: `${rowVirtualizer.getTotalSize()}px`,
-          }}
-        >
-          {items?.map((virtualRow) => {
-            const chat = chatsToRender?.[virtualRow.index];
-            if (!chat) {
-              return null;
-            }
-            return <ChatEntry key={chat.guid} virtualRow={virtualRow} chat={chat} />;
-          })}
-        </Box>
-      </Box>
+      <VirtualizedList key={deduplicatedIndividualChats.length} chats={deduplicatedIndividualChats} />
     </ChatListWrapper>
   );
 };
