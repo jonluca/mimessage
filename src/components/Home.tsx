@@ -17,7 +17,8 @@ export const Home = () => {
       sx={{ background: "none", borderRadius: 1 }}
     >
       <ChatList />
-      {chatId ? <SelectedChat key={chatId} /> : <GlobalSearch />}
+      {chatId && <SelectedChat key={chatId} />}
+      <GlobalSearch />
       <HighlightedMessage />
     </Box>
   );

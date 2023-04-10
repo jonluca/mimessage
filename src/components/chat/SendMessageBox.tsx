@@ -145,7 +145,6 @@ export const SendMessageBox = () => {
   const tooManyParticipants = (chat?.handles.length || 0) > 1;
   const isDisabled = tooManyParticipants || isLoadingMessages || isAwaitingResponse;
   return (
-    // absolutely center dev
     <Box sx={{ display: "flex", flexDirection: "row", py: 1, justifyContent: "center", alignItems: "center" }}>
       {openAiKey ? (
         <>

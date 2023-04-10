@@ -85,6 +85,7 @@ export const ChatEntryRenderer = ({
 export const ChatEntry = ({ chat, style }: ChatEntryProps) => {
   const chatId = useMimessage((state) => state.chatId);
   const setChatId = useMimessage((state) => state.setChatId);
+  const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
 
   const handles = chat.handles || [];
   const name = chat.name;
@@ -96,7 +97,12 @@ export const ChatEntry = ({ chat, style }: ChatEntryProps) => {
       style={style}
       isSelected={isSelected}
       onClick={() => {
-        isSelected ? setChatId(null) : setChatId(chat.chat_id!);
+        if (isSelected) {
+          setChatId(null);
+        } else {
+          setChatId(chat.chat_id!);
+          setGlobalSearch(null);
+        }
       }}
       contact={isSingleConvo ? handles[0].contact : null}
       name={name}

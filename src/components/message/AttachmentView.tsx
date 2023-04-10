@@ -96,6 +96,17 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
     }
   };
 
+  if (message.filename === null) {
+    return (
+      <MessageBubbleText
+        system
+        text={`Missing attachment ${
+          message.transfer_name ? message.transfer_name : ""
+        }: Please download it in the native messages app`}
+      />
+    );
+  }
+
   return (
     <>
       {renderPlayableAsset() || (

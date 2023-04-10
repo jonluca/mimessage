@@ -6,12 +6,20 @@ import { AiMessageBubble, MessageBubble } from "../message/MessageBubble";
 import { Divider, LinearProgress } from "@mui/material";
 import { SendMessageBox } from "./SendMessageBox";
 import { FilterBar } from "./FilterBar";
-import type { VirtuosoHandle } from "react-virtuoso";
+import type { FlatIndexLocationWithAlign, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
+import { shallow } from "zustand/shallow";
 
 export const SelectedChat = () => {
-  const chatId = useMimessage((state) => state.chatId);
-  const filter = useMimessage((state) => state.filter);
+  const { chatId, filter, messageIdToBringToFocus, setMessageIdToBringToFocus } = useMimessage(
+    (state) => ({
+      setMessageIdToBringToFocus: state.setMessageIdToBringToFocus,
+      messageIdToBringToFocus: state.messageIdToBringToFocus,
+      chatId: state.chatId,
+      filter: state.filter,
+    }),
+    shallow,
+  );
 
   const chat = useChatById(chatId);
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
@@ -24,6 +32,25 @@ export const SelectedChat = () => {
   const hasItems = count > 0;
 
   const isMultiMemberChat = (chat?.handles?.length || 0) > 1;
+
+  React.useEffect(() => {
+    const virt = virtuoso.current;
+    if (virt && messageIdToBringToFocus) {
+      const index = messages?.findIndex(
+        (message) => "message_id" in message && message.message_id === messageIdToBringToFocus,
+      );
+      if (index !== undefined && index !== -1) {
+        virt?.scrollToIndex({ index, align: "center" });
+        const interval = setInterval(() => {
+          virt?.scrollToIndex({ index, align: "center" });
+        }, 100);
+        setTimeout(() => {
+          clearInterval(interval);
+          setMessageIdToBringToFocus(null);
+        }, 1000);
+      }
+    }
+  }, [messages, messageIdToBringToFocus]);
 
   const itemRenderer = (index: number) => {
     const message = messages?.[index];
@@ -63,6 +90,15 @@ export const SelectedChat = () => {
     );
   };
   const showFilterBar = hasItems || filter;
+
+  const initialTopMostItemIndex = messageIdToBringToFocus
+    ? ({
+        align: "center",
+        index:
+          messages?.findIndex((message) => "message_id" in message && message.message_id === messageIdToBringToFocus) ||
+          0,
+      } as FlatIndexLocationWithAlign)
+    : count - 1;
   return (
     <Box
       sx={{
@@ -78,13 +114,13 @@ export const SelectedChat = () => {
       {showFilterBar && <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
       <Virtuoso
         totalCount={count}
-        initialTopMostItemIndex={count - 1}
+        initialTopMostItemIndex={initialTopMostItemIndex}
         style={{ height: "100%" }}
         itemContent={itemRenderer}
         overscan={100}
         increaseViewportBy={2000}
         ref={virtuoso}
-        followOutput
+        followOutput={!messageIdToBringToFocus}
       />
       <SendMessageBox />
     </Box>

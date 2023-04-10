@@ -8,13 +8,14 @@ import type { AiMessage } from "../../context";
 import dayjs from "dayjs";
 import Highlighter from "react-highlight-words";
 import { useMimessage } from "../../context";
+import { shallow } from "zustand/shallow";
 
 const AnnouncementBubble = ({ message }: { message: Message }) => {
   const itemType = message?.item_type;
   const groupActionType = message?.group_action_type;
   const groupTitle = message?.group_title;
   const otherHandle = message?.other_handle;
-  const { data: handleMap } = useHandleMap();
+  const handleMap = useHandleMap();
   const handle = handleMap?.[message.handle_id!];
   const contact = handle?.contact;
   const name = contact?.parsedName || "You";
@@ -41,12 +42,12 @@ const AnnouncementBubble = ({ message }: { message: Message }) => {
   return <Box className={"announcement"}>{text}</Box>;
 };
 
-export const MessageBubbleText = ({ text }: { text: string | null }) => {
+export const MessageBubbleText = ({ text, system }: { system?: boolean; text: string | null }) => {
   const filter = useMimessage((state) => state.filter);
 
   return (
     <Box className={"message_part"}>
-      <Box className={"bubble"}>
+      <Box className={"bubble"} sx={{ color: system ? "red" : undefined }}>
         {filter ? <Highlighter searchWords={[filter]} autoEscape={true} textToHighlight={text || ""} /> : text}
       </Box>
     </Box>
@@ -68,8 +69,15 @@ export const MessageBubble = ({
   showTimes: boolean;
   recalcSize?: () => void | undefined;
 }) => {
-  const { data: handleMap } = useHandleMap();
-
+  const handleMap = useHandleMap();
+  const { setFilter, filter, setMessageIdToBringToFocus } = useMimessage(
+    (state) => ({
+      setMessageIdToBringToFocus: state.setMessageIdToBringToFocus,
+      filter: state.filter,
+      setFilter: state.setFilter,
+    }),
+    shallow,
+  );
   if (!message) {
     return null;
   }
@@ -79,7 +87,7 @@ export const MessageBubble = ({
 
   const isIMessage = message.service === "iMessage";
   const isAnnouncement = message.item_type !== 0;
-  const isMedia = message.attachment_id !== null && message.filename;
+  const isMedia = message.attachment_id !== null && (message.filename || message.mime_type);
   if (isAnnouncement) {
     return <AnnouncementBubble message={message} />;
   }
@@ -98,13 +106,19 @@ export const MessageBubble = ({
   };
 
   const showDateOfMessage = (message?.date || 0) - (previousMessage?.date || 0) > NINETY_MINUTES_NANOS;
-
+  const onClick = () => {
+    if (filter) {
+      // if we're currently in filter mode, lets jump to the message
+      setMessageIdToBringToFocus(message.message_id!);
+      setFilter(null);
+    }
+  };
   return (
     <>
       {showDateOfMessage && message.date_obj && (
         <Box className={"time-dif"}>{dayjs(message.date_obj).format("dddd, MMMM D, YYYY HH:mm A")}</Box>
       )}
-      <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
+      <Box onClick={onClick} className={"message"} sx={{ mx: 1, my: 0.25, cursor: filter ? "pointer" : undefined }}>
         {showTimes && !isFromMe && timeText()}
         {showAvatar && !isFromMe && (
           <Box sx={{ pr: 0.5 }}>
@@ -119,7 +133,7 @@ export const MessageBubble = ({
           )}
           <Box
             className={[
-              isFromMe ? "sent" : isMedia ? "" : "received",
+              isFromMe ? "sent" : "received",
               isMedia ? "media-attachment" : isIMessage ? "imessage" : "sms",
             ].join(" ")}
           >

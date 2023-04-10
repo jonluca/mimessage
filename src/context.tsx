@@ -15,12 +15,16 @@ export const WRAPPED_ALL_TIME_YEAR = 0;
 export interface AppContext {
   search: string | null;
   filter: string | null;
+  messageIdToBringToFocus: number | null;
+  setMessageIdToBringToFocus: (updated: number | null) => void;
+  globalSearch: string | null;
   relation: string;
   regexSearch: boolean;
   setRegexSearch: (updated: boolean) => void;
   setSearch: (updated: string | null) => void;
   setRelation: (updated: string) => void;
   setFilter: (updated: string | null) => void;
+  setGlobalSearch: (updated: string | null) => void;
   startDate: string;
   openAiKey: string | null;
   setOpenAiKey: (key: string | null) => void;
@@ -43,10 +47,13 @@ const openAiLocalStorageKey = "openai-key";
 const useMimessage = create<AppContext>((set, get) => ({
   search: null,
   filter: null,
+  messageIdToBringToFocus: null,
+  globalSearch: null,
   regexSearch: false,
   setRegexSearch: (regexSearch: boolean) => set({ regexSearch }),
   setSearch: (search: string | null) => set({ search }),
   setFilter: (filter: string | null) => set({ filter }),
+  setGlobalSearch: (globalSearch: string | null) => set({ globalSearch }),
   setRelation: (relation: string) => set({ relation }),
   startDate: "",
   relation: "friend",
@@ -64,6 +71,7 @@ const useMimessage = create<AppContext>((set, get) => ({
   },
   chatId: null,
   setChatId: (chatId: number | null) => set({ chatId }),
+  setMessageIdToBringToFocus: (messageIdToBringToFocus: number | null) => set({ messageIdToBringToFocus }),
   highlightedMessage: null,
   setHighlightedMessage: (highlightedMessage: Message | null) => set({ highlightedMessage }),
   setExtendedConversations: (extendedConversations: ExtendedConversations) =>

@@ -237,7 +237,7 @@ export class SQLDatabase {
       .select([
         "attachment_id",
         "attributedBody",
-        "chat_id",
+        "chat_message_join.chat_id as chat_id",
         "date",
         "date_delivered",
         "date_read",
@@ -245,19 +245,19 @@ export class SQLDatabase {
         "group_title",
         "mime_type",
         "other_handle",
-        "handle_id",
+        "message.handle_id as handle_id",
         "is_from_me",
         "is_read",
         "item_type",
         "filename",
         "error",
         "payload_data",
-        "service",
+        "message.service as service",
         "text",
         "transfer_name",
         "type",
       ])
-      .select(sql<string>`message.ROWID`.as("message_id"));
+      .select(sql<number>`message.ROWID`.as("message_id"));
     return messageQuery;
   };
 
@@ -270,18 +270,20 @@ export class SQLDatabase {
           cmpr("transfer_name", "like", `%${searchTerm}%`),
         ]);
       })
+      .where("item_type", "not in", [1, 3, 4, 5, 6])
+      .where("associated_message_type", "=", 0)
       .orderBy("date", "desc")
       .execute();
-    return messages;
+    return this.enhanceMessageResponses<typeof messages[number]>(messages);
   };
 
-  private enhanceMessageResponses = async (messages: JoinedMessageType[]) => {
-    interface EnhancedMessage extends JoinedMessageType {
+  private enhanceMessageResponses = async <T extends JoinedMessageType = JoinedMessageType>(messages: T[]) => {
+    type EnhancedMessage = T & {
       attachmentMessages?: EnhancedMessage[];
       date_obj?: Date;
       date_obj_delivered?: Date;
       date_obj_read?: Date;
-    }
+    };
 
     const enhancedMessages = messages as EnhancedMessage[];
 
@@ -319,9 +321,7 @@ export class SQLDatabase {
       messageToUse.attachmentMessages = messages.slice(1);
       return messageToUse;
     });
-    flat.sort((a, b) => {
-      return (a.date || 0) - (b.date || 0);
-    });
+
     return flat as EnhancedMessage[];
   };
 
@@ -329,7 +329,11 @@ export class SQLDatabase {
     const messages = await this.getJoinedMessageQuery()
       .where("chat_message_join.chat_id", "in", [chatId].flat())
       .execute();
-    return this.enhanceMessageResponses(messages);
+    const enhanced = await this.enhanceMessageResponses(messages);
+    enhanced.sort((a, b) => {
+      return (a.date || 0) - (b.date || 0);
+    });
+    return enhanced;
   };
 
   private getMessageQueryByYear = (year: number) => {
@@ -362,14 +366,6 @@ export class SQLDatabase {
   };
 
   private countMessagesByHandle = async (year: number) => {
-    /*
-    SELECT h.id AS handle_identifier, COUNT(m.ROWID) AS message_count
-FROM message m
-JOIN handle h ON m.handle_id = h.ROWID
-GROUP BY h.id
-ORDER BY message_count DESC;
-     */
-
     const queryByOriginator = (isFromMe: boolean) => {
       const query = this.getMessageQueryByYear(year)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
@@ -386,20 +382,6 @@ ORDER BY message_count DESC;
   };
 
   private countMessagesByWeekday = async (year: number) => {
-    /*
-select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
-           when 0 then 'Sunday'
-           when 1 then 'Monday'
-           when 2 then 'Tuesday'
-           when 3 then 'Wednesday'
-           when 4 then 'Thursday'
-           when 5 then 'Friday'
-           else 'Saturday' end as weekday
-from message as m
-group by  weekday
-limit 10
-     */
-
     const getByOriginator = (fromMe: boolean) => {
       const query = this.getMessageQueryByYear(year)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))

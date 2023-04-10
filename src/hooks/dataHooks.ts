@@ -108,8 +108,8 @@ export const useChatList = () => {
 export const useChatMap = () => {
   const { data: chats } = useChatList();
 
-  return React.useMemo(() => {
-    const chatMap = new Map<number, ChatList[number]>();
+  return React.useMemo<Map<number, Chat>>(() => {
+    const chatMap = new Map<number, Chat>();
     if (chats) {
       for (const chat of chats) {
         if (chat.chat_id) {
@@ -124,14 +124,14 @@ export const useChatMap = () => {
 export const useHandleMap = () => {
   const { data: chatList } = useChatList();
 
-  return useQuery<Record<number, Handle> | null>(["useHandleMap", Boolean(chatList), chatList?.length], async () => {
+  return React.useMemo<Record<number, Handle>>(() => {
     const handleMap: Record<number, Handle> | null = {};
     const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
     for (const handle of handles) {
       handleMap[handle.ROWID!] = handle;
     }
     return handleMap;
-  });
+  }, [chatList, chatList?.length]);
 };
 export const useChatById = (id: number | null) => {
   const { data: list } = useChatList();

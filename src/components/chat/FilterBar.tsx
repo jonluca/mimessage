@@ -9,7 +9,8 @@ import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import BrowserUpdatedIcon from "@mui/icons-material/BrowserUpdated";
 import Popover from "@mui/material/Popover";
 import type { VirtuosoHandle } from "react-virtuoso";
-
+import { shallow } from "zustand/shallow";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 const BUTTON_HEIGHT = 30;
 export const FilterBar = ({
   showTimes,
@@ -22,8 +23,15 @@ export const FilterBar = ({
 }) => {
   const [exportOpen, setExportOpen] = useState(false);
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-  const regexSearch = useMimessage((state) => state.regexSearch);
-  const setRegexSearch = useMimessage((state) => state.setRegexSearch);
+  const { setChatId, regexSearch, setRegexSearch, globalSearch } = useMimessage(
+    (state) => ({
+      regexSearch: state.regexSearch,
+      globalSearch: state.globalSearch,
+      setRegexSearch: state.setRegexSearch,
+      setChatId: state.setChatId,
+    }),
+    shallow,
+  );
 
   const handleSettingsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -42,6 +50,19 @@ export const FilterBar = ({
       className={"draggable"}
     >
       {exportOpen && <ExportChat onClose={() => setExportOpen(false)} />}
+      {globalSearch && (
+        <Button
+          sx={{ ml: 1.5, height: BUTTON_HEIGHT }}
+          aria-describedby={id}
+          variant="contained"
+          title={"Back"}
+          onClick={() => {
+            setChatId(null);
+          }}
+        >
+          <ArrowBackIcon />
+        </Button>
+      )}
       <Filter />
       <Button
         sx={{ height: BUTTON_HEIGHT }}

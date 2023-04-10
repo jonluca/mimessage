@@ -26,7 +26,6 @@ export const SetOpenAiKey = () => {
   };
 
   return (
-    // absolutely center dev
     <Box sx={{ display: "flex", flexDirection: "row", pt: 1 }}>
       <Backdrop open={aiKeyModalOpen}>
         <Box sx={{ background: "#2c2c2c", p: 1, m: 1 }} display={"flex"} flexDirection={"column"}>

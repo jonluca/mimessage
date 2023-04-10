@@ -25,7 +25,6 @@ export const SearchBar = () => {
   }, [setSearch]);
 
   return (
-    // absolutely center dev
     <Box
       sx={{
         transition: "top 0.5s",
@@ -85,7 +84,6 @@ export const Filter = () => {
   const onChangeDebounced = useMemo(() => debounce(onFilterChange, 450), [onFilterChange]);
 
   return (
-    // absolutely center dev
     <Box
       sx={{
         transition: "top 0.5s",
