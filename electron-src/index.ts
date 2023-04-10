@@ -1,5 +1,5 @@
 import type { CustomScheme } from "electron";
-import { app, Menu, protocol, shell } from "electron";
+import { app, Menu, nativeTheme, protocol, shell } from "electron";
 import { addFlags } from "./utils/flags";
 import isDev from "electron-is-dev";
 import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils/util";
@@ -92,6 +92,7 @@ if (!amMainInstance) {
     if (await localDbExists()) {
       await db.initialize();
     }
+    nativeTheme.themeSource = "dark";
     db.setupHandlers();
     appReady.resolve();
   });

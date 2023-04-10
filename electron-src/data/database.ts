@@ -156,6 +156,12 @@ export class SQLDatabase {
       };
 
       const db = new Kysely<MesssagesDatabase>(options);
+      // create virtual table if not exists
+      await sqliteDb.exec("CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(text,message_id)");
+      const count = await db.selectFrom("message_fts").select("message_id").limit(1).executeTakeFirst();
+      if (count) {
+        await sqliteDb.exec("INSERT INTO message_fts SELECT text, ROWID as message_id FROM message");
+      }
       this.dbWriter = db;
       await this.addParsedTextToNullMessages();
       return true;

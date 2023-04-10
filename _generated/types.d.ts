@@ -190,6 +190,38 @@ export interface MessageAttachmentJoin {
   attachment_id: number | null;
 }
 
+export interface MessageFts {
+  text: string | null;
+  message_id: string | null;
+}
+
+export interface MessageFtsConfig {
+  k: string;
+  v: string | null;
+}
+
+export interface MessageFtsContent {
+  id: number | null;
+  c0: string | null;
+  c1: string | null;
+}
+
+export interface MessageFtsData {
+  id: number | null;
+  block: Buffer | null;
+}
+
+export interface MessageFtsDocsize {
+  id: number | null;
+  sz: Buffer | null;
+}
+
+export interface MessageFtsIdx {
+  segid: string;
+  term: string;
+  pgno: string | null;
+}
+
 export interface MessageProcessingTask {
   ROWID: Generated<number | null>;
   guid: string;
@@ -243,6 +275,12 @@ export interface DB {
   kvtable: Kvtable;
   message: Message;
   message_attachment_join: MessageAttachmentJoin;
+  message_fts: MessageFts;
+  message_fts_config: MessageFtsConfig;
+  message_fts_content: MessageFtsContent;
+  message_fts_data: MessageFtsData;
+  message_fts_docsize: MessageFtsDocsize;
+  message_fts_idx: MessageFtsIdx;
   message_processing_task: MessageProcessingTask;
   recoverable_message_part: RecoverableMessagePart;
   sync_deleted_attachments: SyncDeletedAttachments;

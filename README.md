@@ -28,6 +28,18 @@ Fun sidenote: ChatGPT actually came up with a lot of the stats that would be int
 
 To install the application, check out the releases tab and download the app for your architecture.https://github.com/jonluca/mimessage/releases
 
+### Missing attachments
+
+If a lot of your conversations are missing attachments, you can try the following:
+
+- Open up iMessage settings
+- Unselect "Enable Messages in iCloud"
+- In the prompt, select "Only this device"
+- Wait for the messages to sync and download
+- Re-enable Messages in iCloud
+
+This will force iMessage to download all the attachments and messages to your computer. This process might take a while depending on how many messages you have.
+
 ## Developing
 
 First clone the repo, then run `yarn` to install dependencies. Then run `yarn dev` to start the application.
