@@ -8,16 +8,17 @@ import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import BrowserUpdatedIcon from "@mui/icons-material/BrowserUpdated";
 import Popover from "@mui/material/Popover";
+import type { VirtuosoHandle } from "react-virtuoso";
 
 const BUTTON_HEIGHT = 30;
 export const FilterBar = ({
   showTimes,
   setShowTimes,
-  element,
+  virtuoso,
 }: {
   showTimes: boolean;
   setShowTimes: Dispatch<SetStateAction<boolean>>;
-  element: HTMLDivElement | null;
+  virtuoso?: React.RefObject<VirtuosoHandle> | null;
 }) => {
   const [exportOpen, setExportOpen] = useState(false);
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
@@ -107,14 +108,22 @@ export const FilterBar = ({
           </FormGroup>
           <Button
             onClick={() => {
-              element?.scrollTo(0, 0);
+              virtuoso?.current?.scrollToIndex({
+                index: 0,
+                align: "start",
+                behavior: "auto",
+              });
             }}
           >
             scroll to the top
           </Button>
           <Button
             onClick={() => {
-              element?.scrollTo(0, element.scrollHeight);
+              virtuoso?.current?.scrollToIndex({
+                index: "LAST",
+                align: "start",
+                behavior: "auto",
+              });
             }}
           >
             scroll to the end

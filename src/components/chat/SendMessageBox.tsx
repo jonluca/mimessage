@@ -146,7 +146,7 @@ export const SendMessageBox = () => {
   const isDisabled = tooManyParticipants || isLoadingMessages || isAwaitingResponse;
   return (
     // absolutely center dev
-    <Box sx={{ display: "flex", flexDirection: "row", pt: 1, justifyContent: "center", alignItems: "center" }}>
+    <Box sx={{ display: "flex", flexDirection: "row", py: 1, justifyContent: "center", alignItems: "center" }}>
       {openAiKey ? (
         <>
           <SearchInput

@@ -9,7 +9,7 @@ import type { Contact } from "node-mac-contacts";
 export const CHAT_HEIGHT = 65;
 
 interface ChatEntryProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   chat: Chat;
 }
 

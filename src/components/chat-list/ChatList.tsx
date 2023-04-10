@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import Box from "@mui/material/Box";
 import { useChatList } from "../../hooks/dataHooks";
 import type { Chat } from "../../interfaces";
@@ -6,8 +6,8 @@ import { useMimessage } from "../../context";
 import { SearchBar } from "./SearchBox";
 import Fuse from "fuse.js";
 import { ImessageWrapped } from "./ImessageWrapped";
-import { CHAT_HEIGHT, ChatEntry } from "./ChatEntry";
-import { useVirtualizer } from "../react-virtual";
+import { ChatEntry } from "./ChatEntry";
+import { Virtuoso } from "react-virtuoso";
 
 const CHAT_LIST_WIDTH = 320;
 export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
@@ -41,51 +41,28 @@ export const CHAT_CONTAINER_STYLE = {
 } as React.CSSProperties;
 
 const VirtualizedList = ({ chats }: { chats: Chat[] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const count = chats?.length ?? 0;
-  const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
-    count,
-    getScrollElement: () => containerRef.current!,
-    estimateSize: CHAT_HEIGHT,
-    overscan: 100,
-  });
-  const items = rowVirtualizer.getVirtualItems();
 
+  const itemContent = (index: number) => {
+    const chat = chats?.[index];
+    if (!chat) {
+      return null;
+    }
+
+    return <ChatEntry key={`${chat.chat_id}-${index}`} chat={chat} />;
+  };
+
+  if (!count) {
+    return null;
+  }
   return (
-    <Box
-      ref={containerRef}
-      display={"flex"}
-      sx={{
-        display: "flex",
-        overflowY: "auto",
-        height: "100%",
-        background: "#2c2c2c",
-      }}
-      key={count}
-    >
-      <Box
-        sx={{
-          ...CHAT_CONTAINER_STYLE,
-          height: `${rowVirtualizer.getTotalSize()}px`,
-        }}
-      >
-        {items?.map((virtualRow) => {
-          const chat = chats?.[virtualRow.index];
-          if (!chat) {
-            return null;
-          }
-
-          const style = {
-            cursor: "pointer",
-            position: "absolute",
-            top: 0,
-            transform: `translateY(${virtualRow.start}px)`,
-          } as React.CSSProperties;
-          return <ChatEntry key={`${chat.chat_id}-${virtualRow.index}`} style={style} chat={chat} />;
-        })}
-      </Box>
-    </Box>
+    <Virtuoso
+      increaseViewportBy={2000}
+      style={{ height: "100%" }}
+      totalCount={count}
+      itemContent={itemContent}
+      overscan={100}
+    />
   );
 };
 

@@ -360,20 +360,6 @@ limit 10
   };
 
   private countMessagesByMonth = async (year: number) => {
-    /*
-select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
-           when 0 then 'Sunday'
-           when 1 then 'Monday'
-           when 2 then 'Tuesday'
-           when 3 then 'Wednesday'
-           when 4 then 'Thursday'
-           when 5 then 'Friday'
-           else 'Saturday' end as weekday
-from message as m
-group by  weekday
-limit 10
-     */
-
     const getByOriginator = (fromMe: boolean) => {
       return this.getMessageQueryByYear(year)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
@@ -403,20 +389,6 @@ limit 10
   };
 
   private lateNightMessenger = async (year: number) => {
-    /*
-select COUNT(m.ROWID), case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch')) as integer)
-           when 0 then 'Sunday'
-           when 1 then 'Monday'
-           when 2 then 'Tuesday'
-           when 3 then 'Wednesday'
-           when 4 then 'Thursday'
-           when 5 then 'Friday'
-           else 'Saturday' end as weekday
-from message as m
-group by  weekday
-limit 10
-     */
-
     const getByOriginator = (fromMe: boolean) => {
       const query = this.getMessageQueryByYear(year)
         .select("c.ROWID as chat_id")
@@ -476,6 +448,27 @@ limit 10
       }
     }
     return counted;
+  };
+
+  private getMessageText = async (year: number) => {
+    const query = this.getMessageQueryByYear(year).select(["text", "attributedBody", "is_from_me"]);
+
+    const chats = await query.execute();
+    for (const chat of chats) {
+      if (!chat.text && chat.attributedBody) {
+        chat.text = await getTextFromBuffer(chat.attributedBody);
+      }
+    }
+    const messageText: string[] = chats
+      .map((chat) => {
+        return (chat.text || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
+      })
+      .filter(Boolean) as string[];
+
+    return messageText;
   };
   calculateWrappedStats = async (year: number) => {
     const [

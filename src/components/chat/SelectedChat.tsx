@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
 import { useChatById, useMessagesForChatId } from "../../hooks/dataHooks";
@@ -6,32 +6,63 @@ import { AiMessageBubble, MessageBubble } from "../message/MessageBubble";
 import { Divider, LinearProgress } from "@mui/material";
 import { SendMessageBox } from "./SendMessageBox";
 import { FilterBar } from "./FilterBar";
-import { useVirtualizer } from "../react-virtual";
+import type { VirtuosoHandle } from "react-virtuoso";
+import { Virtuoso } from "react-virtuoso";
 
 export const SelectedChat = () => {
   const chatId = useMimessage((state) => state.chatId);
   const filter = useMimessage((state) => state.filter);
+
   const chat = useChatById(chatId);
   const { data: messages, isLoading } = useMessagesForChatId(chatId);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [showTimes, setShowTimes] = useState(false);
+
+  const virtuoso = useRef<VirtuosoHandle>(null);
+
   const count = messages?.length || 0;
 
-  const virtualizer = useVirtualizer({
-    count,
-    getScrollElement: () => containerRef.current,
-    estimateSize: 80,
-    overscan: 100,
-  });
-
-  const items = virtualizer.getVirtualItems();
-  const hasItems = items && items.length > 0;
+  const hasItems = count > 0;
 
   const isMultiMemberChat = (chat?.handles?.length || 0) > 1;
-  useEffect(() => {
-    containerRef.current?.scrollTo(0, containerRef.current.scrollHeight);
-  }, [chatId, count, virtualizer]);
 
+  const itemRenderer = (index: number) => {
+    const message = messages?.[index];
+    const previousMessage = messages?.[index - 1];
+
+    if (!message) {
+      return null;
+    }
+
+    if ("divider" in message) {
+      return (
+        <Box key={`divider-${index}`} data-index={index}>
+          <Divider sx={{ height: 3, my: 1, border: "0 none", background: "#2c2c2c" }} />
+        </Box>
+      );
+    }
+
+    const isAiMessage = "role" in message;
+    return (
+      <Box key={`${isAiMessage ? message.content : message.chat_id}-${index}`} data-index={index}>
+        {isAiMessage ? (
+          <AiMessageBubble message={message} showTimes={showTimes} />
+        ) : (
+          <MessageBubble
+            showAvatar={isMultiMemberChat}
+            message={message}
+            previousMessage={
+              !previousMessage || "role" in previousMessage || "divider" in previousMessage ? null : previousMessage
+            }
+            showTimes={showTimes}
+            isGroupedMessage={
+              previousMessage && "handle_id" in previousMessage && message?.handle_id === previousMessage?.handle_id
+            }
+          />
+        )}
+      </Box>
+    );
+  };
+  const showFilterBar = hasItems || filter;
   return (
     <Box
       sx={{
@@ -44,81 +75,17 @@ export const SelectedChat = () => {
       }}
     >
       {isLoading && <LinearProgress />}
-      {(hasItems || filter) && (
-        <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} element={containerRef.current} />
-      )}
-      <Box
-        ref={containerRef}
-        style={{
-          height: "100%",
-          width: "100%",
-          overflowY: "auto",
-          overflowX: "hidden",
-          contain: "strict",
-        }}
-      >
-        <Box
-          style={{
-            height: virtualizer.getTotalSize(),
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {hasItems && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${items[0].start}px)`,
-                p: 1,
-              }}
-            >
-              {items.map((virtualRow) => {
-                const message = messages?.[virtualRow.index];
-                const previousMessage = messages?.[virtualRow.index - 1];
-
-                if (!message) {
-                  return null;
-                }
-
-                if ("divider" in message) {
-                  return (
-                    <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
-                      <Divider sx={{ height: 3, my: 1, border: "0 none", background: "#2c2c2c" }} />
-                    </Box>
-                  );
-                }
-
-                return (
-                  <Box key={virtualRow.key} data-index={virtualRow.index} ref={virtualizer.measureElement}>
-                    {"role" in message ? (
-                      <AiMessageBubble message={message} showTimes={showTimes} />
-                    ) : (
-                      <MessageBubble
-                        showAvatar={isMultiMemberChat}
-                        message={message}
-                        previousMessage={
-                          !previousMessage || "role" in previousMessage || "divider" in previousMessage
-                            ? null
-                            : previousMessage
-                        }
-                        showTimes={showTimes}
-                        isGroupedMessage={
-                          previousMessage &&
-                          "handle_id" in previousMessage &&
-                          message?.handle_id === previousMessage?.handle_id
-                        }
-                      />
-                    )}
-                  </Box>
-                );
-              })}
-            </Box>
-          )}
-        </Box>
-      </Box>
+      {showFilterBar && <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
+      <Virtuoso
+        totalCount={count}
+        initialTopMostItemIndex={count - 1}
+        style={{ height: "100%" }}
+        itemContent={itemRenderer}
+        overscan={100}
+        increaseViewportBy={2000}
+        ref={virtuoso}
+        followOutput
+      />
       <SendMessageBox />
     </Box>
   );
