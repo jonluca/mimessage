@@ -398,10 +398,6 @@ td {
 }
 
 @media (prefers-color-scheme: dark) {
-  body {
-    background: black;
-  }
-
   .announcement {
     color: lightgray;
   }

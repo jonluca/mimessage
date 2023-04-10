@@ -11,7 +11,6 @@ const Page = () => {
       height={"100%"}
       alignItems={"center"}
       alignContent={"center"}
-      sx={{ background: "black" }}
     >
       <WrappedPage />
     </Box>

@@ -1,16 +1,21 @@
 import React from "react";
 import Box from "@mui/material/Box";
 import { Home } from "../components/Home";
-import { useDoesLocalDbExist, useHasAllowedPermissions } from "../hooks/dataHooks";
-import { CircularProgress } from "@mui/material";
-import { Onboarding } from "../components/Onboarding";
+import { useMimessage } from "../context";
 
 const Index = () => {
-  const { data: localDbExists } = useDoesLocalDbExist();
-  const { data: permissions } = useHasAllowedPermissions();
-  const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
-  const hasContactsAccess = permissions?.contactsStatus === "authorized";
-
+  const setChatId = useMimessage((state) => state.setChatId);
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setChatId(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
   return (
     <Box
       display={"flex"}
@@ -19,16 +24,9 @@ const Index = () => {
       height={"100%"}
       alignItems={"center"}
       alignContent={"center"}
-      sx={{ background: "black" }}
       overflow={"hidden"}
     >
-      {localDbExists === false || !hasDiskAccess || !hasContactsAccess ? (
-        <Onboarding />
-      ) : localDbExists === true ? (
-        <Home />
-      ) : (
-        <CircularProgress />
-      )}
+      <Home />
     </Box>
   );
 };

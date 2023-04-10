@@ -5,6 +5,7 @@ import { MessageAvatar } from "../message/Avatar";
 import Typography from "@mui/material/Typography";
 import React from "react";
 import type { Contact } from "node-mac-contacts";
+import { CHAT_LIST_WIDTH } from "./ChatList";
 
 export const CHAT_HEIGHT = 65;
 
@@ -38,7 +39,7 @@ export const ChatEntryRenderer = ({
         px: 2,
         mx: 1,
         cursor: "pointer",
-        width: "90%",
+        width: CHAT_LIST_WIDTH - 16,
         height: CHAT_HEIGHT,
         minHeight: CHAT_HEIGHT,
         overflow: "hidden",
@@ -95,7 +96,7 @@ export const ChatEntry = ({ chat, style }: ChatEntryProps) => {
       style={style}
       isSelected={isSelected}
       onClick={() => {
-        setChatId(chat.chat_id!);
+        isSelected ? setChatId(null) : setChatId(chat.chat_id!);
       }}
       contact={isSingleConvo ? handles[0].contact : null}
       name={name}

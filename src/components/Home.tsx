@@ -4,6 +4,7 @@ import { useMimessage } from "../context";
 import { ChatList } from "./chat-list/ChatList";
 import { SelectedChat } from "./chat/SelectedChat";
 import { HighlightedMessage } from "./message/HighlightedMessage";
+import { GlobalSearch } from "./global-search/GlobalSearch";
 
 export const Home = () => {
   const chatId = useMimessage((state) => state.chatId);
@@ -16,7 +17,7 @@ export const Home = () => {
       sx={{ background: "none", borderRadius: 1 }}
     >
       <ChatList />
-      <SelectedChat key={chatId} />
+      {chatId ? <SelectedChat key={chatId} /> : <GlobalSearch />}
       <HighlightedMessage />
     </Box>
   );

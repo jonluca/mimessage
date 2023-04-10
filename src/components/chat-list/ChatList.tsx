@@ -9,7 +9,7 @@ import { ImessageWrapped } from "./ImessageWrapped";
 import { ChatEntry } from "./ChatEntry";
 import { Virtuoso } from "react-virtuoso";
 
-const CHAT_LIST_WIDTH = 320;
+export const CHAT_LIST_WIDTH = 320;
 export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
   return (
     <Box
@@ -19,7 +19,6 @@ export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
         display: "flex",
         overflowY: "auto",
         height: "100%",
-        background: "#313233",
         pt: 3,
         width: CHAT_LIST_WIDTH,
         minWidth: CHAT_LIST_WIDTH,

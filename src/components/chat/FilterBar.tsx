@@ -38,7 +38,7 @@ export const FilterBar = ({
 
   return (
     <Box
-      sx={{ display: "flex", flexDirection: "row", py: 2, background: "#3a3939", alignItems: "center" }}
+      sx={{ display: "flex", flexDirection: "row", py: 2, background: "#383938", alignItems: "center" }}
       className={"draggable"}
     >
       {exportOpen && <ExportChat onClose={() => setExportOpen(false)} />}

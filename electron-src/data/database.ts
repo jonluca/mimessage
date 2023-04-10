@@ -1,5 +1,6 @@
 import SqliteDb from "better-sqlite3";
 import { app } from "electron";
+import type { SelectQueryBuilder } from "kysely";
 import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
 import path from "path";
@@ -13,10 +14,13 @@ import { countBy, groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
 
-import { getTextFromBuffer } from "../utils/buffer";
+import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
 
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
+
+type ExtractO<T> = T extends SelectQueryBuilder<any, any, infer O> ? O : never;
+type JoinedMessageType = ExtractO<ReturnType<SQLDatabase["getJoinedMessageQuery"]>>;
 
 export class SQLDatabase {
   path: string = appMessagesDbCopy;
@@ -61,6 +65,41 @@ export class SQLDatabase {
 
     return this.initializationPromise;
   };
+
+  addParsedTextToNullMessages = async () => {
+    const db = this.db;
+    const messagesWithNullText = await db
+      .selectFrom("message")
+      .select(["ROWID", "attributedBody"])
+      .where("text", "is", null)
+      .where("attributedBody", "is not", null)
+      .execute();
+
+    if (messagesWithNullText.length) {
+      const now = performance.now();
+      logger.info(`Adding parsed text to ${messagesWithNullText.length} messages`);
+
+      await db.transaction().execute(async (trx) => {
+        for (const message of messagesWithNullText) {
+          try {
+            const { attributedBody, ROWID } = message;
+            if (attributedBody) {
+              const parsed = await decodeMessageBuffer(attributedBody);
+              if (parsed) {
+                const string = parsed[0]?.value?.string;
+                if (typeof string === "string") {
+                  await trx.updateTable("message").set({ text: string }).where("ROWID", "=", ROWID).executeTakeFirst();
+                }
+              }
+            }
+          } catch {
+            //skip
+          }
+        }
+      });
+      logger.info(`Done adding parsed text to ${messagesWithNullText.length} messages in ${performance.now() - now}ms`);
+    }
+  };
   get db() {
     if (!this.dbWriter) {
       throw new Error("DB not initialized!");
@@ -91,16 +130,16 @@ export class SQLDatabase {
       if (!(await localDbExists())) {
         return false;
       }
-      const sqliteDb = new SqliteDb(this.path, { readonly: true });
+      const sqliteDb = new SqliteDb(this.path);
       const dialect = new SqliteDialect({ database: sqliteDb });
-      let options: KyselyConfig = {
+      const options: KyselyConfig = {
         dialect,
-      };
-      if (debugLoggingEnabled) {
-        options = {
-          ...options,
-          log(event): void {
+        log(event): void {
+          const isError = event.level === "error";
+
+          if (isError || debugLoggingEnabled) {
             const { sql, parameters } = event.query;
+
             const { queryDurationMillis } = event;
             const duration = queryDurationMillis.toFixed(2);
             const params = (parameters as string[]) || [];
@@ -108,14 +147,17 @@ export class SQLDatabase {
             if (event.level === "query") {
               logger.debug(`[Query - ${duration}ms]:\n${formattedSql}\n`);
             }
-            if (event.level === "error") {
+
+            if (isError) {
               logger.error(`[SQL Error - ${duration}ms]: ${event.error}\n\n${formattedSql}\n`);
             }
-          },
-        };
-      }
+          }
+        },
+      };
+
       const db = new Kysely<MesssagesDatabase>(options);
       this.dbWriter = db;
+      await this.addParsedTextToNullMessages();
       return true;
     } catch (e) {
       console.error(e);
@@ -185,9 +227,9 @@ export class SQLDatabase {
     return localDbExists();
   };
 
-  getMessagesForChatId = async (chatId: number | number[]) => {
+  private getJoinedMessageQuery = () => {
     const db = this.db;
-    const messages = await db
+    const messageQuery = db
       .selectFrom("message")
       .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
       .leftJoin("message_attachment_join", "message_attachment_join.message_id", "message.ROWID")
@@ -215,17 +257,32 @@ export class SQLDatabase {
         "transfer_name",
         "type",
       ])
-      .select(sql<string>`message.ROWID`.as("message_id"))
-      .where("chat_message_join.chat_id", "in", [chatId].flat())
-      .execute();
+      .select(sql<string>`message.ROWID`.as("message_id"));
+    return messageQuery;
+  };
 
-    type Message = typeof messages[number];
-    interface EnhancedMessage extends Message {
-      attachmentMessages?: Message[];
+  fullTextMessageSearch = async (searchTerm: string) => {
+    const messages = await this.getJoinedMessageQuery()
+      .where(({ or, cmpr }) => {
+        return or([
+          cmpr("text", "like", `%${searchTerm}%`),
+          cmpr("filename", "like", `%${searchTerm}%`),
+          cmpr("transfer_name", "like", `%${searchTerm}%`),
+        ]);
+      })
+      .orderBy("date", "desc")
+      .execute();
+    return messages;
+  };
+
+  private enhanceMessageResponses = async (messages: JoinedMessageType[]) => {
+    interface EnhancedMessage extends JoinedMessageType {
+      attachmentMessages?: EnhancedMessage[];
       date_obj?: Date;
       date_obj_delivered?: Date;
       date_obj_read?: Date;
     }
+
     const enhancedMessages = messages as EnhancedMessage[];
 
     await Promise.all(
@@ -253,7 +310,8 @@ export class SQLDatabase {
       }),
     );
     const groupedMessages = groupBy(enhancedMessages, "message_id");
-    const flat = Object.values(groupedMessages).map((messages) => {
+    const values = Object.values(groupedMessages) as EnhancedMessage[][];
+    const flat = values.map((messages) => {
       if (messages.length === 1) {
         return messages[0];
       }
@@ -264,7 +322,14 @@ export class SQLDatabase {
     flat.sort((a, b) => {
       return (a.date || 0) - (b.date || 0);
     });
-    return flat;
+    return flat as EnhancedMessage[];
+  };
+
+  getMessagesForChatId = async (chatId: number | number[]) => {
+    const messages = await this.getJoinedMessageQuery()
+      .where("chat_message_join.chat_id", "in", [chatId].flat())
+      .execute();
+    return this.enhanceMessageResponses(messages);
   };
 
   private getMessageQueryByYear = (year: number) => {

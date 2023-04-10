@@ -27,6 +27,9 @@ dayjs.extend(relativeTime);
 import { ToastContainer } from "react-toastify";
 
 import "react-toastify/dist/ReactToastify.css";
+import { useDoesLocalDbExist, useHasAllowedPermissions } from "../hooks/dataHooks";
+import { Onboarding } from "../components/Onboarding";
+import { CircularProgress } from "@mui/material";
 const Container = styled("div")`
   width: 100%;
   height: 100%;
@@ -51,10 +54,20 @@ export const queryClient = new QueryClient({
 const clientSideEmotionCache = createEmotionCache();
 
 export const MimessageApp = ({ Component, pageProps }: AppProps) => {
+  const { data: localDbExists } = useDoesLocalDbExist();
+  const { data: permissions } = useHasAllowedPermissions();
+  const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
+  const hasContactsAccess = permissions?.contactsStatus === "authorized";
+
   return (
     <Container>
-      <Component {...pageProps} />
-      <ToastContainer />
+      {localDbExists === false || !hasDiskAccess || !hasContactsAccess ? (
+        <Onboarding />
+      ) : localDbExists === true ? (
+        <Component {...pageProps} />
+      ) : (
+        <CircularProgress />
+      )}
     </Container>
   );
 };
@@ -99,6 +112,7 @@ export const ProvidedApp = (props: ProviderProps) => {
         <QueryClientProvider client={queryClient}>
           <MimessageApp {...rest} />
           {!isProd && <ReactQueryDevtools />}
+          <ToastContainer />
         </QueryClientProvider>
       </ThemeProvider>
     </CacheProvider>

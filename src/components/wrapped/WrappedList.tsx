@@ -114,7 +114,6 @@ export const WrappedList = () => {
           display: "flex",
           overflowY: "auto",
           height: "100%",
-          background: "#2c2c2c",
         }}
       >
         <Box

@@ -12,6 +12,7 @@ import Fuse from "fuse.js";
 import type { WrappedStats } from "../interfaces";
 import type { Chat } from "../interfaces";
 import React from "react";
+import type { GlobalSearchResponse } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
 const useDbChatList = () => {
@@ -259,6 +260,16 @@ export const useChatDateRange = () => {
 export const useDoesLocalDbExist = () => {
   return useQuery<boolean>(["localDbExists"], async () => {
     const resp = (await ipcRenderer.invoke("doesLocalDbCopyExist")) as boolean;
+    return resp;
+  });
+};
+
+export const useGlobalSearch = ({ searchTerm }: { searchTerm: string | null }) => {
+  return useQuery<GlobalSearchResponse>(["globalSearch", searchTerm], async () => {
+    if (!searchTerm) {
+      return [];
+    }
+    const resp = (await ipcRenderer.invoke("fullTextMessageSearch", searchTerm)) as GlobalSearchResponse;
     return resp;
   });
 };

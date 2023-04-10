@@ -51,10 +51,13 @@ export default function createWindow(windowName: string, options: Partial<Electr
   const win = new BrowserWindow({
     ...options,
     ...state,
+    vibrancy: "sidebar",
+    visualEffectState: "active",
     frame: false,
+    transparent: true,
+    hasShadow: true,
     titleBarStyle: "hiddenInset",
     // transparent: true,
-    backgroundColor: "#000000",
     title: "Mimessage",
     webPreferences: {
       nodeIntegration: false,
