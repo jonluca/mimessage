@@ -124,7 +124,7 @@ export const MessageBubble = ({
             ].join(" ")}
           >
             {isMedia ? (
-              <Box sx={{ overflow: "hidden", maxHeight: 400 }}>
+              <Box sx={{ overflow: "hidden" }}>
                 <AttachmentView recalcSize={recalcSize} message={message} />
               </Box>
             ) : (

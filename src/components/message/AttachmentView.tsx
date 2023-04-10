@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 import { MessageBubbleText } from "./MessageBubble";
 import { useOpenFileAtLocation } from "../../hooks/dataHooks";
 const ASSET_WIDTH = "100%";
-const ASSET_HEIGHT = "400px";
+const ASSET_HEIGHT = "100%";
 
 const VIDEO_TYPES = ["mov", "mp4"];
 const IMAGE_TYPES = ["png", "jpg", "jpeg"];
