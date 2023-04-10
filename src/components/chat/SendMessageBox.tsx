@@ -150,7 +150,16 @@ export const SendMessageBox = () => {
         <>
           <SearchInput
             ref={ref}
-            sx={{ borderRadius: 4, width: "100%", mx: 1.25, height: 30, background: "#3a3e44" }}
+            sx={{
+              borderRadius: 4,
+              width: "100%",
+              mx: 1.25,
+              height: 30,
+              background: "#3a3e44",
+              "& .MuiInputBase-input.Mui-disabled": {
+                WebkitTextFillColor: "white",
+              },
+            }}
             inputProps={{
               sx: { borderRadius: 4, px: 1.5, color: theme.colors.white, background: "#3a3e44" },
               ref: inputRef,

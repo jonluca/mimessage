@@ -130,6 +130,7 @@ const baseThemeOptions = {
   //     },
   //   },
   // },
+
   typography: {
     allVariants: {
       color: "#ffffff",

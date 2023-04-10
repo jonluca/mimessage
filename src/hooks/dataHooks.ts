@@ -141,6 +141,19 @@ export const useChatById = (id: number | null) => {
   return null;
 };
 
+const getImageData = (contact: Contact | null | undefined) => {
+  if (!contact) {
+    return null;
+  }
+  if (contact.contactThumbnailImage?.length) {
+    return contact.contactThumbnailImage;
+  }
+  if (contact.contactImage?.length) {
+    return contact.contactImage;
+  }
+  return null;
+};
+
 export const useContacts = () => {
   return useQuery<Contacts | null>(["contacts"], async () => {
     const resp = (await ipcRenderer.invoke("contacts")) as Contacts;
@@ -148,7 +161,12 @@ export const useContacts = () => {
       if (contact.emailAddresses) {
         contact.emailAddresses = uniq(contact.emailAddresses.flatMap((email) => [email, email.toLowerCase()]));
       }
+      const imageData = getImageData(contact);
+
       contact.parsedName = getContactName(contact) || "";
+      if (imageData) {
+        contact.pngBase64 = `data:image/png;base64, ${Buffer.from(imageData).toString("base64")}`;
+      }
     }
     return resp;
   });

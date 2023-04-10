@@ -268,17 +268,22 @@ export class SQLDatabase {
   };
 
   fullTextMessageSearch = async (searchTerm: string) => {
+    const db = this.db;
+    // SELECT * FROM message_fts WHERE text MATCH 'jonluca' ORDER BY rank;
+    const textMatch = await db
+      .selectFrom("message_fts")
+      .select(["message_id"])
+      .where("text", sql`match`, searchTerm)
+      .orderBy(sql`rank`, "desc")
+      .execute();
     const messages = await this.getJoinedMessageQuery()
-      .where(({ or, cmpr }) => {
-        return or([
-          cmpr("text", "like", `%${searchTerm}%`),
-          cmpr("filename", "like", `%${searchTerm}%`),
-          cmpr("transfer_name", "like", `%${searchTerm}%`),
-        ]);
-      })
+      .where(
+        "ROWID",
+        "in",
+        textMatch.map((m) => m.message_id as number),
+      )
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0)
-      .orderBy("date", "desc")
       .execute();
     return this.enhanceMessageResponses<typeof messages[number]>(messages);
   };
