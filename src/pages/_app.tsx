@@ -47,7 +47,6 @@ export const queryClient = new QueryClient({
       refetchOnMount: false,
       refetchOnReconnect: false,
       staleTime: Infinity,
-      keepPreviousData: true,
     },
   },
 });

@@ -300,7 +300,7 @@ export class SQLDatabase {
       });
     }
 
-    const messages = await query.execute();
+    const messages = await query.limit(10000).execute();
     return this.enhanceMessageResponses<typeof messages[number]>(messages);
   };
 

@@ -115,6 +115,7 @@ const ContactFilter = () => {
         theme={selectTheme}
         name={"contactFilter"}
         placeholder={"Filter by Contact"}
+        blurInputOnSelect
         isSearchable
         isMulti
         onChange={(value) => {
@@ -145,6 +146,7 @@ const GroupChatFilter = () => {
         theme={selectTheme}
         name={"chatFilter"}
         placeholder={"Filter by Group Chat"}
+        closeMenuOnSelect={false}
         isSearchable
         isMulti
         onChange={(value) => {
