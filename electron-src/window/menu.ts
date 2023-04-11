@@ -23,7 +23,7 @@ export const getMenu = () => {
           type: "normal",
           click: async () => {
             await copyLatestDb();
-            await dbWorker.reloadDb();
+            await dbWorker.worker.reloadDb();
             windows[0]?.webContents.send("refreshChats");
           },
         },
@@ -39,7 +39,7 @@ export const getMenu = () => {
               return;
             }
             await copyDbAtPath(location.filePaths[0]);
-            await dbWorker.reloadDb();
+            await dbWorker.worker.reloadDb();
             windows[0]?.webContents.send("refreshChats");
           },
         },

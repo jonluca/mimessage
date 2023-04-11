@@ -70,7 +70,12 @@ export const SemanticSearchInfo = () => {
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
       <Backdrop onClick={() => setModalOpen(false)} open={modalOpen}>
-        <Box sx={{ background: "#2c2c2c", maxWidth: 600, p: 1, m: 1 }} display={"flex"} flexDirection={"column"}>
+        <Box
+          onClick={(e) => e.stopPropagation()}
+          sx={{ background: "#2c2c2c", maxWidth: 600, p: 1, m: 1 }}
+          display={"flex"}
+          flexDirection={"column"}
+        >
           <Typography variant="h1" sx={{ color: "white" }}>
             Semantic Search
           </Typography>

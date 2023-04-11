@@ -131,7 +131,7 @@
       "assets/**/*",
       {
         "from": "build/electron-src/data/worker.js",
-        "to": "app.asar.unpacked/build/electron-src/data/worker.js"
+        "to": "assets/worker.js"
       }
     ],
     "mac": {
