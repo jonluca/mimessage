@@ -1,43 +1,26 @@
 import SqliteDb from "better-sqlite3";
-import { app } from "electron";
 import type { SelectQueryBuilder } from "kysely";
 import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
-import path from "path";
 import logger from "../utils/logger";
-import { debugLoggingEnabled } from "../constants";
 import type { KyselyConfig } from "kysely/dist/cjs/kysely";
-import jetpack from "fs-jetpack";
-import { appPath } from "../versions";
-import { handleIpc } from "./ipc";
 import { countBy, groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
-
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
 import { getStatsForText } from "./semantic-search";
-
-const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
-const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
+import { localDbExists } from "./db-file-utils";
+import { appMessagesDbCopy } from "../utils/constants";
 
 type ExtractO<T> = T extends SelectQueryBuilder<any, any, infer O> ? O : never;
 type JoinedMessageType = ExtractO<ReturnType<SQLDatabase["getJoinedMessageQuery"]>>;
+const debugLoggingEnabled = process.env.DEBUG_LOGGING === "true";
 
 export class SQLDatabase {
   path: string = appMessagesDbCopy;
   private dbWriter: Kysely<MesssagesDatabase> | undefined;
 
   initializationPromise!: Promise<void>;
-
-  setupHandlers = () => {
-    for (const property in db) {
-      const prop = property as keyof SQLDatabase;
-      const dbElement = db[prop];
-      if (typeof dbElement === "function" && !excludedProperties.includes(prop)) {
-        handleIpc(property, dbElement);
-      }
-    }
-  };
 
   initialize = () => {
     if (this.initializationPromise) {
@@ -115,17 +98,6 @@ export class SQLDatabase {
     this.dbWriter = undefined;
     await this.trySetupDb();
   };
-  isCopying = false;
-  doesLocalDbCopyExist = async () => {
-    return !this.isCopying && localDbExists();
-  };
-
-  copyLocalDb = async () => {
-    this.isCopying = true;
-    await copyLatestDb();
-    this.isCopying = false;
-  };
-
   trySetupDb = async () => {
     try {
       if (!(await localDbExists())) {
@@ -228,10 +200,6 @@ export class SQLDatabase {
       return new Date();
     }
     return new Date(minDate / 1000000 + 978307200000);
-  };
-
-  localDbExists = async () => {
-    return localDbExists();
   };
 
   private getJoinedMessageQuery = () => {
@@ -608,27 +576,8 @@ export class SQLDatabase {
   };
 }
 
-const excludedProperties = ["initialize", "db", "trySetupDb", "setupHandlers"];
-
 const db = new SQLDatabase();
 
 // monkey patch to handle ipc calls
-
-export const copyLatestDb = async () => {
-  await copyDbAtPath(messagesDb);
-};
-export const copyDbAtPath = async (path: string) => {
-  if (!(await jetpack.existsAsync(path))) {
-    throw new Error("Messages DB does not exist");
-  }
-  logger.info("Copying Messages DB");
-  await jetpack.copyAsync(path, appMessagesDbCopy, { overwrite: true });
-  logger.info("Messages DB copied");
-  await db.initialize();
-};
-
-export const localDbExists = async () => {
-  return Boolean(await jetpack.existsAsync(appMessagesDbCopy));
-};
 
 export default db;

@@ -10,8 +10,9 @@ import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
 import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
-import db, { localDbExists } from "./data/database";
 import { autoUpdater } from "electron-updater";
+import dbWorker from "./data/database-worker";
+import { localDbExists } from "./data/db-file-utils";
 
 addFlags(app);
 
@@ -97,11 +98,13 @@ if (!amMainInstance) {
     if (isDev && !process.argv.includes("--noDevExtensions")) {
       await installExtensions();
     }
+    await dbWorker.startWorker();
+
     if (await localDbExists()) {
-      await db.initialize();
+      await dbWorker.worker.initialize();
     }
     nativeTheme.themeSource = "dark";
-    db.setupHandlers();
+    dbWorker.setupHandlers();
     appReady.resolve();
   });
 
