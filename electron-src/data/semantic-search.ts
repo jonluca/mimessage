@@ -12,7 +12,7 @@ export const getStatsForText = (text: { text: string }[]) => {
     totalMessages: text.length,
     totalTokens,
     averageTokensPerLine: totalTokens / text.length,
-    estimatedPrice: totalTokens * 0.000001,
+    estimatedPrice: (totalTokens / 1000) * 0.0004, // dollars
     estimatedTimeMs: totalTokens * 0.000001,
   };
 };

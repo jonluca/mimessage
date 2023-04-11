@@ -1,9 +1,17 @@
 import React from "react";
 import type { Contact } from "node-mac-contacts";
-import { Avatar } from "@mui/material";
+import Avatar from "./BaseAvatar";
 
-export const MessageAvatar = ({ contact, size = 40 }: { size?: number; contact: null | undefined | Contact }) => {
-  const src = contact?.pngBase64 || "/nonexistant.jpg";
+export const MessageAvatar = ({
+  contact,
+  size = 40,
+  fallback,
+}: {
+  size?: number;
+  fallback?: string;
+  contact: null | undefined | Contact;
+}) => {
+  const src = contact?.pngBase64;
 
-  return <Avatar alt={contact?.parsedName} src={src} sx={{ width: size, height: size }} />;
+  return <Avatar alt={contact?.parsedName || fallback} src={src} sx={{ width: size, height: size }} />;
 };

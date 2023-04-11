@@ -93,11 +93,13 @@ export const SemanticSearchInfo = () => {
           {isLoading && <CircularProgress />}
           {data && (
             <>
-              <Typography>Total Messages: {data.totalMessages}</Typography>
-              <Typography>Total Tokens: {data.totalTokens}</Typography>
-              <Typography>Avg Tokens / msg: {data.averageTokensPerLine}</Typography>
-              <Typography>Estimated Cost: {data.estimatedPrice}</Typography>
-              <Typography>Estimated Time: {data.estimatedTimeMs}</Typography>
+              <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
+              <Typography>Total Tokens: {data.totalTokens.toLocaleString()}</Typography>
+              <Typography>Avg Tokens / msg: {data.averageTokensPerLine.toLocaleString()}</Typography>
+              <Typography>
+                Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
+              </Typography>
+              <Typography>Estimated Time: {data.estimatedTimeMs.toLocaleString()}</Typography>
             </>
           )}
           <Button onClick={onSubmit}>Close and submit</Button>

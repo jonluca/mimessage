@@ -50,7 +50,7 @@ export const ChatEntryRenderer = ({
       onClick={onClick}
     >
       <Box sx={{ mr: 1 }}>
-        <MessageAvatar contact={contact} />
+        <MessageAvatar contact={contact} fallback={name} />
       </Box>
       <Box
         sx={{
