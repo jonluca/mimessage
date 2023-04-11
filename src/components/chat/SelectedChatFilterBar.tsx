@@ -11,8 +11,9 @@ import Popover from "@mui/material/Popover";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { shallow } from "zustand/shallow";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import Close from "@mui/icons-material/Close";
 const BUTTON_HEIGHT = 30;
-export const FilterBar = ({
+export const SelectedChatFilterBar = ({
   showTimes,
   setShowTimes,
   virtuoso,
@@ -44,28 +45,28 @@ export const FilterBar = ({
   const open = Boolean(anchorEl);
   const id = open ? "simple-popover" : undefined;
 
+  const LeftIcon = globalSearch ? ArrowBackIcon : Close;
   return (
     <Box
       sx={{ display: "flex", flexDirection: "row", py: 2, background: "#383938", alignItems: "center" }}
       className={"draggable"}
     >
       {exportOpen && <ExportChat onClose={() => setExportOpen(false)} />}
-      {globalSearch && (
-        <Button
-          sx={{ ml: 1.5, height: BUTTON_HEIGHT }}
-          aria-describedby={id}
-          variant="contained"
-          title={"Back"}
-          onClick={() => {
-            setChatId(null);
-          }}
-        >
-          <ArrowBackIcon />
-        </Button>
-      )}
+      <Button
+        sx={{ ml: 1.5, height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
+        aria-describedby={id}
+        variant="outlined"
+        color={"primary"}
+        title={"Back"}
+        onClick={() => {
+          setChatId(null);
+        }}
+      >
+        <LeftIcon />
+      </Button>
       <Filter />
       <Button
-        sx={{ height: BUTTON_HEIGHT }}
+        sx={{ height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
         aria-describedby={id}
         variant="contained"
         title={"Settings"}
@@ -75,7 +76,7 @@ export const FilterBar = ({
       </Button>
       <Button
         variant="contained"
-        sx={{ mx: 1.5, height: BUTTON_HEIGHT }}
+        sx={{ mx: 1.5, height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
         title={"Export chat"}
         onClick={() => {
           setExportOpen(true);

@@ -92,7 +92,7 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
     >
       <MessageAvatar contact={contact} />
       <Box sx={{ ml: 1 }}>
-        <Highlighter searchWords={[globalSearch]} autoEscape={true} textToHighlight={result.text || ""} />
+        <Highlighter searchWords={[globalSearch!]} autoEscape={true} textToHighlight={result.text || ""} />
         <Typography variant={"h6"} sx={{ color: "grey", fontSize: 14 }}>
           {result.is_from_me ? "You" : contact?.parsedName || handle?.id}
           {result.date_obj && <> on {dayjs(result.date_obj).format("MM/DD/YYYY HH:mm A")}</>}

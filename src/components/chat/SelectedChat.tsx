@@ -5,7 +5,7 @@ import { useChatById, useMessagesForChatId } from "../../hooks/dataHooks";
 import { AiMessageBubble, MessageBubble } from "../message/MessageBubble";
 import { Divider, LinearProgress } from "@mui/material";
 import { SendMessageBox } from "./SendMessageBox";
-import { FilterBar } from "./FilterBar";
+import { SelectedChatFilterBar } from "./SelectedChatFilterBar";
 import type { FlatIndexLocationWithAlign, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { shallow } from "zustand/shallow";
@@ -111,7 +111,7 @@ export const SelectedChat = () => {
       }}
     >
       {isLoading && <LinearProgress />}
-      {showFilterBar && <FilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
+      {showFilterBar && <SelectedChatFilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
       <Virtuoso
         totalCount={count}
         initialTopMostItemIndex={initialTopMostItemIndex}

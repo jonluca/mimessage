@@ -100,7 +100,7 @@ export const Filter = () => {
         defaultValue={filter || ""}
         sx={{
           width: "100%",
-          mx: 1.5,
+          mx: 1,
           px: 1,
           height: 30,
           background: "#2c2c2c",
