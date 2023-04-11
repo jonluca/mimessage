@@ -14,6 +14,7 @@ import type { Chat } from "../interfaces";
 import React from "react";
 import type { GlobalSearchResponse } from "../interfaces";
 import { shallow } from "zustand/shallow";
+import type { SemanticSearchStats } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
 const useDbChatList = () => {
@@ -414,6 +415,16 @@ export const useHasSemanticSearch = () => {
   return useQuery<boolean>(["hasSemanticSearch"], async () => {
     return global.store.has("semanticSearch");
   });
+};
+
+export const useSemanticSearchStats = (enabled: boolean) => {
+  return useQuery<SemanticSearchStats>(
+    ["calculateSemanticSearchStats"],
+    async () => {
+      return (await ipcRenderer.invoke("calculateSemanticSearchStats")) as SemanticSearchStats;
+    },
+    { enabled },
+  );
 };
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {

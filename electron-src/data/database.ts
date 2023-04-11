@@ -15,6 +15,7 @@ import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
 
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
+import { getStatsForText } from "./semantic-search";
 
 const messagesDb = process.env.HOME + "/Library/Messages/chat.db";
 const appMessagesDbCopy = path.join(app.getPath("appData"), appPath, "db.sqlite");
@@ -375,6 +376,15 @@ export class SQLDatabase {
 
   calculateSemanticSearchStats = async () => {
     // asdfs
+    const allText = (await this.db
+      .selectFrom("message")
+      .select(["text"])
+      .distinct()
+      .where("text", "not like", "")
+      .where("text", "is not", null)
+      .execute()) as { text: string }[];
+
+    return getStatsForText(allText);
   };
   getMessagesForChatId = async (chatId: number | number[]) => {
     const messages = await this.getJoinedMessageQuery()

@@ -1,11 +1,12 @@
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
-import { Button } from "@mui/material";
+import { Button, CircularProgress } from "@mui/material";
 import Backdrop from "@mui/material/Backdrop";
 import Typography from "@mui/material/Typography";
 import { toast } from "react-toastify";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import { useSemanticSearchStats } from "../../hooks/dataHooks";
 
 export const OpenAiKey = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
@@ -48,7 +49,8 @@ export const OpenAiKey = () => {
 export const SemanticSearchInfo = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
   const openAiKey = useMimessage((state) => state.openAiKey);
-  const [aiKeyModalOpen, setAiKeyModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const { data, isLoading } = useSemanticSearchStats(modalOpen);
   const ref = useRef<HTMLInputElement>(null);
 
   const onSubmit = () => {
@@ -62,12 +64,12 @@ export const SemanticSearchInfo = () => {
     } else {
       setOpenAiKey(null);
     }
-    setAiKeyModalOpen(false);
+    setModalOpen(false);
   };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
-      <Backdrop open={aiKeyModalOpen}>
+      <Backdrop open={modalOpen}>
         <Box sx={{ background: "#2c2c2c", maxWidth: 600, p: 1, m: 1 }} display={"flex"} flexDirection={"column"}>
           <Typography variant="h1" sx={{ color: "white" }}>
             Semantic Search
@@ -83,10 +85,20 @@ export const SemanticSearchInfo = () => {
               onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
             />
           )}
+          {isLoading && <CircularProgress />}
+          {data && (
+            <>
+              <Typography>Total Messages: {data.totalMessages}</Typography>
+              <Typography>Total Tokens: {data.totalTokens}</Typography>
+              <Typography>Avg Tokens / msg: {data.averageTokensPerLine}</Typography>
+              <Typography>Estimated Cost: {data.estimatedPrice}</Typography>
+              <Typography>Estimated Time: {data.estimatedTimeMs}</Typography>
+            </>
+          )}
           <Button onClick={onSubmit}>Close and submit</Button>
         </Box>
       </Backdrop>
-      <Button title={"Semantic Search"} onClick={() => setAiKeyModalOpen(true)}>
+      <Button title={"Semantic Search"} onClick={() => setModalOpen(true)}>
         <AutoFixHighIcon />
       </Button>
     </Box>
