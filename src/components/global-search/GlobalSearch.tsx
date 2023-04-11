@@ -108,12 +108,13 @@ const ContactFilter = () => {
   const setContactFilter = useMimessage((state) => state.setContactFilter);
 
   return (
-    <Box sx={{ mr: 0.5, width: 300 }}>
+    <Box sx={{ mr: 0.5, width: 250 }}>
       <Select<Contact, true>
         value={contactFilter}
         options={contacts || []}
         theme={selectTheme}
         name={"contactFilter"}
+        placeholder={"Filter by Contact"}
         isSearchable
         isMulti
         onChange={(value) => {
@@ -137,12 +138,13 @@ const GroupChatFilter = () => {
   const setChatFilter = useMimessage((state) => state.setChatFilter);
 
   return (
-    <Box sx={{ mx: 0.5, width: 300 }}>
+    <Box sx={{ mx: 0.5, width: 250 }}>
       <Select<Chat, true>
         value={chatFilter}
         options={groupChatList || []}
         theme={selectTheme}
-        name={"contactFilter"}
+        name={"chatFilter"}
+        placeholder={"Filter by Group Chat"}
         isSearchable
         isMulti
         onChange={(value) => {
@@ -170,15 +172,16 @@ const GlobalSearchFilter = () => {
       sx={{
         zIndex: 999,
         justifyContent: "flex-start",
+        alignItems: "center",
         width: "100%",
         flexDirection: "row",
         background: "#1e1e1e",
-        pt: 2,
+        py: 1,
         display: "flex",
       }}
     >
-      {count > 0 && (
-        <Typography sx={{ my: 0.5, color: "grey" }} variant={"h4"}>
+      {results && (
+        <Typography sx={{ my: 1, mr: 1, color: "grey", whiteSpace: "pre" }} variant={"h4"}>
           {count} results
         </Typography>
       )}
@@ -219,9 +222,9 @@ export const GlobalSearch = () => {
     >
       <GloablSearchInput />
       {isLoading && <LinearProgress />}
-
       <GlobalSearchFilter />
       <Virtuoso
+        key={`${count}-${isLoading}`}
         totalCount={count}
         style={{ height: "100%" }}
         itemContent={searchResultRenderer}

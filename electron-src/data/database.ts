@@ -291,10 +291,10 @@ export class SQLDatabase {
         const expressions = [];
 
         if (hasChatIds) {
-          expressions.push(cmpr("chat_id", "in", chatIds));
+          expressions.push(cmpr("chat_id", "in", chatIds!));
         }
         if (handleIds?.length) {
-          expressions.push(cmpr("handle_id", "in", handleIds));
+          expressions.push(cmpr("handle_id", "in", handleIds!));
         }
         return or(expressions);
       });

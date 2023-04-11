@@ -299,12 +299,12 @@ export const useContactMap = () => {
   );
 };
 
-type HandleMap = Map<Contact, Set<number>>;
-const useHandleToContactMap = () => {
+type HandleMap = Map<string, Set<number>>;
+const useContactToHandleMap = () => {
   const { data: chatList } = useChatList();
 
   return React.useMemo<HandleMap>(() => {
-    const map = new Map<Contact, Set<number>>();
+    const map = new Map<string, Set<number>>();
     const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
 
     if (!handles?.length) {
@@ -315,12 +315,12 @@ const useHandleToContactMap = () => {
       if (!contact) {
         continue;
       }
-      const handleIds = map.get(contact) || new Set<number>();
+      const handleIds = map.get(contact.identifier) || new Set<number>();
       handleIds.add(handle.ROWID!);
-      map.set(contact, handleIds);
+      map.set(contact.identifier, handleIds);
     }
     return map;
-  }, []);
+  }, [chatList]);
 };
 
 export const useChatDateRange = () => {
@@ -340,7 +340,7 @@ export const useGlobalSearch = () => {
   const chatFilter = useMimessage((state) => state.chatFilter);
   const contactFilter = useMimessage((state) => state.contactFilter);
 
-  const handleMap = useHandleToContactMap();
+  const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
     ["globalSearch", globalSearch, chatFilter, contactFilter, handleMap.size],
     async () => {
@@ -348,7 +348,7 @@ export const useGlobalSearch = () => {
         return [];
       }
       const chatIds = chatFilter?.map((c) => c.chat_id!);
-      const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c) || [])]))];
+      const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c.identifier) || [])]))];
       const resp = (await ipcRenderer.invoke(
         "fullTextMessageSearch",
         globalSearch,
