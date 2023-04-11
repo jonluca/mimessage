@@ -72,7 +72,7 @@ export const Onboarding = () => {
         <Typography variant={"h1"}>{isPastPermissions ? "Setup" : "Permissions"}</Typography>
         {isPastPermissions ? (
           <Typography variant={"body1"}>
-            Mimessage needs to analyze and parse your messages. This should take between 2 - 15 seconds, depending on
+            Mimessage needs to analyze and parse your messages. This should take between 5 - 120 seconds, depending on
             how many messages you have.
           </Typography>
         ) : (

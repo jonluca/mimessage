@@ -29,7 +29,12 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: distributables
-          path: dist/*
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*.yml
+            dist/*.yaml
+            !dist/**/*.app
           if-no-files-found: error
 
   publish:
