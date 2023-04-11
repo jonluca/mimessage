@@ -184,12 +184,13 @@ const GroupChatFilter = () => {
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-  const { startDate, setStartDate, setEndDate, endDate } = useMimessage(
+  const { startDate, setStartDate, setEndDate, endDate, globalSearch } = useMimessage(
     (state) => ({
       startDate: state.startDate,
       endDate: state.endDate,
       setStartDate: state.setStartDate,
       setEndDate: state.setEndDate,
+      globalSearch: state.globalSearch,
     }),
     shallow,
   );
@@ -206,7 +207,7 @@ const GlobalSearchFilter = () => {
         display: "flex",
       }}
     >
-      {results && (
+      {results && globalSearch && (
         <Typography sx={{ my: 1, mr: 1, color: "grey", whiteSpace: "pre" }} variant={"h4"}>
           {count} results
         </Typography>

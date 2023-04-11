@@ -18,6 +18,7 @@ export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
       sx={{
         display: "flex",
         overflowY: "auto",
+        overflowX: "hidden",
         height: "100%",
         pt: 3,
         width: CHAT_LIST_WIDTH,
