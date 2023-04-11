@@ -3,9 +3,10 @@ import type { MenuItemConstructorOptions } from "electron";
 import { app, dialog, Menu, shell } from "electron";
 import { windows } from "../index";
 import { showApp } from "../utils/util";
-import db, { copyDbAtPath, copyLatestDb } from "../data/database";
 import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../data/options";
+import dbWorker from "../data/database-worker";
+import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [
@@ -22,7 +23,7 @@ export const getMenu = () => {
           type: "normal",
           click: async () => {
             await copyLatestDb();
-            await db.reloadDb();
+            await dbWorker.reloadDb();
             windows[0]?.webContents.send("refreshChats");
           },
         },
@@ -38,7 +39,7 @@ export const getMenu = () => {
               return;
             }
             await copyDbAtPath(location.filePaths[0]);
-            await db.reloadDb();
+            await dbWorker.reloadDb();
             windows[0]?.webContents.send("refreshChats");
           },
         },

@@ -8,7 +8,6 @@ import {
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
-  useHasSemanticSearch,
 } from "../../hooks/dataHooks";
 import { Button, LinearProgress } from "@mui/material";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -34,7 +33,6 @@ const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
 
-  const { data: hasSemanticSearch } = useHasSemanticSearch();
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const onFilterChange = useCallback(() => {

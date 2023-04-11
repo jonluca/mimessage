@@ -50,7 +50,7 @@ export const SelectedChat = () => {
         }, 1000);
       }
     }
-  }, [messages, messageIdToBringToFocus]);
+  }, [messages, messageIdToBringToFocus, setMessageIdToBringToFocus]);
 
   const itemRenderer = (index: number) => {
     const message = messages?.[index];

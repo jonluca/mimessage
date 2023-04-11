@@ -1,7 +1,6 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { dialog, ipcMain, shell } from "electron"; // deconstructing assignment
 import type { SQLDatabase } from "./database";
-import db from "./database";
 import fs from "fs-extra";
 import jsonexport from "jsonexport";
 import jetpack from "fs-jetpack";
@@ -11,9 +10,9 @@ import { fileTypeFromFile } from "file-type";
 import { debugLoggingEnabled } from "../constants";
 import logger from "../utils/logger";
 import { decodeMessageBuffer } from "../utils/buffer";
+import dbWorker from "./database-worker";
 export const handleIpc = (event: string, handler: (...args: any[]) => unknown) => {
   ipcMain.handle(event, async (e: IpcMainInvokeEvent, ...args) => {
-    await db.initializationPromise;
     if (debugLoggingEnabled) {
       const now = performance.now();
       const result = await handler(...args);
@@ -64,7 +63,7 @@ handleIpc(
     if (location.canceled) {
       return;
     }
-    const messages = await db.getMessagesForChatId(chat.chat_id!);
+    const messages = await dbWorker.worker.getMessagesForChatId(chat.chat_id!);
 
     type HandleType = typeof handles[number];
     const handleMap: Record<number, HandleType> = {};
