@@ -409,6 +409,12 @@ export const useHasAllowedPermissions = () => {
     },
   );
 };
+
+export const useHasSemanticSearch = () => {
+  return useQuery<boolean>(["hasSemanticSearch"], async () => {
+    return global.store.has("semanticSearch");
+  });
+};
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {
     await ipcRenderer.invoke("copyLocalDb");

@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import {
+  useContacts,
   useCopyDbMutation,
   useDoesLocalDbExist,
   useHasAllowedPermissions,
@@ -31,6 +32,7 @@ const PermissionsDialog = ({ denied, allowed, copy }: { denied: boolean; allowed
 };
 export const Onboarding = () => {
   const { isLoading, refetch } = useDoesLocalDbExist();
+  const { isLoading: contactsLoading } = useContacts();
   const { data: permissions, isLoading: isLoadingPerms, refetch: refetchPerms } = useHasAllowedPermissions();
   const { mutateAsync: copyDb, isLoading: isCopying } = useCopyDbMutation();
   const { mutateAsync: skipContactsCheck } = useSkipContactsCheck();
@@ -39,7 +41,7 @@ export const Onboarding = () => {
   const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
   const hasContactsAccess = permissions?.contactsStatus === "authorized";
 
-  const diskIsDenied = permissions?.diskAccessStatus === "denied";
+  const diskIsDenied = false; // always show false here because theres no real api, make it a spinner until it's allowed
   const contactsIsDenied = permissions?.contactsStatus === "denied";
 
   const isPastPermissions = hasDiskAccess && (hasContactsAccess || skipContacts);
@@ -52,7 +54,7 @@ export const Onboarding = () => {
     }
   };
 
-  const showSpinner = isCopying || isLoading || isRequestingPerms || isLoadingPerms;
+  const showSpinner = contactsLoading || isCopying || isLoading || isRequestingPerms || isLoadingPerms;
   return (
     <Backdrop open={true}>
       <Box

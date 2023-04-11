@@ -53,6 +53,5 @@ handleIpc("checkPermissions", async () => {
   const diskAccessStatus = getPermissionsStatus("full-disk-access");
   const contactsStatus = getPermissionsStatus("contacts");
   const skipContactsCheck = shouldSkipContactsCheck();
-
   return { contactsStatus: skipContactsCheck ? "authorized" : contactsStatus, diskAccessStatus };
 });

@@ -32,12 +32,19 @@ let errorTries = 0;
 const MAX_ERROR_TRIES = 5;
 
 const amMainInstance = app.requestSingleInstanceLock();
+
 logger.info(`Starting logging to ${logPath}`);
 if (!amMainInstance) {
   logStream.write("Not the main instance - quitting");
   app.quit();
 } else {
   logStream.write(`--- Launching MiMessage v${DESKTOP_VERSION} ---\n`);
+  autoUpdater.logger = logger;
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "jonluca",
+    repo: "mimessage",
+  });
 
   app.on("web-contents-created", (_event, contents) => {
     contents.on("render-process-gone", (_event, details) => {

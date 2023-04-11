@@ -1,6 +1,5 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { dialog, ipcMain, shell } from "electron"; // deconstructing assignment
-
 import type { SQLDatabase } from "./database";
 import db from "./database";
 import fs from "fs-extra";

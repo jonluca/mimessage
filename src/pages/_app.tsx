@@ -58,15 +58,10 @@ export const MimessageApp = ({ Component, pageProps }: AppProps) => {
   const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
   const hasContactsAccess = permissions?.contactsStatus === "authorized";
 
+  const isInOnboarding = localDbExists === false || !hasDiskAccess || !hasContactsAccess;
   return (
     <Container>
-      {localDbExists === false || !hasDiskAccess || !hasContactsAccess ? (
-        <Onboarding />
-      ) : localDbExists === true ? (
-        <Component {...pageProps} />
-      ) : (
-        <CircularProgress />
-      )}
+      {isInOnboarding ? <Onboarding /> : localDbExists === true ? <Component {...pageProps} /> : <CircularProgress />}
     </Container>
   );
 };

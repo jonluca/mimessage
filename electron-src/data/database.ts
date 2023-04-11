@@ -373,6 +373,9 @@ export class SQLDatabase {
     return flat as EnhancedMessage[];
   };
 
+  calculateSemanticSearchStats = async () => {
+    // asdfs
+  };
   getMessagesForChatId = async (chatId: number | number[]) => {
     const messages = await this.getJoinedMessageQuery()
       .where("chat_message_join.chat_id", "in", [chatId].flat())

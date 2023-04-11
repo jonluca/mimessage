@@ -8,6 +8,7 @@ import {
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
+  useHasSemanticSearch,
 } from "../../hooks/dataHooks";
 import { Button, LinearProgress } from "@mui/material";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -27,11 +28,13 @@ import Highlighter from "react-highlight-words";
 import { DayPicker } from "react-day-picker";
 import Popover from "@mui/material/Popover";
 import { shallow } from "zustand/shallow";
+import { SemanticSearchInfo } from "../chat/OpenAiKey";
 
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
 
+  const { data: hasSemanticSearch } = useHasSemanticSearch();
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const onFilterChange = useCallback(() => {
@@ -48,6 +51,7 @@ const GloablSearchInput = () => {
         zIndex: 999,
         display: "flex",
         justifyContent: "center",
+        alignItems: "center",
         width: "100%",
         height: "fit-content",
         mt: 2,
@@ -73,6 +77,7 @@ const GloablSearchInput = () => {
         onChange={onChangeDebounced}
         placeholder={"Global Search"}
       />
+      <SemanticSearchInfo />
     </Box>
   );
 };

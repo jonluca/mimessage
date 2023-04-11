@@ -8,7 +8,7 @@ import type { AiMessage } from "../../context";
 import { useMimessage } from "../../context";
 import { useChatById, useLocalMessagesForChatId } from "../../hooks/dataHooks";
 import openai from "../../utils/openai";
-import { SetOpenAiKey } from "./SetOpenAiKey";
+import { OpenAiKey } from "./OpenAiKey";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import { Button } from "@mui/material";
@@ -187,7 +187,7 @@ export const SendMessageBox = () => {
           )}
         </>
       ) : (
-        <SetOpenAiKey />
+        <OpenAiKey />
       )}
     </Box>
   );
