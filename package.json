@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "Mimessage",
-  "version": "0.0.1",
+  "version": "0.1.5",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
@@ -30,7 +30,7 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.16",
-    "@mui/material": "^5.11.16",
+    "@mui/material": "^5.12.0",
     "@next/eslint-plugin-next": "^13.3.0",
     "@tanstack/react-query": "^4.29.1",
     "@tanstack/react-query-devtools": "^4.29.1",
@@ -41,7 +41,6 @@
     "@types/node": "^18.15.11",
     "@types/prettier": "^2.7.2",
     "@types/react": "^18.0.34",
-    "@types/react-calendar": "^3.9.0",
     "@types/react-dom": "^18.0.11",
     "@types/react-highlight-words": "^0.16.4",
     "@types/react-window": "^1.8.5",
@@ -61,6 +60,7 @@
     "electron-is-dev": "^2.0.0",
     "electron-notarize": "^1.2.1",
     "electron-store": "^8.1.0",
+    "electron-updater": "^5.3.0",
     "electron-window-state": "^5.0.3",
     "esbuild": "0.16.x",
     "eslint": "8.38.0",
@@ -93,15 +93,13 @@
     "prettier": "latest",
     "pretty-quick": "^3.1.3",
     "react": "^18.2.0",
-    "react-calendar": "^4.2.1",
     "react-day-picker": "^8.7.0",
     "react-dom": "^18.2.0",
     "react-highlight-words": "^0.20.0",
     "react-select": "^5.7.2",
     "react-toastify": "^9.1.2",
-    "react-virtuoso": "^4.2.0",
+    "react-virtuoso": "^4.2.1",
     "rimraf": "^5.0.0",
-    "skip-postinstall": "^1.0.0",
     "sql-formatter": "^12.2.0",
     "sqlite3": "^5.1.6",
     "ts-node": "10.9.1",
@@ -131,9 +129,6 @@
       "assets/**/*"
     ],
     "mac": {
-      "target": [
-        "dmg"
-      ],
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon.icns",
       "entitlements": "electron-src/entitlements.plist",
@@ -144,7 +139,9 @@
         "NSContactsUsageDescription": "Mimessage needs access to your contacts to show you their name.",
         "NSSystemAdministrationUsageDescription": "Mimessage needs access to your files to read your messages."
       },
-      "darkModeSupport": true
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     },
     "dmg": {
       "artifactName": "Mimessage-${arch}-${version}.dmg",

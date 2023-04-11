@@ -1,7 +1,6 @@
 import "react-day-picker/dist/style.css";
 import "react-toastify/dist/ReactToastify.css";
 import "../styles/globals.css";
-import "../styles/Calendar.css";
 import "../styles/ai-magic.css";
 
 import { register } from "../config/registerEventHandlers";

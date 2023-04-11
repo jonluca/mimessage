@@ -11,6 +11,7 @@ import logger from "./utils/logger";
 import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
 import db, { localDbExists } from "./data/database";
+import { autoUpdater } from "electron-updater";
 
 addFlags(app);
 
@@ -109,6 +110,7 @@ if (!amMainInstance) {
       showErrorAlert("Window creation error", "Unable to create main window", logStream);
     }
     setupRouteHandlers();
+    autoUpdater.checkForUpdatesAndNotify();
   });
 
   // We use a single process instance to manage the server, but we
