@@ -33,7 +33,7 @@ export const getChatName = (chat: Chat | null | undefined) => {
   const contactsInChat = handles
     .map((handle) => {
       const contact = handle.contact;
-      return contact?.parsedName;
+      return contact?.parsedName || handle.id;
     })
     .filter(Boolean);
 
@@ -133,6 +133,30 @@ export const useHandleMap = () => {
     return handleMap;
   }, [chatList, chatList?.length]);
 };
+
+export const useContactsWithChats = () => {
+  const { data: chatList } = useChatList();
+
+  return React.useMemo<Contact[]>(() => {
+    const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
+    const contacts = uniq(handles.map((h) => h.contact).filter(Boolean));
+    contacts.sort((a, b) => {
+      const nameA = getContactName(a);
+      const nameB = getContactName(b);
+      return nameA.localeCompare(nameB);
+    });
+    return contacts as Contact[];
+  }, [chatList, chatList?.length]);
+};
+
+export const useGroupChatList = () => {
+  const { data: chatList } = useChatList();
+
+  return React.useMemo<ChatList>(() => {
+    const chats: ChatList = chatList?.filter((chat) => chat.handles && chat.handles.length > 1) || [];
+    return chats;
+  }, [chatList, chatList?.length]);
+};
 export const useChatById = (id: number | null) => {
   const { data: list } = useChatList();
   if (id !== null && list) {
@@ -168,6 +192,11 @@ export const useContacts = () => {
         contact.pngBase64 = `data:image/png;base64, ${Buffer.from(imageData).toString("base64")}`;
       }
     }
+    resp.sort((a, b) => {
+      const aName = a.parsedName || "";
+      const bName = b.parsedName || "";
+      return aName.localeCompare(bName);
+    });
     return resp;
   });
 };
@@ -270,6 +299,30 @@ export const useContactMap = () => {
   );
 };
 
+type HandleMap = Map<Contact, Set<number>>;
+const useHandleToContactMap = () => {
+  const { data: chatList } = useChatList();
+
+  return React.useMemo<HandleMap>(() => {
+    const map = new Map<Contact, Set<number>>();
+    const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
+
+    if (!handles?.length) {
+      return map;
+    }
+    for (const handle of handles) {
+      const contact = handle.contact;
+      if (!contact) {
+        continue;
+      }
+      const handleIds = map.get(contact) || new Set<number>();
+      handleIds.add(handle.ROWID!);
+      map.set(contact, handleIds);
+    }
+    return map;
+  }, []);
+};
+
 export const useChatDateRange = () => {
   return useQuery<{ max: Date; min: Date } | null>(["chat-date-range"], async () => {
     return { max: new Date(), min: new Date() };
@@ -282,14 +335,29 @@ export const useDoesLocalDbExist = () => {
   });
 };
 
-export const useGlobalSearch = ({ searchTerm }: { searchTerm: string | null }) => {
-  return useQuery<GlobalSearchResponse>(["globalSearch", searchTerm], async () => {
-    if (!searchTerm) {
-      return [];
-    }
-    const resp = (await ipcRenderer.invoke("fullTextMessageSearch", searchTerm)) as GlobalSearchResponse;
-    return resp;
-  });
+export const useGlobalSearch = () => {
+  const globalSearch = useMimessage((state) => state.globalSearch);
+  const chatFilter = useMimessage((state) => state.chatFilter);
+  const contactFilter = useMimessage((state) => state.contactFilter);
+
+  const handleMap = useHandleToContactMap();
+  return useQuery<GlobalSearchResponse>(
+    ["globalSearch", globalSearch, chatFilter, contactFilter, handleMap.size],
+    async () => {
+      if (!globalSearch) {
+        return [];
+      }
+      const chatIds = chatFilter?.map((c) => c.chat_id!);
+      const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c) || [])]))];
+      const resp = (await ipcRenderer.invoke(
+        "fullTextMessageSearch",
+        globalSearch,
+        chatIds,
+        handleIds,
+      )) as GlobalSearchResponse;
+      return resp;
+    },
+  );
 };
 
 export const useEarliestMessageDate = () => {

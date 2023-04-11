@@ -267,7 +267,7 @@ export class SQLDatabase {
     return messageQuery;
   };
 
-  fullTextMessageSearch = async (searchTerm: string) => {
+  fullTextMessageSearch = async (searchTerm: string, chatIds?: number[], handleIds?: number[]) => {
     const db = this.db;
     // SELECT * FROM message_fts WHERE text MATCH 'jonluca' ORDER BY rank;
     const textMatch = await db
@@ -276,15 +276,29 @@ export class SQLDatabase {
       .where("text", sql`match`, searchTerm)
       .orderBy(sql`rank`, "desc")
       .execute();
-    const messages = await this.getJoinedMessageQuery()
+    let query = this.getJoinedMessageQuery()
       .where(
-        "ROWID",
+        "message.ROWID",
         "in",
         textMatch.map((m) => m.message_id as number),
       )
       .where("item_type", "not in", [1, 3, 4, 5, 6])
-      .where("associated_message_type", "=", 0)
-      .execute();
+      .where("associated_message_type", "=", 0);
+
+    if (chatIds || handleIds) {
+      query = query.where(({ or, cmpr }) => {
+        const expressions = [];
+        if (chatIds?.length) {
+          expressions.push(cmpr("chat_id", "in", chatIds));
+        }
+        if (handleIds?.length) {
+          expressions.push(cmpr("handle_id", "in", handleIds));
+        }
+        return or(expressions);
+      });
+    }
+
+    const messages = await query.execute();
     return this.enhanceMessageResponses<typeof messages[number]>(messages);
   };
 

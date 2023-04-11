@@ -1,17 +1,26 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
-import { useChatMap, useGlobalSearch, useHandleMap } from "../../hooks/dataHooks";
+import {
+  useChatMap,
+  useContactsWithChats,
+  useGlobalSearch,
+  useGroupChatList,
+  useHandleMap,
+} from "../../hooks/dataHooks";
 import { LinearProgress } from "@mui/material";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { debounce } from "lodash-es";
 import InputBase from "@mui/material/InputBase";
 import theme from "../theme";
-import type { GlobalSearchResult } from "../../interfaces";
+import type { Chat, ChatList, GlobalSearchResult } from "../../interfaces";
 import Typography from "@mui/material/Typography";
 import { MessageAvatar } from "../message/Avatar";
 import dayjs from "dayjs";
+import Select from "react-select";
+import type { Contact } from "node-mac-contacts";
+import { selectTheme } from "../wrapped/YearSelector";
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
@@ -91,11 +100,97 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
     </Box>
   );
 };
+
+const ContactFilter = () => {
+  const contacts = useContactsWithChats();
+
+  const contactFilter = useMimessage((state) => state.contactFilter);
+  const setContactFilter = useMimessage((state) => state.setContactFilter);
+
+  return (
+    <Box sx={{ mr: 0.5, width: 300 }}>
+      <Select<Contact, true>
+        value={contactFilter}
+        options={contacts || []}
+        theme={selectTheme}
+        name={"contactFilter"}
+        isSearchable
+        isMulti
+        onChange={(value) => {
+          setContactFilter(value as Contact[]);
+        }}
+        styles={{
+          option: (baseStyles, state) => ({
+            ...baseStyles,
+            color: state.isSelected ? "white" : baseStyles.color,
+          }),
+        }}
+        getOptionLabel={(option) => option.parsedName || option.identifier || "Unknown"}
+        getOptionValue={(option) => option.identifier}
+      />
+    </Box>
+  );
+};
+const GroupChatFilter = () => {
+  const groupChatList = useGroupChatList();
+  const chatFilter = useMimessage((state) => state.chatFilter);
+  const setChatFilter = useMimessage((state) => state.setChatFilter);
+
+  return (
+    <Box sx={{ mx: 0.5, width: 300 }}>
+      <Select<Chat, true>
+        value={chatFilter}
+        options={groupChatList || []}
+        theme={selectTheme}
+        name={"contactFilter"}
+        isSearchable
+        isMulti
+        onChange={(value) => {
+          setChatFilter(value as ChatList);
+        }}
+        styles={{
+          option: (baseStyles, state) => ({
+            ...baseStyles,
+            color: state.isSelected ? "white" : baseStyles.color,
+          }),
+        }}
+        getOptionLabel={(option) => option.name || "Unknown"}
+        getOptionValue={(option) => String(option.chat_id)}
+      />
+    </Box>
+  );
+};
+
+const GlobalSearchFilter = () => {
+  const { data: results } = useGlobalSearch();
+  const count = results?.length || 0;
+
+  return (
+    <Box
+      sx={{
+        zIndex: 999,
+        justifyContent: "flex-start",
+        width: "100%",
+        flexDirection: "row",
+        background: "#1e1e1e",
+        pt: 2,
+        display: "flex",
+      }}
+    >
+      {count > 0 && (
+        <Typography sx={{ my: 0.5, color: "grey" }} variant={"h4"}>
+          {count} results
+        </Typography>
+      )}
+      <ContactFilter />
+      <GroupChatFilter />
+    </Box>
+  );
+};
 export const GlobalSearch = () => {
-  const globalSearch = useMimessage((state) => state.globalSearch);
   const chatId = useMimessage((state) => state.chatId);
 
-  const { data: results, isLoading } = useGlobalSearch({ searchTerm: globalSearch });
+  const { data: results, isLoading } = useGlobalSearch();
   const virtuoso = useRef<VirtuosoHandle>(null);
 
   const count = results?.length || 0;
@@ -124,11 +219,8 @@ export const GlobalSearch = () => {
     >
       <GloablSearchInput />
       {isLoading && <LinearProgress />}
-      {count > 0 && (
-        <Typography sx={{ my: 0.5, color: "grey" }} variant={"h4"}>
-          {count} results
-        </Typography>
-      )}
+
+      <GlobalSearchFilter />
       <Virtuoso
         totalCount={count}
         style={{ height: "100%" }}

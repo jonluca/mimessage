@@ -1,5 +1,7 @@
 declare module "node-mac-contacts" {
   export interface Contact {
+    identifier: string;
+    // optional
     firstName?: string;
     middleName?: string;
     lastName?: string;
@@ -13,7 +15,6 @@ declare module "node-mac-contacts" {
     instantMessageAddresses?: string[];
     birthday?: string;
     note?: string;
-    identifier?: string;
     name?: string;
     contactThumbnailImage?: Buffer;
     contactImage?: Buffer;

@@ -10,10 +10,8 @@ const colors = {
   primary75: "#4C9AFF",
   primary50: "#484848",
   primary25: "#6b6b6b",
-
   danger: "#DE350B",
   dangerLight: "#FFBDAD",
-
   neutral90: "hsl(0, 0%, 100%)",
   neutral80: "hsl(0, 0%, 95%)",
   neutral70: "hsl(0, 0%, 90%)",
@@ -41,7 +39,7 @@ export const spacing = {
   menuGutter,
 };
 
-const theme: Theme = {
+export const selectTheme: Theme = {
   borderRadius,
   colors,
   spacing,
@@ -72,7 +70,7 @@ export const YearSelector = () => {
         value={yearOptions.find((option) => option.value === wrappedYear)}
         options={yearOptions}
         onChange={(newVal) => newVal && setWrappedYear(newVal.value)}
-        theme={theme}
+        theme={selectTheme}
         blurInputOnSelect
         styles={{
           option: (baseStyles, state) => ({

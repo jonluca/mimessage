@@ -4,13 +4,16 @@ import logger from "../utils/logger";
 import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-mac-permissions";
 import { setSkipContactsPermsCheck, shouldSkipContactsCheck } from "./options";
 import { handleIpc } from "./ipc";
-
+import { v4 as uuid } from "uuid";
 handleIpc("contacts", async () => {
   const status = getAuthStatus();
   if (status !== "Authorized") {
     await requestAccess();
   }
   const contacts = await getAllContacts(["contactThumbnailImage"]);
+  for (const c of contacts) {
+    c.identifier = c.identifier || uuid();
+  }
   return contacts;
 });
 handleIpc("skipContactsCheck", () => {
