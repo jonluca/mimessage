@@ -5779,6 +5779,11 @@ react-calendar@^4.2.1:
     get-user-locale "^2.2.1"
     prop-types "^15.6.0"
 
+react-day-picker@^8.7.0:
+  version "8.7.0"
+  resolved "https://registry.npmjs.org/react-day-picker/-/react-day-picker-8.7.0.tgz#d148df074c8a45608823d4ca6fadad6ca24fabe9"
+  integrity sha512-2GAxZo5xmLIl9I6f0GKvh+hfA0ABGxEXWeBBmHN97ZkXvra2KUWOy6ZPUUQDL3mXNFImD//jaUlaMIsoJsRfEg==
+
 react-dom@^18.2.0:
   version "18.2.0"
   resolved "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz#22aaf38708db2674ed9ada224ca4aa708d821e3d"

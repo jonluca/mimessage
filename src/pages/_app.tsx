@@ -1,7 +1,9 @@
+import "react-day-picker/dist/style.css";
+import "react-toastify/dist/ReactToastify.css";
 import "../styles/globals.css";
-import "../styles/virtualized.css";
 import "../styles/Calendar.css";
 import "../styles/ai-magic.css";
+
 import { register } from "../config/registerEventHandlers";
 import type { AppProps } from "next/app";
 import React, { useEffect } from "react";
@@ -26,7 +28,6 @@ dayjs.extend(duration);
 dayjs.extend(relativeTime);
 import { ToastContainer } from "react-toastify";
 
-import "react-toastify/dist/ReactToastify.css";
 import { useDoesLocalDbExist, useHasAllowedPermissions } from "../hooks/dataHooks";
 import { Onboarding } from "../components/Onboarding";
 import { CircularProgress } from "@mui/material";

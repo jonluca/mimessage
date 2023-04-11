@@ -267,7 +267,13 @@ export class SQLDatabase {
     return messageQuery;
   };
 
-  fullTextMessageSearch = async (searchTerm: string, chatIds?: number[], handleIds?: number[]) => {
+  fullTextMessageSearch = async (
+    searchTerm: string,
+    chatIds?: number[],
+    handleIds?: number[],
+    startDate?: Date | null,
+    endDate?: Date | null,
+  ) => {
     const db = this.db;
     // SELECT * FROM message_fts WHERE text MATCH 'jonluca' ORDER BY rank;
     const textMatch = await db
@@ -277,11 +283,16 @@ export class SQLDatabase {
       .orderBy(sql`rank`, "desc")
       .execute();
     let query = this.getJoinedMessageQuery()
-      .where(
-        "message.ROWID",
-        "in",
-        textMatch.map((m) => m.message_id as number),
-      )
+      .where(({ or, cmpr }) => {
+        return or([
+          cmpr(
+            "message.ROWID",
+            "in",
+            textMatch.map((m) => m.message_id as number),
+          ),
+          cmpr("filename", "like", "%" + searchTerm + "%"),
+        ]);
+      })
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0);
     const hasChatIds = Boolean(chatIds?.length);
@@ -298,6 +309,16 @@ export class SQLDatabase {
         }
         return or(expressions);
       });
+    }
+
+    if (startDate) {
+      const offset = (startDate.getTime() - 978307200000) * 1000000;
+      query = query.where("date", ">", offset);
+    }
+
+    if (endDate) {
+      const offset = (endDate.getTime() - 978307200000) * 1000000;
+      query = query.where("date", "<", offset);
     }
 
     const messages = await query.limit(10000).execute();

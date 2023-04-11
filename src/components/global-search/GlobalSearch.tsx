@@ -4,11 +4,12 @@ import { useMimessage } from "../../context";
 import {
   useChatMap,
   useContactsWithChats,
+  useEarliestMessageDate,
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
 } from "../../hooks/dataHooks";
-import { LinearProgress } from "@mui/material";
+import { Button, LinearProgress } from "@mui/material";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { debounce } from "lodash-es";
@@ -22,6 +23,11 @@ import Select from "react-select";
 import type { Contact } from "node-mac-contacts";
 import { selectTheme } from "../wrapped/YearSelector";
 import Highlighter from "react-highlight-words";
+
+import { DayPicker } from "react-day-picker";
+import Popover from "@mui/material/Popover";
+import { shallow } from "zustand/shallow";
+
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
@@ -88,12 +94,20 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
   return (
     <Box
       onClick={onClick}
-      sx={{ display: "flex", cursor: "pointer", p: 1, my: 1, borderRadius: 4, background: "#2c2c2c" }}
+      sx={{
+        display: "flex",
+        cursor: "pointer",
+        p: 1,
+        my: 1,
+        borderRadius: 4,
+        background: "#2c2c2c",
+        alignItems: "center",
+      }}
     >
       <MessageAvatar contact={contact} />
-      <Box sx={{ ml: 1 }}>
+      <Box sx={{ ml: 1, wordBreak: "break-word" }}>
         <Highlighter searchWords={[globalSearch!]} autoEscape={true} textToHighlight={result.text || ""} />
-        <Typography variant={"h6"} sx={{ color: "grey", fontSize: 14 }}>
+        <Typography variant={"h6"} sx={{ color: "grey", fontSize: 12 }}>
           {result.is_from_me ? "You" : contact?.parsedName || handle?.id}
           {result.date_obj && <> on {dayjs(result.date_obj).format("MM/DD/YYYY HH:mm A")}</>}
           {chat?.name && <> in {chat.name}</>}
@@ -170,7 +184,15 @@ const GroupChatFilter = () => {
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-
+  const { startDate, setStartDate, setEndDate, endDate } = useMimessage(
+    (state) => ({
+      startDate: state.startDate,
+      endDate: state.endDate,
+      setStartDate: state.setStartDate,
+      setEndDate: state.setEndDate,
+    }),
+    shallow,
+  );
   return (
     <Box
       sx={{
@@ -191,7 +213,65 @@ const GlobalSearchFilter = () => {
       )}
       <ContactFilter />
       <GroupChatFilter />
+      <DateFilter selection={startDate} setSelection={setStartDate} text={"Start Date"} />
+      <DateFilter selection={endDate} setSelection={setEndDate} text={"End Date"} />
     </Box>
+  );
+};
+
+const DateFilter = ({
+  selection,
+  setSelection,
+  text,
+}: {
+  selection: Date | null | undefined;
+  setSelection: (newDate: Date | null | undefined) => void;
+  text: string;
+}) => {
+  const { data: earliestDate } = useEarliestMessageDate();
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
+  const id = open ? `date-popover-${text.replaceAll(" ", "-")}` : undefined;
+  return (
+    <>
+      <Button variant={"outlined"} sx={{ mx: 1 }} id={id} onClick={handleClick}>
+        {selection ? selection.toLocaleDateString() : text}
+      </Button>
+      <Popover
+        id={id}
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        PaperProps={{
+          sx: { p: 2, backgroundColor: "#2c2c2c", color: "white" },
+        }}
+      >
+        <DayPicker
+          selected={selection || undefined}
+          onSelect={setSelection}
+          captionLayout="dropdown-buttons"
+          mode={"single"}
+          fromYear={earliestDate?.getFullYear()}
+          toDate={new Date()}
+        />
+      </Popover>
+    </>
   );
 };
 export const GlobalSearch = () => {

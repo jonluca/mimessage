@@ -13,6 +13,7 @@ import type { WrappedStats } from "../interfaces";
 import type { Chat } from "../interfaces";
 import React from "react";
 import type { GlobalSearchResponse } from "../interfaces";
+import { shallow } from "zustand/shallow";
 
 const ipcRenderer = global.ipcRenderer;
 const useDbChatList = () => {
@@ -336,13 +337,19 @@ export const useDoesLocalDbExist = () => {
 };
 
 export const useGlobalSearch = () => {
-  const globalSearch = useMimessage((state) => state.globalSearch);
-  const chatFilter = useMimessage((state) => state.chatFilter);
-  const contactFilter = useMimessage((state) => state.contactFilter);
-
+  const { startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
+    (state) => ({
+      startDate: state.startDate,
+      endDate: state.endDate,
+      contactFilter: state.contactFilter,
+      chatFilter: state.chatFilter,
+      globalSearch: state.globalSearch,
+    }),
+    shallow,
+  );
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
-    ["globalSearch", globalSearch, chatFilter, contactFilter, handleMap.size],
+    ["globalSearch", globalSearch, chatFilter, contactFilter, startDate, endDate, handleMap.size],
     async () => {
       if (!globalSearch) {
         return [];
@@ -354,6 +361,8 @@ export const useGlobalSearch = () => {
         globalSearch,
         chatIds,
         handleIds,
+        startDate,
+        endDate,
       )) as GlobalSearchResponse;
       return resp;
     },

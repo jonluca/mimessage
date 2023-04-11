@@ -13,6 +13,8 @@ export interface AiMessage extends ChatCompletionRequestMessage {
 
 type ExtendedConversations = Record<number, AiMessage[]>;
 export const WRAPPED_ALL_TIME_YEAR = 0;
+type MaybeDate = Date | undefined | null;
+
 export interface AppContext {
   // general state
   chatId: number | null;
@@ -36,10 +38,10 @@ export interface AppContext {
   setGlobalSearch: (updated: string | null) => void;
   messageIdToBringToFocus: number | null;
   setMessageIdToBringToFocus: (updated: number | null) => void;
-  startDate: string;
-  setStartDate: (updated: string) => void;
-  endDate: string;
-  setEndDate: (updated: string) => void;
+  startDate: MaybeDate;
+  setStartDate: (updated: MaybeDate) => void;
+  endDate: MaybeDate;
+  setEndDate: (updated: MaybeDate) => void;
   contactFilter: Contact[];
   setContactFilter: (updated: Contact[]) => void;
   chatFilter: ChatList;
@@ -69,12 +71,12 @@ const useMimessage = create<AppContext>((set) => ({
   setFilter: (filter: string | null) => set({ filter }),
   setGlobalSearch: (globalSearch: string | null) => set({ globalSearch }),
   setRelation: (relation: string) => set({ relation }),
-  startDate: "",
+  startDate: null,
   relation: "friend",
-  setStartDate: (startDate: string) => set({ startDate }),
-  endDate: "",
+  setStartDate: (startDate: MaybeDate) => set({ startDate }),
+  endDate: null,
   openAiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(openAiLocalStorageKey) ?? null,
-  setEndDate: (endDate: string) => set({ endDate }),
+  setEndDate: (endDate: MaybeDate) => set({ endDate }),
   setOpenAiKey: (openAiKey: string | null) => {
     if (openAiKey) {
       localStorage.setItem(openAiLocalStorageKey, openAiKey);
