@@ -3,16 +3,7 @@ on: push
 jobs:
   build:
     name: Build & test
-    strategy:
-      matrix:
-        include:
-          - os: macos-12
-            arch: arm64
-            platform: darwin
-          - os: macos-12
-            arch: x64
-            platform: darwin
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
 
@@ -24,9 +15,8 @@ jobs:
           bun-version: latest
 
       - run: bun install --no-save --ignore-scripts
-      - run: yarn postinstall --arch ${{ matrix.arch }}
       - run: yarn build
-      - run: yarn package --${{ matrix.arch }}
+      - run: yarn package
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
@@ -38,6 +28,6 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.platform }}-${{ matrix.arch }}-distributables
+          name: distributables
           path: dist/Mimessage-*
           if-no-files-found: error

@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "Mimessage",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
@@ -129,6 +129,13 @@
       "assets/**/*"
     ],
     "mac": {
+      "target": {
+        "target": "default",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      },
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon.icns",
       "entitlements": "electron-src/entitlements.plist",
