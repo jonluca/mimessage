@@ -419,3 +419,8 @@ td {
 .media-attachment {
   border-radius: 20px;
 }
+
+mark {
+  background-color: #5871f5ab;
+  color: white;
+}

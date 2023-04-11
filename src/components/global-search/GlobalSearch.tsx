@@ -21,6 +21,7 @@ import dayjs from "dayjs";
 import Select from "react-select";
 import type { Contact } from "node-mac-contacts";
 import { selectTheme } from "../wrapped/YearSelector";
+import Highlighter from "react-highlight-words";
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
@@ -74,6 +75,7 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
   const setChatId = useMimessage((state) => state.setChatId);
   const setMessageIdToBringToFocus = useMimessage((state) => state.setMessageIdToBringToFocus);
   const handleMap = useHandleMap();
+  const globalSearch = useMimessage((state) => state.globalSearch);
 
   const handle = handleMap?.[result.handle_id!];
   const chatMap = useChatMap();
@@ -90,7 +92,7 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
     >
       <MessageAvatar contact={contact} />
       <Box sx={{ ml: 1 }}>
-        {result.text}
+        <Highlighter searchWords={[globalSearch]} autoEscape={true} textToHighlight={result.text || ""} />
         <Typography variant={"h6"} sx={{ color: "grey", fontSize: 14 }}>
           {result.is_from_me ? "You" : contact?.parsedName || handle?.id}
           {result.date_obj && <> on {dayjs(result.date_obj).format("MM/DD/YYYY HH:mm A")}</>}
@@ -108,13 +110,13 @@ const ContactFilter = () => {
   const setContactFilter = useMimessage((state) => state.setContactFilter);
 
   return (
-    <Box sx={{ mr: 0.5, width: 250 }}>
+    <Box sx={{ mr: 0.5, width: 160 }}>
       <Select<Contact, true>
         value={contactFilter}
         options={contacts || []}
         theme={selectTheme}
         name={"contactFilter"}
-        placeholder={"Filter by Contact"}
+        placeholder={"Contact Filter"}
         blurInputOnSelect
         isSearchable
         isMulti
@@ -139,13 +141,13 @@ const GroupChatFilter = () => {
   const setChatFilter = useMimessage((state) => state.setChatFilter);
 
   return (
-    <Box sx={{ mx: 0.5, width: 250 }}>
+    <Box sx={{ mx: 0.5, width: 160 }}>
       <Select<Chat, true>
         value={chatFilter}
         options={groupChatList || []}
         theme={selectTheme}
         name={"chatFilter"}
-        placeholder={"Filter by Group Chat"}
+        placeholder={"Group Filter"}
         closeMenuOnSelect={false}
         isSearchable
         isMulti
