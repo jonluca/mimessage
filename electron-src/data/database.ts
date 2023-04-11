@@ -284,11 +284,13 @@ export class SQLDatabase {
       )
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0);
-
-    if (chatIds || handleIds) {
+    const hasChatIds = Boolean(chatIds?.length);
+    const hasHandleIds = Boolean(handleIds?.length);
+    if (hasChatIds || hasHandleIds) {
       query = query.where(({ or, cmpr }) => {
         const expressions = [];
-        if (chatIds?.length) {
+
+        if (hasChatIds) {
           expressions.push(cmpr("chat_id", "in", chatIds));
         }
         if (handleIds?.length) {
