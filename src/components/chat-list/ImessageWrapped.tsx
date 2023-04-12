@@ -1,4 +1,3 @@
-import { useRouter } from "next/router";
 import { Button } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import theme from "../theme";
@@ -6,12 +5,14 @@ import React from "react";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useMimessage } from "../../context";
 export const ImessageWrapped = ({ back }: { back?: boolean }) => {
-  const router = useRouter();
+  const setIsInWrapped = useMimessage((state) => state.setIsInWrapped);
   const setChatId = useMimessage((state) => state.setChatId);
 
   const openImessageWrapped = () => {
-    setChatId(null);
-    router.push(back ? "/" : "/wrapped");
+    if (!back) {
+      setChatId(null);
+    }
+    setIsInWrapped(!back);
   };
   const Icon = back ? ArrowBackIcon : AutoFixHighIcon;
   return (

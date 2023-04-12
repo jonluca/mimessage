@@ -1,21 +1,96 @@
-import React from "react";
+import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage, WRAPPED_ALL_TIME_YEAR } from "../../context";
 import { useChatMap, useWrappedStats } from "../../hooks/dataHooks";
 import Typography from "@mui/material/Typography";
 import type { WrappedStats } from "../../interfaces";
-
+import type { BoxProps } from "@mui/material/Box/Box";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 const GenericValue = ({ text, number }: { text: string; number: string | bigint | number }) => {
   return (
     <Box display={"flex"} justifyContent={"center"} alignItems={"center"}>
-      <Typography sx={{ mr: 1 }}>{text}</Typography>
-      <ChunkyNumber number={number || 0} />
+      <Typography sx={{ color: "#5871f5", display: "flex", mr: 1, width: 70, fontWeight: "bold" }}>
+        {(number || 0).toLocaleString()}
+      </Typography>
+      <Typography
+        title={text}
+        sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}
+      >
+        {text}
+      </Typography>
     </Box>
   );
 };
 
-const ChunkyNumber = ({ number }: { number: string | bigint | number }) => {
-  return <Typography variant={"h1"}>{number.toLocaleString()}</Typography>;
+const SectionWrapper = (props: BoxProps) => {
+  return (
+    <Box
+      {...props}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        background: "#2c2c2c",
+        py: 1,
+        px: 2,
+        m: 1,
+        borderRadius: 2,
+        height: "fit-content",
+        width: "fit-content",
+        ...props.sx,
+      }}
+    />
+  );
+};
+
+const SectionHeader = ({ children }: React.PropsWithChildren) => {
+  return <Typography variant={"h2"}>{children}</Typography>;
+};
+const SECTION_WIDTH = 550;
+const SECTION_HEIGHT = 200;
+const TwoSidedSection = ({
+  title,
+  interactions,
+  render,
+}: {
+  title: string;
+  render: (val: any) => any;
+  interactions: { sent: any[]; received: any[] } | undefined;
+}) => {
+  const [showAll, setShowAll] = useState(false);
+  const sent = interactions?.sent.slice(0, showAll ? 10 : 5) || [];
+  const received = interactions?.received.slice(0, showAll ? 10 : 5) || [];
+  const hasReceived = received.length > 0;
+  const hasSent = sent.length > 0;
+  if (!hasReceived && !hasSent) {
+    return null;
+  }
+
+  const ArrowIcon = showAll ? ArrowDropUpIcon : ArrowDropDownIcon;
+
+  return (
+    <SectionWrapper sx={{ width: SECTION_WIDTH, minHeight: SECTION_HEIGHT }}>
+      {title && <SectionHeader>{title}</SectionHeader>}
+      <Box sx={{ width: "100%", display: "flex" }}>
+        {hasSent && (
+          <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start", mr: 1 }}>
+            <Typography>Sent</Typography>
+            {sent.map((d) => render(d))}
+          </Box>
+        )}
+        {hasReceived && (
+          <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start" }}>
+            <Typography>Received</Typography>
+            {received.map((d) => render(d))}
+          </Box>
+        )}
+      </Box>
+      {(hasSent || hasReceived) && (
+        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "#3f78ff" }} onClick={() => setShowAll((v) => !v)} />
+      )}
+    </SectionWrapper>
+  );
 };
 
 const MessageCount = () => {
@@ -34,13 +109,12 @@ const MessageCount = () => {
 
   const uniqueContacts = new Set(contacts.flat());
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <GenericValue text={"You sent"} number={wrappedStats?.messageCountSent || 0} />
-      <GenericValue text={"and received"} number={wrappedStats?.messageCountReceived || 0} />
-      <GenericValue text={"messages with"} number={uniqueContacts?.size || 0} />
-      <Typography>people</Typography>
-    </Box>
+    <SectionWrapper>
+      <SectionHeader>Messages</SectionHeader>
+      <GenericValue text={"Sent"} number={wrappedStats?.messageCountSent || 0} />
+      <GenericValue text={"Received"} number={wrappedStats?.messageCountReceived || 0} />
+      <GenericValue text={"People"} number={uniqueContacts?.size || 0} />
+    </SectionWrapper>
   );
 };
 
@@ -69,48 +143,33 @@ const BusiestDay = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.weekdayInteractions;
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <Typography>You sent the most messages on</Typography>
-      {interactions?.sent.map((d) => (
-        <DayInteraction key={d.weekday} day={d} />
-      ))}
-      <Typography>While you were sent the most messages on</Typography>
-      {interactions?.received.map((d) => (
-        <DayInteraction key={d.weekday} day={d} />
-      ))}
-    </Box>
+    <TwoSidedSection
+      title={"Days"}
+      interactions={interactions}
+      render={(d) => <DayInteraction key={d.weekday} day={d} />}
+    />
   );
 };
 const BusiestMonth = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.monthlyInteractions;
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <Typography>You sent the most messages on</Typography>
-      {interactions?.sent.slice(0, 5).map((d) => (
-        <MonthInteraction key={d.month} month={d} />
-      ))}
-      <Typography>While you were sent the most messages on</Typography>
-      {interactions?.received.slice(0, 5).map((d) => (
-        <MonthInteraction key={d.month} month={d} />
-      ))}
-    </Box>
+    <TwoSidedSection
+      title={"Months"}
+      interactions={interactions}
+      render={(m) => <MonthInteraction key={m.month} month={m} />}
+    />
   );
 };
 const MostPopularOpeners = () => {
   const { data: wrappedStats } = useWrappedStats();
   const openers = wrappedStats?.mostPopularOpeners;
-  const keys = Object.keys(openers || {}).sort((a, b) => (openers?.[b] || 0) - (openers?.[a] || 0));
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <Typography>Your favorite first messages were</Typography>
-      {keys.slice(0, 5).map((key) => (
-        <OpenerCount key={key} opener={key} count={openers![key] ?? 0} />
-      ))}
-    </Box>
+    <TwoSidedSection
+      title={"First Messages"}
+      interactions={openers}
+      render={(m) => <OpenerCount key={m.text} opener={m.text} count={m.count ?? 0} />}
+    />
   );
 };
 
@@ -118,111 +177,69 @@ const TopConversationPartners = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.chatInteractions;
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <Typography sx={{ my: 1, fontWeight: "bold" }}>You sent the most messages to these chats</Typography>
-      {interactions?.sent.slice(0, 5).map((i) => (
-        <ChatInteraction key={i.chat_id} chatInteraction={i} />
-      ))}
-      <Typography sx={{ my: 1, fontWeight: "bold" }}>
-        While the chats where you received the most messages were
-      </Typography>
-      {interactions?.received.slice(0, 5).map((i) => (
-        <ChatInteraction key={i.chat_id} chatInteraction={i} />
-      ))}
-    </Box>
+    <TwoSidedSection
+      title={"People"}
+      interactions={interactions}
+      render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
+    />
   );
 };
 const LateNightChatter = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.lateNightInteractions;
   return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"flex-start"} flexDirection={"column"}>
-      <EntryHeader />
-      <Typography>Between the hours of 11pm and 4am, you spent the most time messaging these people</Typography>
-      {interactions?.sent.slice(0, 5).map((i) => (
-        <ChatInteraction key={i.chat_id} chatInteraction={i} />
-      ))}
-      <Typography>While these people spent the most time messaging you</Typography>
-      {interactions?.received.slice(0, 5).map((i) => (
-        <ChatInteraction key={i.chat_id} chatInteraction={i} />
-      ))}
-    </Box>
+    <TwoSidedSection
+      title={"Down Bad"}
+      interactions={interactions}
+      render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
+    />
   );
 };
 
 const EntryHeader = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
-  return <Typography variant={"h1"}>{wrappedYear === WRAPPED_ALL_TIME_YEAR ? "All Time" : wrappedYear}</Typography>;
+  return (
+    <Typography variant={"h1"}>
+      Your iMessage Wrapped{wrappedYear === WRAPPED_ALL_TIME_YEAR ? "" : `in ${wrappedYear}`}
+    </Typography>
+  );
 };
 
-const NotImplemented = () => {
-  return <Typography>Not implemented yet</Typography>;
-};
 export const SelectedWrap = () => {
-  const wrappedEntry = useMimessage((state) => state.wrappedEntry);
-
-  const renderEntry = () => {
-    if (!wrappedEntry) {
-      return null;
-    }
-
-    switch (wrappedEntry.key) {
-      case "MESSAGE_COUNTS":
-        return <MessageCount />;
-      case "MOST_COMMUNICATED":
-        return <TopConversationPartners />;
-      case "BUSIEST_DAY":
-        return <BusiestDay />;
-      case "BUSIEST_MONTH":
-        return <BusiestMonth />;
-      case "MOST_USED_EMOJIS":
-        return <NotImplemented />;
-      case "MOST_COMMON_WORDS":
-        return <NotImplemented />;
-      case "LONGEST_CONVERSATION_STREAK":
-        return <NotImplemented />;
-      case "FIRST_MESSAGE":
-        return <MostPopularOpeners />;
-      case "LATE_NIGHT_CHATTER":
-        return <LateNightChatter />;
-      case "WORD_CLOUD":
-        return <NotImplemented />;
-      case "CONVERSATION_STARTERS":
-        return <NotImplemented />;
-      case "GROUP_CHAT_ACTIVITY":
-        return <NotImplemented />;
-      case "FASTEST_RESPONSE_TIME":
-        return <NotImplemented />;
-    }
-    return null;
-  };
-
   return (
     <Box
       sx={{
         zIndex: 999,
-        display: "flex",
         justifyContent: "center",
         width: "100%",
+        height: "100%",
         flexDirection: "column",
         background: "#1e1e1e",
         alignItems: "center",
+        overflowY: "hidden",
+        p: 1,
       }}
     >
+      <EntryHeader />
       <Box
         sx={{
+          zIndex: 999,
+          width: "100%",
           height: "100%",
-          width: "80%",
+          flexDirection: "column",
+          background: "#1e1e1e",
           overflowY: "auto",
-          overflowX: "hidden",
-          contain: "strict",
-          p: 1,
-          justifyContent: "center",
+          display: "inline-flex",
         }}
-        display={"flex"}
       >
-        {renderEntry()}
+        <MessageCount />
+        <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+          <TopConversationPartners />
+          <BusiestDay />
+          <BusiestMonth />
+          <MostPopularOpeners />
+          <LateNightChatter />
+        </Box>
       </Box>
     </Box>
   );

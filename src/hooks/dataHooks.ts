@@ -383,12 +383,17 @@ export const useEarliestMessageDate = () => {
 
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
 
-  return useQuery<WrappedStats>(["calculateWrappedStats", wrappedYear], async () => {
-    const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
-    console.log(resp);
-    return resp;
-  });
+  return useQuery<WrappedStats>(
+    ["calculateWrappedStats", wrappedYear],
+    async () => {
+      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
+      console.log(resp);
+      return resp;
+    },
+    { enabled: isInWrapped },
+  );
 };
 
 interface Permissions {

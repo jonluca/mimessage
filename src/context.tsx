@@ -3,7 +3,6 @@ import type { Chat, ChatList } from "./interfaces";
 import { useChatById } from "./hooks/dataHooks";
 import type { Message } from "./interfaces";
 import type { ChatCompletionRequestMessage } from "openai/api";
-import type { WrappedEntry } from "./components/wrapped/WrappedList";
 import type { Contact } from "electron-mac-contacts";
 
 export interface AiMessage extends ChatCompletionRequestMessage {
@@ -35,8 +34,8 @@ export interface AppContext {
   extendedConversations: ExtendedConversations;
   setExtendedConversations: (updated: ExtendedConversations) => void;
   // wrapped
-  wrappedEntry: WrappedEntry | null;
-  setWrappedEntry: (entry: WrappedEntry | null) => void;
+  isInWrapped: boolean;
+  setIsInWrapped: (entry: boolean) => void;
   wrappedYear: number;
   setWrappedYear: (year: number) => void;
   // global search
@@ -75,6 +74,8 @@ const useMimessage = create<AppContext>((set) => ({
   messageIdToBringToFocus: null,
   globalSearch: null,
   regexSearch: false,
+  isInWrapped: false,
+  setIsInWrapped: (isInWrapped: boolean) => set({ isInWrapped }),
   setRegexSearch: (regexSearch: boolean) => set({ regexSearch }),
   setSearch: (search: string | null) => set({ search }),
   setFilter: (filter: string | null) => set({ filter }),
@@ -132,8 +133,6 @@ const useMimessage = create<AppContext>((set) => ({
     set({ extendedConversations: { ...extendedConversations } }),
   extendedConversations: {},
   // wrapped
-  wrappedEntry: null,
-  setWrappedEntry: (wrappedEntry: WrappedEntry | null) => set({ wrappedEntry }),
   wrappedYear: WRAPPED_ALL_TIME_YEAR,
   setWrappedYear: (wrappedYear: number) => set({ wrappedYear }),
 }));

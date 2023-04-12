@@ -5,9 +5,11 @@ import { ChatList } from "./chat-list/ChatList";
 import { SelectedChat } from "./chat/SelectedChat";
 import { HighlightedMessage } from "./message/HighlightedMessage";
 import { GlobalSearch } from "./global-search/GlobalSearch";
+import { SelectedWrap } from "./wrapped/SelectedWrap";
 
 export const Home = () => {
   const chatId = useMimessage((state) => state.chatId);
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
   return (
     <Box
       display={"flex"}
@@ -17,9 +19,15 @@ export const Home = () => {
       sx={{ background: "none", borderRadius: 1 }}
     >
       <ChatList />
-      {chatId && <SelectedChat key={chatId} />}
-      <GlobalSearch />
-      <HighlightedMessage />
+      {isInWrapped ? (
+        <SelectedWrap />
+      ) : (
+        <>
+          {chatId && <SelectedChat key={chatId} />}
+          <GlobalSearch />
+          <HighlightedMessage />
+        </>
+      )}
     </Box>
   );
 };

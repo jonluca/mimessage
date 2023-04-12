@@ -504,42 +504,49 @@ export class SQLDatabase {
   };
 
   private getMostPopularOpeners = async (year: number) => {
-    const query = this.getMessageQueryByYear(year)
-      .select(["text", "attributedBody"])
-      .where((eb) => {
-        return eb.cmpr(
-          "cmj.message_date",
-          "=",
-          eb
-            .selectFrom("chat_message_join as cmj2")
-            .select((e) => e.fn.min("cmj2.message_date").as("min_date"))
-            .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
-        );
-      })
-      .where("message.is_from_me", "=", 1)
-      .orderBy("message.date", "asc");
+    const getByOriginator = async (fromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year)
+        .select(["text", "attributedBody"])
+        .where((eb) => {
+          return eb.cmpr(
+            "cmj.message_date",
+            "=",
+            eb
+              .selectFrom("chat_message_join as cmj2")
+              .select((e) => e.fn.min("cmj2.message_date").as("min_date"))
+              .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
+          );
+        })
+        .where("message.is_from_me", "=", Number(fromMe))
+        .orderBy("message.date", "asc");
 
-    const chats = await query.execute();
-    for (const chat of chats) {
-      if (!chat.text && chat.attributedBody) {
-        chat.text = await getTextFromBuffer(chat.attributedBody);
+      const chats = await query.execute();
+      for (const chat of chats) {
+        if (!chat.text && chat.attributedBody) {
+          chat.text = await getTextFromBuffer(chat.attributedBody);
+        }
       }
-    }
-    const openers: string[] = chats
-      .map((chat) => {
-        return (chat.text || "")
-          .trim()
-          .toLowerCase()
-          .replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
-      })
-      .filter(Boolean) as string[];
-    const counted = countBy(openers, (o) => o);
-    for (const key of Object.keys(counted)) {
-      if (counted[key] < 2) {
-        delete counted[key];
+      const openers: string[] = chats
+        .map((chat) => {
+          return (chat.text || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
+        })
+        .filter(Boolean) as string[];
+      const counted = countBy(openers, (o) => o);
+      for (const key of Object.keys(counted)) {
+        if (counted[key] < 2) {
+          delete counted[key];
+        }
       }
-    }
-    return counted;
+      return Object.entries(counted)
+        .map(([text, count]) => ({ text, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+    const received = await getByOriginator(false);
+    const sent = await getByOriginator(true);
+    return { received, sent };
   };
 
   private getMessageText = async (year: number) => {
