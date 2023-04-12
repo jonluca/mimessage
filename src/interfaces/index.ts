@@ -1,5 +1,5 @@
 import type { SQLDatabase } from "../../electron-src/data/database";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 
 export type ChatList = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>;
 export type WrappedStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateWrappedStats"]>>>;

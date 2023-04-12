@@ -20,7 +20,7 @@ import Typography from "@mui/material/Typography";
 import { MessageAvatar } from "../message/Avatar";
 import dayjs from "dayjs";
 import Select from "react-select";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 import { selectTheme } from "../wrapped/YearSelector";
 import Highlighter from "react-highlight-words";
 

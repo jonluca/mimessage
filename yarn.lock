@@ -2554,6 +2554,14 @@ electron-is-dev@^2.0.0:
   resolved "https://registry.npmjs.org/electron-is-dev/-/electron-is-dev-2.0.0.tgz#833487a069b8dad21425c67a19847d9064ab19bd"
   integrity sha512-3X99K852Yoqu9AcW50qz3ibYBWY79/pBhlMCab8ToEWS48R0T9tyxRiQhwylE7zQdXrMnx2JKqUJyMPmt5FBqA==
 
+electron-mac-contacts@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/electron-mac-contacts/-/electron-mac-contacts-1.0.0.tgz#4520644ad2db6eb8579faa550da2b8d648d1d38d"
+  integrity sha512-R7qZRaufEBdxPxVEZ0Zk9stcSC+Gdb3nLix+MVa99z8hwZ5Ars8UC5UJ9MFOJP51KiuRDiitMwldOW7fr8V96A==
+  dependencies:
+    bindings "^1.5.0"
+    node-addon-api "^6.0.0"
+
 electron-notarize@^1.2.1:
   version "1.2.2"
   resolved "https://registry.npmjs.org/electron-notarize/-/electron-notarize-1.2.2.tgz#ebf2b258e8e08c1c9f8ff61dc53d5b16b439daf4"
@@ -5069,6 +5077,11 @@ node-addon-api@^4.2.0:
   resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-4.3.0.tgz#52a1a0b475193e0928e98e0426a0d1254782b77f"
   integrity sha512-73sE9+3UaLYYFmDsFZnqCInzPyh3MqIwZO9cw58yIqAZhONrrabrYyYe3TuIqtIiOuTXVhsGau8hcrhhwSsDIQ==
 
+node-addon-api@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.npmjs.org/node-addon-api/-/node-addon-api-6.0.0.tgz#cfb3574e6df708ff71a30db6c4762d9e06e11c27"
+  integrity sha512-GyHvgPvUXBvAkXa0YvYnhilSB1A+FRYMpIVggKzPZqdaZfevZOuzfWzyvgzOwRLHBeo/MMswmJFsrNF4Nw1pmA==
+
 node-bitmap@0.0.1:
   version "0.0.1"
   resolved "https://registry.npmjs.org/node-bitmap/-/node-bitmap-0.0.1.tgz#180eac7003e0c707618ef31368f62f84b2a69091"
@@ -5101,14 +5114,6 @@ node-gyp@8.x:
     semver "^7.3.5"
     tar "^6.1.2"
     which "^2.0.2"
-
-node-mac-contacts@^1.6.1:
-  version "1.6.1"
-  resolved "https://registry.npmjs.org/node-mac-contacts/-/node-mac-contacts-1.6.1.tgz#55a5d934aab8cec17896071c15f35d2e770474c3"
-  integrity sha512-G3KW9kvF6VinCc51C4l0LIWOWEPpzDGX3qloJRokAzcQKSDnQpDneayf0H1cPTeQJPOZa9a8dq4AftPte/mYTQ==
-  dependencies:
-    bindings "^1.5.0"
-    node-addon-api "^3.0.2"
 
 node-mac-permissions@^2.3.0:
   version "2.3.0"

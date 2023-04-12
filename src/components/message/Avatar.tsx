@@ -1,5 +1,5 @@
 import React from "react";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 import Avatar from "./BaseAvatar";
 
 export const MessageAvatar = ({

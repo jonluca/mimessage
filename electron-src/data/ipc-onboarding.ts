@@ -1,5 +1,5 @@
 // deconstructing assignment
-import { getAllContacts, getAuthStatus, requestAccess } from "node-mac-contacts";
+import { getAllContacts, getAuthStatus, requestAccess } from "electron-mac-contacts";
 import logger from "../utils/logger";
 import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-mac-permissions";
 import { setSkipContactsPermsCheck, shouldSkipContactsCheck } from "./options";

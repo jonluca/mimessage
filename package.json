@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^8.3.0",
-    "node-mac-contacts": "^1.6.1",
+    "electron-mac-contacts": "^1.0.0",
     "node-mac-permissions": "^2.3.0"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import { MessageAvatar } from "../message/Avatar";
 import Typography from "@mui/material/Typography";
 import React from "react";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 import { CHAT_LIST_WIDTH } from "./ChatList";
 
 export const CHAT_HEIGHT = 65;

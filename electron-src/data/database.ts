@@ -5,7 +5,7 @@ import type { DB as MesssagesDatabase } from "../../_generated/types";
 import logger from "../utils/logger";
 import type { KyselyConfig } from "kysely/dist/cjs/kysely";
 import { countBy, groupBy, partition } from "lodash-es";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 import { format } from "sql-formatter";
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
 import { localDbExists } from "./db-file-utils";

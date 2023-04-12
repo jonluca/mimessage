@@ -4,7 +4,7 @@ import { useChatById } from "./hooks/dataHooks";
 import type { Message } from "./interfaces";
 import type { ChatCompletionRequestMessage } from "openai/api";
 import type { WrappedEntry } from "./components/wrapped/WrappedList";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 
 export interface AiMessage extends ChatCompletionRequestMessage {
   date: Date;

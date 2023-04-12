@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ChatList, Contacts, Handle, MessagesForChat } from "../interfaces";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 import parsePhoneNumber from "libphonenumber-js";
 import { getContactName } from "../utils/helpers";
 import { groupBy, uniq } from "lodash-es";

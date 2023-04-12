@@ -1,4 +1,4 @@
-declare module "node-mac-contacts" {
+declare module "electron-mac-contacts" {
   export interface Contact {
     identifier: string;
     // optional

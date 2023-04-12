@@ -1,5 +1,5 @@
 import ColorThief from "colorthief/dist/color-thief.mjs";
-import type { Contact } from "node-mac-contacts";
+import type { Contact } from "electron-mac-contacts";
 const colorThief = new ColorThief();
 
 export function getIntervalString(timeDiff: number): string {
