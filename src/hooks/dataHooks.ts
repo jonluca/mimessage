@@ -401,10 +401,12 @@ export const useWrappedStats = () => {
         );
         const sameParticipantChats = Object.values(grouped);
 
-        return sameParticipantChats.map((chats) => ({
-          chat_id: Number(chats[0].chat_id),
-          message_count: chats.reduce((acc, stat) => acc + Number(stat.message_count || 0) || 0, 0),
-        })) as ChatStat[];
+        return sameParticipantChats
+          .map((chats) => ({
+            chat_id: Number(chats[0].chat_id),
+            message_count: chats.reduce((acc, stat) => acc + Number(stat.message_count || 0) || 0, 0),
+          }))
+          .sort((a, b) => b.message_count - a.message_count) as ChatStat[];
       };
       resp.chatInteractions.sent = coalesceSameChats(resp.chatInteractions.sent);
       resp.chatInteractions.received = coalesceSameChats(resp.chatInteractions.received);

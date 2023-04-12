@@ -190,7 +190,7 @@ const LateNightChatter = () => {
   const interactions = wrappedStats?.lateNightInteractions;
   return (
     <TwoSidedSection
-      title={"Down Bad"}
+      title={"Down Bad (12am-4am)"}
       interactions={interactions}
       render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
     />
