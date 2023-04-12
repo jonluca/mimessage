@@ -114,6 +114,10 @@
   },
   "build": {
     "asar": true,
+    "asarUnpack": [
+      "node_modules/sqlite3/**/*",
+      "node_modules/better-sqlite3/**/*"
+    ],
     "appId": "com.jonluca.mimessage",
     "extends": null,
     "productName": "Mimessage",

@@ -5,7 +5,9 @@ import isDev from "electron-is-dev";
 import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils/util";
 import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
+import "./data/semantic-search";
 import "./data/ipc";
+import "better-sqlite3";
 import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
 import { setupRouteHandlers } from "./data/routes";
@@ -13,7 +15,6 @@ import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./data/database-worker";
 import { localDbExists } from "./data/db-file-utils";
-import "./data/semantic-search";
 addFlags(app);
 
 registerContextMenu({
