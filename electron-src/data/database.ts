@@ -127,16 +127,18 @@ export class SQLDatabase {
           }
         },
       };
-      await this.addParsedTextToNullMessages();
 
       const db = new Kysely<MesssagesDatabase>(options);
+      this.dbWriter = db;
+      // add in text
+      await this.addParsedTextToNullMessages();
+
       // create virtual table if not exists
       await sqliteDb.exec("CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(text,message_id)");
       const count = await db.selectFrom("message_fts").select("message_id").limit(1).executeTakeFirst();
       if (count === undefined) {
         await sqliteDb.exec("INSERT INTO message_fts SELECT text, guid as message_id FROM message");
       }
-      this.dbWriter = db;
       return true;
     } catch (e) {
       console.error(e);
