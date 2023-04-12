@@ -84,7 +84,10 @@ class OpenAIClient {
         (m) => ({ content: m.text, role: m.is_from_me ? "user" : "assistant" } as ChatCompletionRequestMessage),
       ),
       ...existingAiMessages.flatMap(
-        (m) => [{ content: m.content, role: "user" }, m.response].filter(Boolean) as ChatCompletionRequestMessage[],
+        (m) =>
+          [Boolean(m.content) && { content: m.content, role: m.role }].filter(
+            Boolean,
+          ) as ChatCompletionRequestMessage[],
       ),
       { content: newMessage.content, role: newMessage.role },
     ];

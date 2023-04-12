@@ -141,7 +141,7 @@ export const SendMessageBox = () => {
     return null;
   }
 
-  const isAwaitingResponse = Boolean(currConvo.length) && currConvo[currConvo.length - 1].response === null;
+  const isAwaitingResponse = Boolean(currConvo.length) && currConvo[currConvo.length - 1].content === "";
   const tooManyParticipants = (chat?.handles.length || 0) > 1;
   const isDisabled = tooManyParticipants || isLoadingMessages || isAwaitingResponse;
   return (
