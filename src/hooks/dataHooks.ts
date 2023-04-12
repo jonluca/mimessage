@@ -431,6 +431,25 @@ export const useCopyDbMutation = () => {
     await ipcRenderer.invoke("copyLocalDb");
   });
 };
+
+interface CreateEmbeddingsOpts {
+  openAiKey: string;
+  pineconeApiKey: string;
+  pineconeNamespace: string;
+  pineconeBaseUrl: string;
+}
+export const useCreateSemanticEmbeddings = () => {
+  return useMutation({
+    mutationFn: async ({ openAiKey, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }: CreateEmbeddingsOpts) => {
+      await ipcRenderer.invoke("createEmbeddings", {
+        openAiKey,
+        pineconeApiKey,
+        pineconeNamespace,
+        pineconeBaseUrl,
+      });
+    },
+  });
+};
 export const useSkipContactsCheck = () => {
   return useMutation(["skipContactsCheck"], async () => {
     await ipcRenderer.invoke("skipContactsCheck");

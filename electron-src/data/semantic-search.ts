@@ -2,6 +2,8 @@ import { GPT4Tokenizer } from "gpt4-tokenizer";
 import { PineconeClient } from "pinecone-client";
 import { Configuration, OpenAIApi } from "openai";
 import dbWorker from "./database-worker";
+import { pRateLimit } from "p-ratelimit";
+import { handleIpc } from "./ipc"; // TypeScript
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -169,20 +171,31 @@ export const createEmbeddings = async ({
     namespace: pineconeNamespace,
   });
 
-  for (const message of messages) {
-    if (!message.text) {
-      continue;
-    }
-    const chunks = splitIntoChunks(message.text);
-    const itemEmbeddings = await getEmbeddings({
-      id: message.guid,
-      content: { chunks },
-      openai,
+  // create a rate limiter that allows up to 30 API calls per second,
+  // with max concurrency of 10
+  const limit = pRateLimit({
+    interval: 1000 * 60, // 1 minute
+    rate: 3500, // 3500 calls per minute
+    concurrency: 60, // no more than 60 running at once
+  });
+
+  const promises = messages.map(async (message) => {
+    return limit(async () => {
+      if (!message.text) {
+        return;
+      }
+      const chunks = splitIntoChunks(message.text);
+      const itemEmbeddings = await getEmbeddings({
+        id: message.guid,
+        content: { chunks },
+        openai,
+      });
+      await pinecone.upsert({
+        vectors: itemEmbeddings,
+      });
     });
-    await pinecone.upsert({
-      vectors: itemEmbeddings,
-    });
-  }
+  });
+  await Promise.all(promises);
 };
 export interface SemanticQueryOptions {
   /** Default: 10 */
@@ -216,3 +229,12 @@ export async function semanticQuery(
 
   return response;
 }
+
+handleIpc("createEmbeddings", async ({ openAiKey: key, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }) => {
+  return await createEmbeddings({
+    openAiKey: key,
+    pineconeApiKey,
+    pineconeNamespace,
+    pineconeBaseUrl,
+  });
+});

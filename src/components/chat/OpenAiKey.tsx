@@ -6,7 +6,7 @@ import Backdrop from "@mui/material/Backdrop";
 import Typography from "@mui/material/Typography";
 import { toast } from "react-toastify";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import { useSemanticSearchStats } from "../../hooks/dataHooks";
+import { useCreateSemanticEmbeddings, useSemanticSearchStats } from "../../hooks/dataHooks";
 
 export const OpenAiKey = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
@@ -56,24 +56,41 @@ const humanReadableMinutes = (minutes: number) => {
   return `${hours} hours ${Math.round(remainingMinutes)} minutes`;
 };
 export const SemanticSearchInfo = () => {
-  const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
-  const openAiKey = useMimessage((state) => state.openAiKey);
+  const { setOpenAiKey, setPineconeNamespace, setPineconeApiKey, setPineconeBaseUrl } = useMimessage((state) => state);
   const [modalOpen, setModalOpen] = useState(false);
+  const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
   const { data, isLoading } = useSemanticSearchStats(modalOpen);
   const ref = useRef<HTMLInputElement>(null);
-
-  const onSubmit = () => {
-    const key = ref.current?.value;
-    if (key) {
-      if (!key.startsWith("sk-") || key.length !== 51) {
-        toast("Invalid OpenAI API key - must start with sk- and be 51 chars long", { type: "error" });
-        return;
-      }
-      setOpenAiKey(key ?? null);
-    } else {
-      setOpenAiKey(null);
+  const pineconeApiRef = useRef<HTMLInputElement>(null);
+  const pineconeNamespaceRef = useRef<HTMLInputElement>(null);
+  const pineconeBaseUrlRef = useRef<HTMLInputElement>(null);
+  const onSubmit = async () => {
+    if (isCreatingEmbeddings) {
+      return;
     }
-    setModalOpen(false);
+    const key = ref.current?.value;
+    const pineconeApiKey = pineconeApiRef.current?.value;
+    const pineconeNamespace = pineconeNamespaceRef.current?.value;
+    const pineconeBaseUrl = pineconeBaseUrlRef.current?.value;
+    if (!key || !pineconeApiKey || !pineconeNamespace || !pineconeBaseUrl) {
+      toast("Please enter all API information", { type: "error" });
+      return;
+    }
+    if (!key.startsWith("sk-") || key.length !== 51) {
+      toast("Invalid OpenAI API key - must start with sk- and be 51 chars long", { type: "error" });
+      return;
+    }
+    setPineconeApiKey(pineconeApiKey);
+    setPineconeNamespace(pineconeNamespace);
+    setPineconeBaseUrl(pineconeBaseUrl);
+    setOpenAiKey(key ?? null);
+
+    await mutateAsync({
+      openAiKey: key,
+      pineconeApiKey,
+      pineconeNamespace,
+      pineconeBaseUrl,
+    });
   };
 
   return (
@@ -92,14 +109,27 @@ export const SemanticSearchInfo = () => {
             You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
             below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
           </Typography>
-          {!openAiKey && (
-            <input
-              ref={ref}
-              placeholder={"Enter your OpenAI API key"}
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-            />
-          )}
-          {isLoading && <CircularProgress />}
+          <input
+            ref={ref}
+            placeholder={"Enter your OpenAI API key"}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+          />
+          <input
+            ref={pineconeApiRef}
+            placeholder={"Enter your Pinecone API key"}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+          />
+          <input
+            ref={pineconeNamespaceRef}
+            placeholder={"Enter your Pinecone Namespace"}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+          />
+          <input
+            ref={pineconeBaseUrlRef}
+            placeholder={"Enter your Pinecone Base URL"}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+          />
+          {(isLoading || isCreatingEmbeddings) && <CircularProgress />}
           {data && (
             <>
               <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
