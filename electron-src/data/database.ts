@@ -251,7 +251,7 @@ export class SQLDatabase {
       .selectFrom("message_fts")
       .select(["message_id"])
       .where("text", sql`match`, searchTerm)
-      .orderBy(sql`rank`, "desc")
+      .orderBy(sql`rank`, "asc")
       .execute();
     const messageGuids = textMatch.map((m) => m.message_id as string);
     const messageGuidsSet = new Set(messageGuids);
@@ -295,6 +295,9 @@ export class SQLDatabase {
 
     const messages = await query.limit(10000).execute();
     const [matchedMessages, unmatchedMessages] = partition(messages, (m) => messageGuidsSet.has(m.guid));
+    matchedMessages.sort((a, b) => {
+      return messageGuids.indexOf(a.guid) - messageGuids.indexOf(b.guid);
+    });
     unmatchedMessages.sort((a, b) => {
       return (b.date || 0) - (a.date || 0);
     });
