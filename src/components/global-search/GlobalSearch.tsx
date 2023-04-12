@@ -112,7 +112,7 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
         alignItems: "center",
       }}
     >
-      <MessageAvatar contact={contact} />
+      <MessageAvatar fallback={chat?.name} contact={contact} />
       <Box sx={{ ml: 1, wordBreak: "break-word" }}>
         <Highlighter searchWords={[globalSearch!]} autoEscape={true} textToHighlight={result.text || ""} />
         <Typography variant={"h6"} sx={{ color: "grey", fontSize: 12 }}>

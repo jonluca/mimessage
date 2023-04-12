@@ -28,7 +28,9 @@ class DbWorker {
     for (const property in db) {
       const prop = property as keyof WorkerType<SQLDatabase>;
       const dbElement = this.worker[prop];
-      handleIpc(property, dbElement);
+      if (typeof dbElement === "function") {
+        handleIpc(property, dbElement);
+      }
     }
 
     for (const prop in this) {

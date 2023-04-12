@@ -4,7 +4,7 @@ import { Kysely, sql, SqliteDialect } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
 import logger from "../utils/logger";
 import type { KyselyConfig } from "kysely/dist/cjs/kysely";
-import { countBy, groupBy } from "lodash-es";
+import { countBy, groupBy, partition } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
@@ -127,6 +127,7 @@ export class SQLDatabase {
           }
         },
       };
+      await this.addParsedTextToNullMessages();
 
       const db = new Kysely<MesssagesDatabase>(options);
       // create virtual table if not exists
@@ -136,7 +137,6 @@ export class SQLDatabase {
         await sqliteDb.exec("INSERT INTO message_fts SELECT text, guid as message_id FROM message");
       }
       this.dbWriter = db;
-      await this.addParsedTextToNullMessages();
       return true;
     } catch (e) {
       console.error(e);
@@ -251,15 +251,16 @@ export class SQLDatabase {
       .where("text", sql`match`, searchTerm)
       .orderBy(sql`rank`, "desc")
       .execute();
+    const messageGuids = textMatch.map((m) => m.message_id as string);
+    const messageGuidsSet = new Set(messageGuids);
+
     let query = this.getJoinedMessageQuery()
+      .select("message.guid as guid")
       .where(({ or, cmpr }) => {
         return or([
-          cmpr(
-            "message.guid",
-            "in",
-            textMatch.map((m) => m.message_id as string),
-          ),
+          cmpr("message.guid", "in", messageGuids),
           cmpr("filename", "like", "%" + searchTerm + "%"),
+          cmpr("text", "like", "%" + searchTerm + "%"),
         ]);
       })
       .where("item_type", "not in", [1, 3, 4, 5, 6])
@@ -291,7 +292,12 @@ export class SQLDatabase {
     }
 
     const messages = await query.limit(10000).execute();
-    return this.enhanceMessageResponses<typeof messages[number]>(messages);
+    const [matchedMessages, unmatchedMessages] = partition(messages, (m) => messageGuidsSet.has(m.guid));
+    unmatchedMessages.sort((a, b) => {
+      return (b.date || 0) - (a.date || 0);
+    });
+    const allMessages = [...matchedMessages, ...unmatchedMessages];
+    return this.enhanceMessageResponses<typeof messages[number]>(allMessages);
   };
 
   private enhanceMessageResponses = async <T extends JoinedMessageType = JoinedMessageType>(messages: T[]) => {
