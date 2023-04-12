@@ -987,10 +987,10 @@
     "@types/scheduler" "*"
     csstype "^3.0.2"
 
-"@types/react@^18.0.34":
-  version "18.0.34"
-  resolved "https://registry.npmjs.org/@types/react/-/react-18.0.34.tgz#e553444a578f023e6e1ac499514688fb80b0a984"
-  integrity sha512-NO1UO8941541CJl1BeOXi8a9dNKFK09Gnru5ZJqkm4Q3/WoQJtHvmwt0VX0SB9YCEwe7TfSSxDuaNmx6H2BAIQ==
+"@types/react@^18.0.35":
+  version "18.0.35"
+  resolved "https://registry.npmjs.org/@types/react/-/react-18.0.35.tgz#192061cb1044fe01f2d3a94272cd35dd50502741"
+  integrity sha512-6Laome31HpetaIUGFWl1VQ3mdSImwxtFZ39rh059a1MNnKGqBpC88J6NJ8n/Is3Qx7CefDGLgf/KhN/sYCf7ag==
   dependencies:
     "@types/prop-types" "*"
     "@types/scheduler" "*"
@@ -2554,10 +2554,10 @@ electron-is-dev@^2.0.0:
   resolved "https://registry.npmjs.org/electron-is-dev/-/electron-is-dev-2.0.0.tgz#833487a069b8dad21425c67a19847d9064ab19bd"
   integrity sha512-3X99K852Yoqu9AcW50qz3ibYBWY79/pBhlMCab8ToEWS48R0T9tyxRiQhwylE7zQdXrMnx2JKqUJyMPmt5FBqA==
 
-electron-mac-contacts@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.npmjs.org/electron-mac-contacts/-/electron-mac-contacts-1.0.0.tgz#4520644ad2db6eb8579faa550da2b8d648d1d38d"
-  integrity sha512-R7qZRaufEBdxPxVEZ0Zk9stcSC+Gdb3nLix+MVa99z8hwZ5Ars8UC5UJ9MFOJP51KiuRDiitMwldOW7fr8V96A==
+electron-mac-contacts@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/electron-mac-contacts/-/electron-mac-contacts-1.1.0.tgz#d0dcd9c9d9d0a51f082de0126f17a479b66f3de6"
+  integrity sha512-H3QIRS1ksp0KmONpKilKU7gbSG/GTLQn/BcRI5XH//fPO65AdJoGZ+X0cCveOzvovoNsbHJXZCZ91ERX+7xuKA==
   dependencies:
     bindings "^1.5.0"
     node-addon-api "^6.0.0"
@@ -5788,10 +5788,10 @@ rc@^1.2.7:
     minimist "^1.2.0"
     strip-json-comments "~2.0.1"
 
-react-day-picker@^8.7.0:
-  version "8.7.0"
-  resolved "https://registry.npmjs.org/react-day-picker/-/react-day-picker-8.7.0.tgz#d148df074c8a45608823d4ca6fadad6ca24fabe9"
-  integrity sha512-2GAxZo5xmLIl9I6f0GKvh+hfA0ABGxEXWeBBmHN97ZkXvra2KUWOy6ZPUUQDL3mXNFImD//jaUlaMIsoJsRfEg==
+react-day-picker@^8.7.1:
+  version "8.7.1"
+  resolved "https://registry.npmjs.org/react-day-picker/-/react-day-picker-8.7.1.tgz#b8388c2afa69d4a6da4c5fde5323fae884acfe2f"
+  integrity sha512-Gv426AW8b151CZfh3aP5RUGztLwHB/EyJgWZ5iMgtzbFBkjHfG6Y66CIQFMWGLnYjsQ9DYSJRmJ5S0Pg5HWKjA==
 
 react-dom@^18.2.0:
   version "18.2.0"
