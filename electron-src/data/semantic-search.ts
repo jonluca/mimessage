@@ -19,11 +19,6 @@ export interface SemanticSearchVector {
   metadata: SemanticSearchMetadata;
 }
 
-export interface PostDetails {
-  path: string;
-  content: PostContent;
-}
-
 export interface PostContent {
   chunks: Chunk[];
 }
@@ -49,6 +44,8 @@ export function isRateLimitExceeded(err: unknown): boolean {
     err.response.status === 429
   );
 }
+
+let numCompleted = 0;
 
 export async function getEmbeddings({
   content,
@@ -160,6 +157,7 @@ export const createEmbeddings = async ({
   pineconeBaseUrl: string;
   pineconeNamespace: string;
 }) => {
+  numCompleted = 0;
   const messages = await dbWorker.worker.getAllMessageTexts();
   const configuration = new Configuration({
     apiKey: openAiKey,
@@ -171,6 +169,7 @@ export const createEmbeddings = async ({
     namespace: pineconeNamespace,
   });
 
+  const messageIds = messages.map((message) => message.guid);
   // create a rate limiter that allows up to 30 API calls per second,
   // with max concurrency of 10
   const limit = pRateLimit({
@@ -193,6 +192,7 @@ export const createEmbeddings = async ({
       await pinecone.upsert({
         vectors: itemEmbeddings,
       });
+      numCompleted++;
     });
   });
   await Promise.all(promises);
@@ -230,11 +230,15 @@ export async function semanticQuery(
   return response;
 }
 
-handleIpc("createEmbeddings", async ({ openAiKey: key, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }) => {
+handleIpc("createEmbeddings", async ({ openAiKey: openAiKey, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }) => {
   return await createEmbeddings({
-    openAiKey: key,
+    openAiKey,
     pineconeApiKey,
     pineconeNamespace,
     pineconeBaseUrl,
   });
+});
+
+handleIpc("getEmbeddingsCompleted", async () => {
+  return numCompleted;
 });

@@ -191,8 +191,8 @@ export interface MessageAttachmentJoin {
 }
 
 export interface MessageFts {
-  text: string | null;
-  message_id: number | null;
+  text: string;
+  message_id: string;
 }
 
 export interface MessageFtsConfig {

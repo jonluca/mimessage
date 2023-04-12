@@ -1,10 +1,7 @@
-import { spawn, Worker } from "threads";
 import type { SQLDatabase } from "./database";
 import { handleIpc } from "./ipc";
 import db from "./database";
 import { copyLatestDb, localDbExists } from "./db-file-utils";
-import isDev from "electron-is-dev";
-import { join } from "path";
 type WorkerType<T> = {
   [P in keyof T]: T[P] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never;
 };
@@ -13,15 +10,18 @@ class DbWorker {
   worker!: WorkerType<SQLDatabase> | SQLDatabase;
 
   startWorker = async () => {
-    const path = isDev ? "data/worker.js" : join("..", "..", "..", "assets", "worker.js");
+    // const path = isDev ? "data/worker.js" : join("..", "..", "..", "assets", "worker.js");
 
-    this.worker = isDev
-      ? db
-      : await spawn<WorkerType<SQLDatabase>>(
-          new Worker(path, {
-            resourceLimits: { maxOldGenerationSizeMb: 16384, maxYoungGenerationSizeMb: 16384 },
-          }),
-        );
+    // fix this for now due to prod breakage
+    this.worker = db;
+
+    // this.worker = isDev
+    //   ? db
+    //   : await spawn<WorkerType<SQLDatabase>>(
+    //       new Worker(path, {
+    //         resourceLimits: { maxOldGenerationSizeMb: 16384, maxYoungGenerationSizeMb: 16384 },
+    //       }),
+    //     );
   };
 
   setupHandlers() {

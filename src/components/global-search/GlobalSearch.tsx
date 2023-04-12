@@ -94,6 +94,11 @@ const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
     setChatId(result.chat_id!);
     setMessageIdToBringToFocus(result.message_id!);
   };
+
+  if (!result.text) {
+    // this is for attachments, to do in the future
+    return null;
+  }
   return (
     <Box
       onClick={onClick}

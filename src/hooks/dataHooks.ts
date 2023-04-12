@@ -365,7 +365,8 @@ export const useGlobalSearch = () => {
         startDate,
         endDate,
       )) as GlobalSearchResponse;
-      return resp;
+      // ignore attachments for now, but we should probably show them in the future
+      return resp.filter((l) => l.text);
     },
   );
 };
@@ -425,6 +426,11 @@ export const useSemanticSearchStats = (enabled: boolean) => {
     },
     { enabled },
   );
+};
+export const useEmbeddingsCreationProgress = () => {
+  return useQuery<number>(["getEmbeddingsCompleted"], async () => {
+    return (await ipcRenderer.invoke("getEmbeddingsCompleted")) as number;
+  });
 };
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {

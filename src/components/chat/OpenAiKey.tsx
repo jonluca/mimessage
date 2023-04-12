@@ -1,12 +1,16 @@
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
-import { Button, CircularProgress } from "@mui/material";
+import { Button, CircularProgress, LinearProgress } from "@mui/material";
 import Backdrop from "@mui/material/Backdrop";
 import Typography from "@mui/material/Typography";
 import { toast } from "react-toastify";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import { useCreateSemanticEmbeddings, useSemanticSearchStats } from "../../hooks/dataHooks";
+import {
+  useCreateSemanticEmbeddings,
+  useEmbeddingsCreationProgress,
+  useSemanticSearchStats,
+} from "../../hooks/dataHooks";
 
 export const OpenAiKey = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
@@ -60,6 +64,7 @@ export const SemanticSearchInfo = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
   const { data, isLoading } = useSemanticSearchStats(modalOpen);
+  const { data: numCompleted } = useEmbeddingsCreationProgress();
   const ref = useRef<HTMLInputElement>(null);
   const pineconeApiRef = useRef<HTMLInputElement>(null);
   const pineconeNamespaceRef = useRef<HTMLInputElement>(null);
@@ -93,9 +98,10 @@ export const SemanticSearchInfo = () => {
     });
   };
 
+  const hasProgressInEmbeddings = isCreatingEmbeddings && data && numCompleted !== undefined && numCompleted > 0;
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
-      <Backdrop onClick={() => setModalOpen(false)} open={modalOpen}>
+      <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
         <Box
           onClick={(e) => e.stopPropagation()}
           sx={{ background: "#2c2c2c", maxWidth: 600, p: 1, m: 1 }}
@@ -109,27 +115,35 @@ export const SemanticSearchInfo = () => {
             You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
             below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
           </Typography>
-          <input
-            ref={ref}
-            placeholder={"Enter your OpenAI API key"}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-          />
-          <input
-            ref={pineconeApiRef}
-            placeholder={"Enter your Pinecone API key"}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-          />
-          <input
-            ref={pineconeNamespaceRef}
-            placeholder={"Enter your Pinecone Namespace"}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-          />
-          <input
-            ref={pineconeBaseUrlRef}
-            placeholder={"Enter your Pinecone Base URL"}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-          />
-          {(isLoading || isCreatingEmbeddings) && <CircularProgress />}
+
+          {isLoading && <CircularProgress />}
+          {hasProgressInEmbeddings ? (
+            <LinearProgress variant="determinate" value={numCompleted / data.totalMessages} />
+          ) : (
+            <>
+              {" "}
+              <input
+                ref={ref}
+                placeholder={"Enter your OpenAI API key"}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+              />
+              <input
+                ref={pineconeApiRef}
+                placeholder={"Enter your Pinecone API key"}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+              />
+              <input
+                ref={pineconeNamespaceRef}
+                placeholder={"Enter your Pinecone Namespace"}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+              />
+              <input
+                ref={pineconeBaseUrlRef}
+                placeholder={"Enter your Pinecone Base URL"}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+              />
+            </>
+          )}
           {data && (
             <>
               <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
@@ -141,7 +155,9 @@ export const SemanticSearchInfo = () => {
               <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
             </>
           )}
-          <Button onClick={onSubmit}>Close and submit</Button>
+          <Button disabled={hasProgressInEmbeddings} onClick={onSubmit}>
+            Close and submit
+          </Button>
         </Box>
       </Backdrop>
       <Button title={"Semantic Search"} onClick={() => setModalOpen(true)}>

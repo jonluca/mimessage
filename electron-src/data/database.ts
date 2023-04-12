@@ -133,7 +133,7 @@ export class SQLDatabase {
       await sqliteDb.exec("CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(text,message_id)");
       const count = await db.selectFrom("message_fts").select("message_id").limit(1).executeTakeFirst();
       if (count === undefined) {
-        await sqliteDb.exec("INSERT INTO message_fts SELECT text, ROWID as message_id FROM message");
+        await sqliteDb.exec("INSERT INTO message_fts SELECT text, guid as message_id FROM message");
       }
       this.dbWriter = db;
       await this.addParsedTextToNullMessages();
@@ -255,9 +255,9 @@ export class SQLDatabase {
       .where(({ or, cmpr }) => {
         return or([
           cmpr(
-            "message.ROWID",
+            "message.guid",
             "in",
-            textMatch.map((m) => m.message_id as number),
+            textMatch.map((m) => m.message_id as string),
           ),
           cmpr("filename", "like", "%" + searchTerm + "%"),
         ]);
@@ -505,6 +505,7 @@ export class SQLDatabase {
             .where("cmj2.chat_id", "=", eb.ref("c.ROWID")),
         );
       })
+      .where("message.is_from_me", "=", 1)
       .orderBy("message.date", "asc");
 
     const chats = await query.execute();

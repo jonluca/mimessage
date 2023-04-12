@@ -13,7 +13,7 @@ import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./data/database-worker";
 import { localDbExists } from "./data/db-file-utils";
-
+import "./data/semantic-search";
 addFlags(app);
 
 registerContextMenu({
