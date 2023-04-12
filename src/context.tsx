@@ -8,7 +8,7 @@ import type { Contact } from "electron-mac-contacts";
 
 export interface AiMessage extends ChatCompletionRequestMessage {
   date: Date;
-  response?: null | ChatCompletionRequestMessage | { errored: true };
+  errored?: true;
 }
 
 type ExtendedConversations = Record<number, AiMessage[]>;

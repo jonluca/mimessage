@@ -175,23 +175,14 @@ export const AiMessageBubble = ({
     );
   };
 
-  const response = message.response;
+  const isAssistant = message.role === "assistant";
   return (
     <>
       <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
-        <Box className={"sentContainer"}>
-          <Box className={["sent", "imessage"].join(" ")}>
-            <MessageBubbleText text={message.content} />
-          </Box>
-        </Box>
-        {showTimes && timeText()}
-      </Box>
-      <Box className={"message"} sx={{ mx: 1, my: 0.25 }}>
-        {showTimes && timeText()}
-        <Box className={"card container"}>
-          <Box className={["received", "imessage"].join(" ")}>
-            {response ? (
-              <MessageBubbleText text={"errored" in response ? "Error" : response.content} />
+        <Box className={isAssistant ? "card container" : "sentContainer"}>
+          <Box className={[isAssistant ? "received" : "sent", "imessage"].join(" ")}>
+            {message.content ? (
+              <MessageBubbleText text={message.content} />
             ) : (
               <div className="typing">
                 <span className="typing__bullet" />
@@ -201,6 +192,7 @@ export const AiMessageBubble = ({
             )}
           </Box>
         </Box>
+        {showTimes && timeText()}
       </Box>
     </>
   );

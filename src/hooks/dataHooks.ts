@@ -262,6 +262,9 @@ export const useMessagesForChatId = (id: number | null) => {
       }
       return [...(localMessages || []), ...newMessages];
     },
+    {
+      keepPreviousData: true,
+    },
   );
   return { ...data, isLoading: data.isLoading || isLoading };
 };

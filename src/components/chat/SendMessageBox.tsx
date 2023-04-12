@@ -119,16 +119,16 @@ export const SendMessageBox = () => {
         date: new Date(),
       } as AiMessage;
       current.value = "";
-      extendedConversations[chatId] = [...currConvo, newMessage];
+      extendedConversations[chatId] = [...currConvo, newMessage, { role: "assistant", content: "", date: new Date() }];
       setExtendedConversations(extendedConversations);
 
       const prompts = openai.generatePrompts(newMessage, currConvo, localMessages!, chat!);
       const response = await openai.runCompletion(prompts);
-      newMessage.response = response;
-      if (!response) {
-        newMessage.response = { errored: true };
-      }
-      extendedConversations[chatId] = [...currConvo, newMessage];
+      const responseMessage = {
+        ...(response ? response : { role: "assistant", content: "I'm sorry, I don't know how to respond to that." }),
+        date: new Date(),
+      } as AiMessage;
+      extendedConversations[chatId] = [...currConvo, newMessage, responseMessage];
       setExtendedConversations(extendedConversations);
     }
   };

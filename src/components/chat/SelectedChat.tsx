@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
+import type { ChatListAggregate } from "../../hooks/dataHooks";
 import { useChatById, useMessagesForChatId } from "../../hooks/dataHooks";
 import { AiMessageBubble, MessageBubble } from "../message/MessageBubble";
 import { Divider, LinearProgress } from "@mui/material";
@@ -52,8 +53,12 @@ export const SelectedChat = () => {
     }
   }, [messages, messageIdToBringToFocus, setMessageIdToBringToFocus]);
 
-  const itemRenderer = (index: number) => {
-    const message = messages?.[index];
+  React.useEffect(() => {
+    if (virtuoso.current) {
+      virtuoso.current.scrollToIndex({ index: count - 1, align: "start" });
+    }
+  }, [count]);
+  const itemRenderer = (index: number, message: ChatListAggregate[number]) => {
     const previousMessage = messages?.[index - 1];
 
     if (!message) {
@@ -70,7 +75,7 @@ export const SelectedChat = () => {
 
     const isAiMessage = "role" in message;
     return (
-      <Box key={`${isAiMessage ? message.content : message.chat_id}-${index}`} data-index={index}>
+      <Box data-index={index} pb={isAiMessage ? 0.5 : 0}>
         {isAiMessage ? (
           <AiMessageBubble message={message} showTimes={showTimes} />
         ) : (
@@ -112,16 +117,21 @@ export const SelectedChat = () => {
     >
       {isLoading && <LinearProgress />}
       {showFilterBar && <SelectedChatFilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
-      <Virtuoso
-        totalCount={count}
-        initialTopMostItemIndex={initialTopMostItemIndex}
-        style={{ height: "100%" }}
-        itemContent={itemRenderer}
-        overscan={100}
-        increaseViewportBy={2000}
-        ref={virtuoso}
-        followOutput={!messageIdToBringToFocus}
-      />
+      {count > 0 ? (
+        <Box height={"100%"} display={"block"}>
+          <Virtuoso
+            data={messages}
+            initialTopMostItemIndex={initialTopMostItemIndex}
+            itemContent={itemRenderer}
+            overscan={100}
+            increaseViewportBy={2000}
+            ref={virtuoso}
+            followOutput={"auto"}
+          />
+        </Box>
+      ) : (
+        <Box height={"100%"} />
+      )}
       <SendMessageBox />
     </Box>
   );
