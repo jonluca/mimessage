@@ -26,6 +26,12 @@ export interface AppContext {
   setRelation: (updated: string) => void;
   openAiKey: string | null;
   setOpenAiKey: (key: string | null) => void;
+  pineconeApiKey: string | null;
+  setPineconeApiKey: (key: string | null) => void;
+  pineconeBaseUrl: string | null;
+  setPineconeBaseUrl: (key: string | null) => void;
+  pineconeNamespace: string | null;
+  setPineconeNamespace: (key: string | null) => void;
   extendedConversations: ExtendedConversations;
   setExtendedConversations: (updated: ExtendedConversations) => void;
   // wrapped
@@ -56,6 +62,9 @@ export interface AppContext {
   setSearch: (updated: string | null) => void;
 }
 const openAiLocalStorageKey = "openai-key";
+const pineconeApiLocalStorageKey = "pinecone-key";
+const pineconeBaseUrlLocalStorageKey = "pinecone-baseurl";
+const pineconeNamespaceLocalStorageKey = "pinecone-namespace";
 const useMimessage = create<AppContext>((set) => ({
   search: null,
   contactFilter: [],
@@ -76,6 +85,11 @@ const useMimessage = create<AppContext>((set) => ({
   setStartDate: (startDate: MaybeDate) => set({ startDate }),
   endDate: null,
   openAiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(openAiLocalStorageKey) ?? null,
+  pineconeApiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(pineconeApiLocalStorageKey) ?? null,
+  pineconeBaseUrl:
+    typeof localStorage === "undefined" ? null : localStorage.getItem(pineconeBaseUrlLocalStorageKey) ?? null,
+  pineconeNamespace:
+    typeof localStorage === "undefined" ? null : localStorage.getItem(pineconeNamespaceLocalStorageKey) ?? null,
   setEndDate: (endDate: MaybeDate) => set({ endDate }),
   setOpenAiKey: (openAiKey: string | null) => {
     if (openAiKey) {
@@ -84,6 +98,30 @@ const useMimessage = create<AppContext>((set) => ({
       localStorage.removeItem(openAiLocalStorageKey);
     }
     return set({ openAiKey });
+  },
+  setPineconeApiKey: (pineconeApiKey: string | null) => {
+    if (pineconeApiKey) {
+      localStorage.setItem(pineconeApiLocalStorageKey, pineconeApiKey);
+    } else {
+      localStorage.removeItem(pineconeApiLocalStorageKey);
+    }
+    return set({ pineconeApiKey });
+  },
+  setPineconeBaseUrl: (pineconeBaseUrl: string | null) => {
+    if (pineconeBaseUrl) {
+      localStorage.setItem(pineconeBaseUrlLocalStorageKey, pineconeBaseUrl);
+    } else {
+      localStorage.removeItem(pineconeBaseUrlLocalStorageKey);
+    }
+    return set({ pineconeBaseUrl });
+  },
+  setPineconeNamespace: (pineconeNamespace: string | null) => {
+    if (pineconeNamespace) {
+      localStorage.setItem(pineconeNamespaceLocalStorageKey, pineconeNamespace);
+    } else {
+      localStorage.removeItem(pineconeNamespaceLocalStorageKey);
+    }
+    return set({ pineconeNamespace });
   },
   chatId: null,
   setChatId: (chatId: number | null) => set({ chatId }),

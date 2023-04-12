@@ -12,6 +12,5 @@ export const MessageAvatar = ({
   contact: null | undefined | Contact;
 }) => {
   const src = contact?.pngBase64;
-
   return <Avatar alt={contact?.parsedName || fallback} src={src} sx={{ width: size, height: size }} />;
 };

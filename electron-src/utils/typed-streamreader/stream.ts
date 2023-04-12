@@ -437,15 +437,15 @@ export class TypedStreamReader implements Iterator<ReadEvent> {
     } else if (head == TAG_INTEGER_4) {
       if (this.byteOrder == "LE") {
         if (signed) {
-          return this.readExact(2).readInt32LE();
+          return this.readExact(4).readInt32LE();
         } else {
-          return this.readExact(2).readUint32LE();
+          return this.readExact(4).readUint32LE();
         }
       } else {
         if (signed) {
-          return this.readExact(2).readInt32BE();
+          return this.readExact(4).readInt32BE();
         } else {
-          return this.readExact(2).readUint32BE();
+          return this.readExact(4).readUint32BE();
         }
       }
     } else {

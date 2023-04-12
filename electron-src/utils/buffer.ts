@@ -6,7 +6,7 @@ export const decodeMessageBuffer = async (buffer: Buffer | Uint8Array | undefine
     if (buffer instanceof Uint8Array) {
       buffer = Buffer.from(buffer);
     }
-    if (buffer instanceof Buffer) {
+    if (buffer instanceof Buffer && buffer.length) {
       if (buffer.subarray(0, 6).toString() === "bplist") {
         const reader = new BPlistReader(buffer);
         const parsed = reader.read();

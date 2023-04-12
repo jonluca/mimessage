@@ -10,23 +10,27 @@ type WorkerType<T> = {
 };
 
 class DbWorker {
-  worker!: WorkerType<SQLDatabase>;
+  worker!: WorkerType<SQLDatabase> | SQLDatabase;
 
   startWorker = async () => {
     const path = isDev ? "data/worker.js" : join("..", "..", "..", "assets", "worker.js");
 
-    this.worker = await spawn<WorkerType<SQLDatabase>>(
-      new Worker(path, {
-        resourceLimits: { maxOldGenerationSizeMb: 16384, maxYoungGenerationSizeMb: 16384 },
-      }),
-    );
+    this.worker = isDev
+      ? db
+      : await spawn<WorkerType<SQLDatabase>>(
+          new Worker(path, {
+            resourceLimits: { maxOldGenerationSizeMb: 16384, maxYoungGenerationSizeMb: 16384 },
+          }),
+        );
   };
 
   setupHandlers() {
     for (const property in db) {
       const prop = property as keyof WorkerType<SQLDatabase>;
       const dbElement = this.worker[prop];
-      handleIpc(property, dbElement);
+      if (typeof dbElement === "function") {
+        handleIpc(property, dbElement);
+      }
     }
 
     for (const prop in this) {

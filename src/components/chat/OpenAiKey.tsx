@@ -46,6 +46,15 @@ export const OpenAiKey = () => {
     </Box>
   );
 };
+
+const humanReadableMinutes = (minutes: number) => {
+  if (minutes < 60) {
+    return `${minutes} minutes`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours} hours ${Math.round(remainingMinutes)} minutes`;
+};
 export const SemanticSearchInfo = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
   const openAiKey = useMimessage((state) => state.openAiKey);
@@ -99,7 +108,7 @@ export const SemanticSearchInfo = () => {
               <Typography>
                 Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
               </Typography>
-              <Typography>Estimated Time: {data.estimatedTimeMs.toLocaleString()}</Typography>
+              <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
             </>
           )}
           <Button onClick={onSubmit}>Close and submit</Button>

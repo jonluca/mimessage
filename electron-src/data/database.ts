@@ -8,9 +8,9 @@ import { countBy, groupBy } from "lodash-es";
 import type { Contact } from "node-mac-contacts";
 import { format } from "sql-formatter";
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
-import { getStatsForText } from "./semantic-search";
 import { localDbExists } from "./db-file-utils";
 import { appMessagesDbCopy } from "../utils/constants";
+import { getStatsForText } from "./semantic-search-stats";
 
 type ExtractO<T> = T extends SelectQueryBuilder<any, any, infer O> ? O : never;
 type JoinedMessageType = ExtractO<ReturnType<SQLDatabase["getJoinedMessageQuery"]>>;
@@ -342,16 +342,20 @@ export class SQLDatabase {
     return flat as EnhancedMessage[];
   };
 
-  calculateSemanticSearchStats = async () => {
-    // asdfs
-    const allText = (await this.db
+  getAllMessageTexts = async () => {
+    const allText = await this.db
       .selectFrom("message")
-      .select(["text"])
+      .select(["text", "guid"])
       .distinct()
       .where("text", "not like", "")
       .where("text", "is not", null)
-      .execute()) as { text: string }[];
+      .execute();
 
+    return allText;
+  };
+
+  calculateSemanticSearchStats = async () => {
+    const allText = await this.getAllMessageTexts();
     return getStatsForText(allText);
   };
   getMessagesForChatId = async (chatId: number | number[]) => {
