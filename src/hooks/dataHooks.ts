@@ -381,14 +381,35 @@ export const useEarliestMessageDate = () => {
   });
 };
 
+interface ChatStat {
+  message_count: string | number | bigint;
+  chat_id: number | null;
+}
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   const isInWrapped = useMimessage((state) => state.isInWrapped);
-
+  const chatMap = useChatMap();
   return useQuery<WrappedStats>(
-    ["calculateWrappedStats", wrappedYear],
+    ["calculateWrappedStats", wrappedYear, chatMap.size],
     async () => {
       const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
+      const coalesceSameChats = (stats: ChatStat[]) => {
+        const enhancedStat = stats.map((sent) => ({ ...sent, chat: chatMap.get(sent.chat_id!) })).filter(Boolean);
+        const grouped = groupBy(
+          enhancedStat,
+          (stat) => stat.chat?.handles.map((h) => h.contact?.identifier || h.handle_id).join(", ") || stat.chat_id!,
+        );
+        const sameParticipantChats = Object.values(grouped);
+
+        return sameParticipantChats.map((chats) => ({
+          chat_id: Number(chats[0].chat_id),
+          message_count: chats.reduce((acc, stat) => acc + Number(stat.message_count || 0) || 0, 0),
+        })) as ChatStat[];
+      };
+      resp.chatInteractions.sent = coalesceSameChats(resp.chatInteractions.sent);
+      resp.chatInteractions.received = coalesceSameChats(resp.chatInteractions.received);
+      resp.lateNightInteractions.sent = coalesceSameChats(resp.lateNightInteractions.sent);
+      resp.lateNightInteractions.received = coalesceSameChats(resp.lateNightInteractions.received);
       console.log(resp);
       return resp;
     },

@@ -480,7 +480,7 @@ export class SQLDatabase {
   };
 
   private lateNightMessenger = async (year: number) => {
-    const getByOriginator = (fromMe: boolean) => {
+    const getByOriginator = async (fromMe: boolean) => {
       const query = this.getMessageQueryByYear(year)
         .select("c.ROWID as chat_id")
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
@@ -495,11 +495,17 @@ export class SQLDatabase {
         .groupBy("chat_id")
         .orderBy("message_count", "desc");
 
-      return query;
+      const data = await query.execute();
+      const grouped = groupBy(data, "chat_id");
+      const result = Object.entries(grouped).map(([chat_id, messages]) => {
+        const message_count = messages.reduce((acc, curr) => acc + Number(curr.message_count || 0) || 0, 0);
+        return { chat_id: Number(chat_id), message_count };
+      }) as Array<Omit<typeof data[number], "hour">>;
+      return result;
     };
 
-    const received = await getByOriginator(false).execute();
-    const sent = await getByOriginator(true).execute();
+    const received = await getByOriginator(false);
+    const sent = await getByOriginator(true);
     return { received, sent };
   };
 

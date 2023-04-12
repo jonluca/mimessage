@@ -7,6 +7,7 @@ import type { WrappedStats } from "../../interfaces";
 import type { BoxProps } from "@mui/material/Box/Box";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import { LinearProgress } from "@mui/material";
 const GenericValue = ({ text, number }: { text: string; number: string | bigint | number }) => {
   return (
     <Box display={"flex"} justifyContent={"center"} alignItems={"center"}>
@@ -206,6 +207,8 @@ const EntryHeader = () => {
 };
 
 export const SelectedWrap = () => {
+  const { isFetching } = useWrappedStats();
+
   return (
     <Box
       sx={{
@@ -221,26 +224,30 @@ export const SelectedWrap = () => {
       }}
     >
       <EntryHeader />
-      <Box
-        sx={{
-          zIndex: 999,
-          width: "100%",
-          height: "100%",
-          flexDirection: "column",
-          background: "#1e1e1e",
-          overflowY: "auto",
-          display: "inline-flex",
-        }}
-      >
-        <MessageCount />
-        <Box sx={{ display: "flex", flexWrap: "wrap" }}>
-          <TopConversationPartners />
-          <BusiestDay />
-          <BusiestMonth />
-          <MostPopularOpeners />
-          <LateNightChatter />
+      {isFetching ? (
+        <LinearProgress />
+      ) : (
+        <Box
+          sx={{
+            zIndex: 999,
+            width: "100%",
+            height: "100%",
+            flexDirection: "column",
+            background: "#1e1e1e",
+            overflowY: "auto",
+            display: "inline-flex",
+          }}
+        >
+          <MessageCount />
+          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+            <TopConversationPartners />
+            <BusiestDay />
+            <BusiestMonth />
+            <MostPopularOpeners />
+            <LateNightChatter />
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 };
