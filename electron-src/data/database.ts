@@ -629,7 +629,9 @@ export class SQLDatabase {
 
     const counts: Record<string, number> = {};
     for (const text of allText) {
-      const words = removeStopWords(text.text!.toLowerCase().split(/\s+/g));
+      // clean text, replace all forms of quotes with nothing
+      const s = text.text!.toLowerCase().replace(/[\u{2018}-\u{201F}]/gu, "");
+      const words = removeStopWords(s.split(/\s+/g));
       for (const word of words) {
         if (!counts[word]) {
           counts[word] = 0;

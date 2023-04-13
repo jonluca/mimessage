@@ -893,6 +893,8 @@ const words = [
   "8",
   "9",
   "0",
+  "10",
+  "+",
 ];
 
 const wordSet = new Set(words);

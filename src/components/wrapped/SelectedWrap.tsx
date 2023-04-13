@@ -16,6 +16,7 @@ import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { LinearProgress } from "@mui/material";
 import { GenericValue, SECTION_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
 import { MessagesByHour, MessagesByMonth, MessagesByPerson, MessagesByYear } from "./Charts";
+import { SimpleWordcloud } from "./WordCloud";
 
 const TwoSidedSection = ({
   title,
@@ -305,6 +306,9 @@ export const SelectedWrap = () => {
             <MessagesByMonth />
             <MessagesByHour />
             {chatId !== null && !isSingleMemberChat && <MessagesByPerson />}
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+            <SimpleWordcloud />
           </Box>
         </Box>
       )}

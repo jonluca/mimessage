@@ -104,6 +104,7 @@
     "react-select": "^5.7.2",
     "react-toastify": "^9.1.2",
     "react-virtuoso": "^4.2.1",
+    "react-wordcloud": "^1.2.7",
     "rimraf": "^5.0.0",
     "sql-formatter": "^12.2.0",
     "sqlite3": "^5.1.6",
