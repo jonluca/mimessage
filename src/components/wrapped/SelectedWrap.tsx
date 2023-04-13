@@ -108,40 +108,6 @@ const TwoSidedSection = ({
     </SectionWrapper>
   );
 };
-const OneSidedSection = ({
-  title,
-  items,
-  render,
-  isLoading,
-}: {
-  title: string;
-  render: (val: any) => any;
-  items: [string, number][] | undefined;
-  isLoading: boolean;
-}) => {
-  const [showAll, setShowAll] = useState(false);
-  const toRender = items?.slice(0, showAll ? 10 : 5) || [];
-  const hasItems = toRender.length > 0;
-  const ArrowIcon = showAll ? ArrowDropUpIcon : ArrowDropDownIcon;
-
-  return (
-    <SectionWrapper sx={{ width: SECTION_WIDTH, minHeight: SECTION_HEIGHT }}>
-      {title && <SectionHeader>{title}</SectionHeader>}
-      {isLoading && <LinearProgress />}
-      <Box sx={{ width: "100%", display: "flex" }}>
-        {hasItems && (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "start", mr: 1 }}>
-            {toRender.map((d) => render(d))}
-          </Box>
-        )}
-      </Box>
-      {hasItems && (
-        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "white" }} onClick={() => setShowAll((v) => !v)} />
-      )}
-    </SectionWrapper>
-  );
-};
-
 const MessageCount = () => {
   const { data: wrappedStats } = useWrappedStats();
 
@@ -207,8 +173,9 @@ const ChatInteraction = ({
   chatInteraction: { chat_id: number | null; message_count: number | string | bigint };
 }) => {
   const chatMap = useChatMap();
+  const chatId = useMimessage((state) => state.chatId);
   const chat = chatMap?.get(chatInteraction.chat_id!);
-  return <GenericValue text={chat?.name || ""} number={chatInteraction.message_count || 0} />;
+  return <GenericValue text={chatId ? "" : chat?.name || ""} number={chatInteraction.message_count || 0} />;
 };
 
 const DayInteraction = ({ day }: { day: WrappedStats["weekdayInteractions"]["sent"][number] }) => {
