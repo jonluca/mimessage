@@ -30,7 +30,9 @@ const MessagesByBase = ({
     <SectionWrapper sx={{ width: SECTION_WIDTH, height: SECTION_HEIGHT }}>
       <SectionHeader>Messages by Year</SectionHeader>
       <Box sx={{ width: "100%", height: "100%" }}>
-        <BaseChart data={data} />
+        <ErrorBoundary>
+          <BaseChart data={data} />
+        </ErrorBoundary>
       </Box>
     </SectionWrapper>
   );
@@ -81,6 +83,7 @@ export const BaseChart = <T extends { primary: Date; secondary: number }>({ data
       {
         getValue: (datum) => datum.secondary,
         elementType: "bar",
+        scaleType: "linear",
       },
     ],
     [],
