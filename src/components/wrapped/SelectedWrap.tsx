@@ -15,7 +15,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { LinearProgress } from "@mui/material";
 import { GenericValue, SECTION_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
-import { MessagesByYear } from "./Charts";
+import { MessagesByHour, MessagesByMonth, MessagesByPerson, MessagesByYear } from "./Charts";
 
 const TwoSidedSection = ({
   title,
@@ -251,6 +251,8 @@ export const SelectedWrap = () => {
   const { isFetching } = useWrappedStats();
 
   const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const chatId = useMimessage((state) => state.chatId);
+  const isSingleMemberChat = useIsCurrentChatSingleMember();
 
   return (
     <Box
@@ -268,7 +270,10 @@ export const SelectedWrap = () => {
     >
       <EntryHeader />
       {isFetching ? (
-        <LinearProgress />
+        <>
+          <LinearProgress />
+          <Box sx={{ height: "100%" }} />
+        </>
       ) : (
         <Box
           sx={{
@@ -278,17 +283,28 @@ export const SelectedWrap = () => {
             overflowY: "auto",
             flexGrow: 1,
             flexBasis: 1,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <MessageCount />
-          <Box sx={{ display: "flex", flexWrap: "wrap", maxHeight: "100%" }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
             <TopConversationPartners />
             <BusiestDay />
             <BusiestMonth />
             <MostPopularOpeners />
             <LateNightChatter />
             <FavoriteWords />
-            {wrappedYear === WRAPPED_ALL_TIME_YEAR && <MessagesByYear />}
+          </Box>
+          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+            {wrappedYear === WRAPPED_ALL_TIME_YEAR && (
+              <>
+                <MessagesByYear />
+              </>
+            )}
+            <MessagesByMonth />
+            <MessagesByHour />
+            {chatId !== null && !isSingleMemberChat && <MessagesByPerson />}
           </Box>
         </Box>
       )}

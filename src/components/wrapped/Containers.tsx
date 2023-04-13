@@ -43,3 +43,4 @@ export const SectionHeader = ({ children }: React.PropsWithChildren) => {
 };
 export const SECTION_WIDTH = 550;
 export const SECTION_HEIGHT = 200;
+export const CHART_HEIGHT = 400;
