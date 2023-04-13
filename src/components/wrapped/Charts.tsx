@@ -30,9 +30,7 @@ const MessagesByBase = ({
     <SectionWrapper sx={{ width: SECTION_WIDTH, height: SECTION_HEIGHT }}>
       <SectionHeader>Messages by Year</SectionHeader>
       <Box sx={{ width: "100%", height: "100%" }}>
-        <ErrorBoundary>
-          <BaseChart data={data} />
-        </ErrorBoundary>
+        <ErrorBoundary>{data.length > 0 && <BaseChart data={data} />}</ErrorBoundary>
       </Box>
     </SectionWrapper>
   );
@@ -49,7 +47,11 @@ const getMessagesByYear = (dates: MessageDates | undefined) => {
     .map(([_, dates]) => ({
       primary: dayjs(dates[0].date_obj!).startOf("year").add(1, "d").toDate(),
       secondary: dates.length,
-    }));
+    }))
+    .filter((l) => l.primary);
+  if (!datums) {
+    return [];
+  }
   return [
     {
       label: "Messages by Year",
