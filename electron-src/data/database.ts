@@ -11,6 +11,7 @@ import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
 import { localDbExists } from "./db-file-utils";
 import { appMessagesDbCopy } from "../utils/constants";
 import { getStatsForText } from "./semantic-search-stats";
+import { removeStopWords } from "./text";
 
 type ExtractO<T> = T extends SelectQueryBuilder<any, any, infer O> ? O : never;
 type JoinedMessageType = ExtractO<ReturnType<SQLDatabase["getJoinedMessageQuery"]>>;
@@ -147,13 +148,12 @@ export class SQLDatabase {
   };
   private getChatsWithMessagesQuery = () => {
     const db = this.db;
-    const query = db
+    return db
       .selectFrom("chat as c")
       .select(["c.ROWID as chat_id", "c.guid as chat_guid"])
       .innerJoin("chat_message_join as cmj", "c.ROWID", "cmj.chat_id")
       .innerJoin("message as m", "cmj.message_id", "m.ROWID")
       .select(["m.date as latest_message_date", "text", "attributedBody", "chat_identifier", "display_name"]);
-    return query;
   };
 
   getChatList = async () => {
@@ -181,8 +181,7 @@ export class SQLDatabase {
     const handlesByChatId = groupBy(handles, "chat_id");
     const enhancedChats = chats as EnhancedChat[];
     for (const chat of enhancedChats) {
-      const chatHandles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
-      chat.handles = chatHandles;
+      chat.handles = handlesByChatId[chat.chat_id as keyof typeof handlesByChatId] || [];
       if (!chat.text && chat.attributedBody) {
         chat.text = await getTextFromBuffer(chat.attributedBody);
       }
@@ -206,7 +205,7 @@ export class SQLDatabase {
 
   private getJoinedMessageQuery = () => {
     const db = this.db;
-    const messageQuery = db
+    return db
       .selectFrom("message")
       .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
       .leftJoin("message_attachment_join", "message_attachment_join.message_id", "message.ROWID")
@@ -235,7 +234,6 @@ export class SQLDatabase {
         "type",
       ])
       .select(sql<number>`message.ROWID`.as("message_id"));
-    return messageQuery;
   };
 
   fullTextMessageSearch = async (
@@ -354,15 +352,13 @@ export class SQLDatabase {
   };
 
   getAllMessageTexts = async () => {
-    const allText = await this.db
+    return await this.db
       .selectFrom("message")
       .select(["text", "guid"])
       .distinct()
       .where("text", "not like", "")
       .where("text", "is not", null)
       .execute();
-
-    return allText;
   };
 
   calculateSemanticSearchStats = async () => {
@@ -380,11 +376,11 @@ export class SQLDatabase {
     return enhanced;
   };
 
-  private getMessageQueryByYear = (year: number) => {
+  private getMessageQueryByYear = (year: number, chatIds?: number[]) => {
     const db = this.db;
 
     // we want every query to have its associated handles/chats
-    const query = db
+    let query = db
       .selectFrom("message")
       .innerJoin("chat_message_join as cmj", "cmj.message_id", "message.ROWID")
       .innerJoin("chat as c", "c.ROWID", "cmj.chat_id");
@@ -394,30 +390,37 @@ export class SQLDatabase {
 
       const startOffset = (startOfYear - 978307200000) * 1000000;
       const endOffset = (endOfYear - 978307200000) * 1000000;
-      return query.where("date", ">", startOffset).where("date", "<", endOffset);
+      query = query.where("date", ">", startOffset).where("date", "<", endOffset);
+    }
+    if (chatIds && chatIds.length) {
+      query = query.where("c.ROWID", "in", chatIds);
     }
     return query;
   };
 
-  private countMessagesByYear = async (year: number, isFromMe: boolean) => {
-    const query = this.getMessageQueryByYear(year)
-      .select((e) => e.fn.count("message.ROWID").as("count"))
-      .where("is_from_me", "=", Number(isFromMe));
+  private countMessagesByYear = async (year: number, chatIds?: number[]) => {
+    const queryByOriginator = async (isFromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year, chatIds)
+        .select((e) => e.fn.count("message.ROWID").as("count"))
+        .where("is_from_me", "=", Number(isFromMe));
 
-    const result = await query.execute();
-    const count = result[0]?.count;
-    return Number(count || 0);
+      const result = await query.execute();
+      const count = result[0]?.count;
+      return Number(count || 0);
+    };
+    const sent = await queryByOriginator(true);
+    const received = await queryByOriginator(false);
+    return { sent, received };
   };
 
-  private countMessagesByHandle = async (year: number) => {
+  private countMessagesByHandle = async (year: number, chatIds?: number[]) => {
     const queryByOriginator = (isFromMe: boolean) => {
-      const query = this.getMessageQueryByYear(year)
+      return this.getMessageQueryByYear(year, chatIds)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select("c.ROWID as chat_id")
         .where("is_from_me", "=", Number(isFromMe))
         .groupBy("chat_id")
         .orderBy("message_count", "desc");
-      return query;
     };
 
     const sent = await queryByOriginator(true).execute();
@@ -425,9 +428,9 @@ export class SQLDatabase {
     return { sent, received };
   };
 
-  private countMessagesByWeekday = async (year: number) => {
+  private countMessagesByWeekday = async (year: number, chatIds?: number[]) => {
     const getByOriginator = (fromMe: boolean) => {
-      const query = this.getMessageQueryByYear(year)
+      return this.getMessageQueryByYear(year, chatIds)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
           sql<string>`case cast(strftime('%w', DATE(date / 1000000000 + 978307200, 'unixepoch', 'localtime')) as integer)
@@ -442,7 +445,6 @@ export class SQLDatabase {
         .where("is_from_me", "=", Number(fromMe))
         .groupBy("weekday")
         .orderBy("message_count", "desc");
-      return query;
     };
 
     const received = await getByOriginator(false).execute();
@@ -450,9 +452,9 @@ export class SQLDatabase {
     return { received, sent };
   };
 
-  private countMessagesByMonth = async (year: number) => {
+  private countMessagesByMonth = async (year: number, chatIds?: number[]) => {
     const getByOriginator = (fromMe: boolean) => {
-      return this.getMessageQueryByYear(year)
+      return this.getMessageQueryByYear(year, chatIds)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
           sql<string>`case cast(strftime('%m', DATE(date / 1000000000 + 978307200, 'unixepoch', 'localtime')) as integer)
@@ -479,9 +481,9 @@ export class SQLDatabase {
     return { received, sent };
   };
 
-  private lateNightMessenger = async (year: number) => {
+  private lateNightMessenger = async (year: number, chatIds?: number[]) => {
     const getByOriginator = async (fromMe: boolean) => {
-      const query = this.getMessageQueryByYear(year)
+      const query = this.getMessageQueryByYear(year, chatIds)
         .select("c.ROWID as chat_id")
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
         .select(
@@ -497,11 +499,10 @@ export class SQLDatabase {
 
       const data = await query.execute();
       const grouped = groupBy(data, "chat_id");
-      const result = Object.entries(grouped).map(([chat_id, messages]) => {
+      return Object.entries(grouped).map(([chat_id, messages]) => {
         const message_count = messages.reduce((acc, curr) => acc + Number(curr.message_count || 0) || 0, 0);
         return { chat_id: Number(chat_id), message_count };
       }) as Array<Omit<typeof data[number], "hour">>;
-      return result;
     };
 
     const received = await getByOriginator(false);
@@ -509,9 +510,9 @@ export class SQLDatabase {
     return { received, sent };
   };
 
-  private getMostPopularOpeners = async (year: number) => {
+  private getMostPopularOpeners = async (year: number, chatIds?: number[]) => {
     const getByOriginator = async (fromMe: boolean) => {
-      const query = this.getMessageQueryByYear(year)
+      const query = this.getMessageQueryByYear(year, chatIds)
         .select(["text", "attributedBody"])
         .where((eb) => {
           return eb.cmpr(
@@ -555,52 +556,56 @@ export class SQLDatabase {
     return { received, sent };
   };
 
-  private getMessageText = async (year: number) => {
-    const query = this.getMessageQueryByYear(year).select(["text", "attributedBody", "is_from_me"]);
-
-    const chats = await query.execute();
-    for (const chat of chats) {
-      if (!chat.text && chat.attributedBody) {
-        chat.text = await getTextFromBuffer(chat.attributedBody);
-      }
-    }
-    const messageText: string[] = chats
-      .map((chat) => {
-        return (chat.text || "")
-          .trim()
-          .toLowerCase()
-          .replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
-      })
-      .filter(Boolean) as string[];
-
-    return messageText;
-  };
-  calculateWrappedStats = async (year: number) => {
+  calculateWrappedStats = async (year: number, chatIds?: number[]) => {
     const [
-      messageCountSent,
-      messageCountReceived,
+      messageCount,
       chatInteractions,
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,
       mostPopularOpeners,
     ] = await Promise.all([
-      this.countMessagesByYear(year, true),
-      this.countMessagesByYear(year, false),
-      this.countMessagesByHandle(year),
-      this.countMessagesByWeekday(year),
-      this.countMessagesByMonth(year),
-      this.lateNightMessenger(year),
-      this.getMostPopularOpeners(year),
+      this.countMessagesByYear(year, chatIds),
+      this.countMessagesByHandle(year, chatIds),
+      this.countMessagesByWeekday(year, chatIds),
+      this.countMessagesByMonth(year, chatIds),
+      this.lateNightMessenger(year, chatIds),
+      this.getMostPopularOpeners(year, chatIds),
     ]);
     return {
-      messageCountSent,
-      messageCountReceived,
+      messageCount,
       chatInteractions,
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,
       mostPopularOpeners,
+    };
+  };
+
+  calculateSlowWrappedStats = async (year: number, chatIds?: number[]) => {
+    const allText = await this.getMessageQueryByYear(year, chatIds)
+      .select("text")
+      .distinct()
+      .where("text", "not like", "")
+      .where("text", "is not", null)
+      .execute();
+
+    const counts: Record<string, number> = {};
+    for (const text of allText) {
+      const words = removeStopWords(text.text!.toLowerCase().split(/\s+/g));
+      for (const word of words) {
+        if (!counts[word]) {
+          counts[word] = 0;
+        }
+        counts[word]++;
+      }
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const topOneHundred = sorted.slice(0, 100);
+    const topEmojis = sorted.filter(([key]) => key.match(/[\u{1F600}-\u{1F64F}]/gu));
+    return {
+      topOneHundred,
+      topEmojis,
     };
   };
 }

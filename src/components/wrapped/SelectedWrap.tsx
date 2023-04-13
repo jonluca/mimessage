@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage, WRAPPED_ALL_TIME_YEAR } from "../../context";
-import { useChatMap, useWrappedStats } from "../../hooks/dataHooks";
+import { useChatById, useChatMap, useSlowWrappedStats, useWrappedStats } from "../../hooks/dataHooks";
 import Typography from "@mui/material/Typography";
 import type { WrappedStats } from "../../interfaces";
 import type { BoxProps } from "@mui/material/Box/Box";
@@ -16,7 +16,7 @@ const GenericValue = ({ text, number }: { text: string; number: string | bigint 
       </Typography>
       <Typography
         title={text}
-        sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}
+        sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}
       >
         {text}
       </Typography>
@@ -52,19 +52,33 @@ const SECTION_WIDTH = 550;
 const SECTION_HEIGHT = 200;
 const TwoSidedSection = ({
   title,
-  interactions,
+  data,
   render,
+  leftKey = "sent",
+  rightKey = "received",
+  leftTitle = "Sent",
+  rightTitle = "Received",
+  isLoading,
 }: {
   title: string;
   render: (val: any) => any;
-  interactions: { sent: any[]; received: any[] } | undefined;
+  data: { [key: string]: any[] } | undefined;
+  leftKey?: string;
+  rightKey?: string;
+  leftTitle?: string;
+  rightTitle?: string;
+  isLoading?: boolean;
 }) => {
   const [showAll, setShowAll] = useState(false);
-  const sent = interactions?.sent.slice(0, showAll ? 10 : 5) || [];
-  const received = interactions?.received.slice(0, showAll ? 10 : 5) || [];
-  const hasReceived = received.length > 0;
-  const hasSent = sent.length > 0;
-  if (!hasReceived && !hasSent) {
+  const allLeft = data?.[leftKey] || [];
+  const left = allLeft?.slice(0, showAll ? 10 : 5) || [];
+  const allRight = data?.[rightKey] || [];
+  const right = allRight?.slice(0, showAll ? 10 : 5) || [];
+  const hasLeft = right.length > 0;
+  const hasRight = left.length > 0;
+
+  const showArrow = allRight.length > 5 || allLeft.length > 5;
+  if (!hasLeft && !hasRight) {
     return null;
   }
 
@@ -73,22 +87,56 @@ const TwoSidedSection = ({
   return (
     <SectionWrapper sx={{ width: SECTION_WIDTH, minHeight: SECTION_HEIGHT }}>
       {title && <SectionHeader>{title}</SectionHeader>}
+      {isLoading && <LinearProgress />}
       <Box sx={{ width: "100%", display: "flex" }}>
-        {hasSent && (
+        {hasRight && (
           <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start", mr: 1 }}>
-            <Typography>Sent</Typography>
-            {sent.map((d) => render(d))}
+            <Typography>{leftTitle}</Typography>
+            {left.map((d) => render(d))}
           </Box>
         )}
-        {hasReceived && (
+        {hasLeft && (
           <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start" }}>
-            <Typography>Received</Typography>
-            {received.map((d) => render(d))}
+            <Typography>{rightTitle}</Typography>
+            {right.map((d) => render(d))}
           </Box>
         )}
       </Box>
-      {(hasSent || hasReceived) && (
-        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "#3f78ff" }} onClick={() => setShowAll((v) => !v)} />
+      {showArrow && (
+        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "white" }} onClick={() => setShowAll((v) => !v)} />
+      )}
+    </SectionWrapper>
+  );
+};
+const OneSidedSection = ({
+  title,
+  items,
+  render,
+  isLoading,
+}: {
+  title: string;
+  render: (val: any) => any;
+  items: [string, number][] | undefined;
+  isLoading: boolean;
+}) => {
+  const [showAll, setShowAll] = useState(false);
+  const toRender = items?.slice(0, showAll ? 10 : 5) || [];
+  const hasItems = toRender.length > 0;
+  const ArrowIcon = showAll ? ArrowDropUpIcon : ArrowDropDownIcon;
+
+  return (
+    <SectionWrapper sx={{ width: SECTION_WIDTH, minHeight: SECTION_HEIGHT }}>
+      {title && <SectionHeader>{title}</SectionHeader>}
+      {isLoading && <LinearProgress />}
+      <Box sx={{ width: "100%", display: "flex" }}>
+        {hasItems && (
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "start", mr: 1 }}>
+            {toRender.map((d) => render(d))}
+          </Box>
+        )}
+      </Box>
+      {hasItems && (
+        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "white" }} onClick={() => setShowAll((v) => !v)} />
       )}
     </SectionWrapper>
   );
@@ -109,13 +157,47 @@ const MessageCount = () => {
   }, [wrappedStats, chatMap]);
 
   const uniqueContacts = new Set(contacts.flat());
+  const wrapperStyle = { width: 350 };
+  const sx = {
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    fontWeight: "bold",
+    fontSize: 40,
+  };
   return (
-    <SectionWrapper>
-      <SectionHeader>Messages</SectionHeader>
-      <GenericValue text={"Sent"} number={wrappedStats?.messageCountSent || 0} />
-      <GenericValue text={"Received"} number={wrappedStats?.messageCountReceived || 0} />
-      <GenericValue text={"People"} number={uniqueContacts?.size || 0} />
-    </SectionWrapper>
+    <>
+      <Box display={"flex"}>
+        <SectionWrapper sx={wrapperStyle}>
+          <SectionHeader>Sent</SectionHeader>
+          <Typography sx={sx}>{(wrappedStats?.messageCount?.sent || 0).toLocaleString()}</Typography>
+        </SectionWrapper>
+        <SectionWrapper sx={wrapperStyle}>
+          <SectionHeader>Received</SectionHeader>
+          <Typography sx={sx}>{(wrappedStats?.messageCount?.received || 0).toLocaleString()}</Typography>
+        </SectionWrapper>
+        <SectionWrapper sx={wrapperStyle}>
+          <SectionHeader>People</SectionHeader>
+          <Typography sx={sx}>{(uniqueContacts?.size || 0).toLocaleString()}</Typography>
+        </SectionWrapper>
+      </Box>
+    </>
+  );
+};
+const FavoriteWords = () => {
+  const { data: wrappedStats, isLoading } = useSlowWrappedStats();
+
+  return (
+    <TwoSidedSection
+      title={"Favorite Text"}
+      leftKey={"topOneHundred"}
+      rightKey={"topEmojis"}
+      data={wrappedStats}
+      leftTitle={"Words"}
+      rightTitle={"Emojis"}
+      render={(wordCount) => <GenericValue key={wordCount[0]} text={wordCount[0]} number={wordCount[1]} />}
+      isLoading={isLoading}
+    />
   );
 };
 
@@ -144,11 +226,7 @@ const BusiestDay = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.weekdayInteractions;
   return (
-    <TwoSidedSection
-      title={"Days"}
-      interactions={interactions}
-      render={(d) => <DayInteraction key={d.weekday} day={d} />}
-    />
+    <TwoSidedSection title={"Days"} data={interactions} render={(d) => <DayInteraction key={d.weekday} day={d} />} />
   );
 };
 const BusiestMonth = () => {
@@ -157,7 +235,7 @@ const BusiestMonth = () => {
   return (
     <TwoSidedSection
       title={"Months"}
-      interactions={interactions}
+      data={interactions}
       render={(m) => <MonthInteraction key={m.month} month={m} />}
     />
   );
@@ -168,7 +246,7 @@ const MostPopularOpeners = () => {
   return (
     <TwoSidedSection
       title={"First Messages"}
-      interactions={openers}
+      data={openers}
       render={(m) => <OpenerCount key={m.text} opener={m.text} count={m.count ?? 0} />}
     />
   );
@@ -176,11 +254,17 @@ const MostPopularOpeners = () => {
 
 const TopConversationPartners = () => {
   const { data: wrappedStats } = useWrappedStats();
+  const chatId = useMimessage((state) => state.chatId);
+
+  if (chatId) {
+    // dont render this page for an individual
+    return null;
+  }
   const interactions = wrappedStats?.chatInteractions;
   return (
     <TwoSidedSection
       title={"People"}
-      interactions={interactions}
+      data={interactions}
       render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
     />
   );
@@ -191,23 +275,29 @@ const LateNightChatter = () => {
   return (
     <TwoSidedSection
       title={"Down Bad (12am-4am)"}
-      interactions={interactions}
+      data={interactions}
       render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
     />
   );
 };
 
 const EntryHeader = () => {
+  const chatId = useMimessage((state) => state.chatId);
+  const chat = useChatById(chatId);
+
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   return (
     <Typography variant={"h1"}>
-      Your iMessage Wrapped{wrappedYear === WRAPPED_ALL_TIME_YEAR ? "" : `in ${wrappedYear}`}
+      Your {wrappedYear === WRAPPED_ALL_TIME_YEAR ? "" : `${wrappedYear} `}iMessage Wrapped
+      {chat ? ` with ${chat.name}` : ""}
     </Typography>
   );
 };
 
 export const SelectedWrap = () => {
   const { isFetching } = useWrappedStats();
+
+  const wrappedYear = useMimessage((state) => state.wrappedYear);
 
   return (
     <Box
@@ -245,6 +335,8 @@ export const SelectedWrap = () => {
             <BusiestMonth />
             <MostPopularOpeners />
             <LateNightChatter />
+            <FavoriteWords />
+            {wrappedYear === WRAPPED_ALL_TIME_YEAR && null}
           </Box>
         </Box>
       )}

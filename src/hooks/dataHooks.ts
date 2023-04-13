@@ -15,6 +15,7 @@ import React from "react";
 import type { GlobalSearchResponse } from "../interfaces";
 import { shallow } from "zustand/shallow";
 import type { SemanticSearchStats } from "../interfaces";
+import type { SlowWrappedStats } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
 const useDbChatList = () => {
@@ -387,12 +388,16 @@ interface ChatStat {
 }
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
-  const isInWrapped = useMimessage((state) => state.isInWrapped);
+  const chatId = useMimessage((state) => state.chatId);
   const chatMap = useChatMap();
+  const chat = chatMap?.get(chatId!);
+  const ids = chatId ? chat?.sameParticipantChatIds || [chatId] : null;
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
+
   return useQuery<WrappedStats>(
-    ["calculateWrappedStats", wrappedYear, chatMap.size],
+    ["calculateWrappedStats", wrappedYear, ids, chat],
     async () => {
-      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear)) as WrappedStats;
+      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear, ids)) as WrappedStats;
       const coalesceSameChats = (stats: ChatStat[]) => {
         const enhancedStat = stats.map((sent) => ({ ...sent, chat: chatMap.get(sent.chat_id!) })).filter(Boolean);
         const grouped = groupBy(
@@ -412,6 +417,24 @@ export const useWrappedStats = () => {
       resp.chatInteractions.received = coalesceSameChats(resp.chatInteractions.received);
       resp.lateNightInteractions.sent = coalesceSameChats(resp.lateNightInteractions.sent);
       resp.lateNightInteractions.received = coalesceSameChats(resp.lateNightInteractions.received);
+      console.log(resp);
+      return resp;
+    },
+    { enabled: isInWrapped },
+  );
+};
+
+export const useSlowWrappedStats = () => {
+  const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const chatId = useMimessage((state) => state.chatId);
+  const chatMap = useChatMap();
+  const chat = chatMap?.get(chatId!);
+  const ids = chatId ? chat?.sameParticipantChatIds || [chatId] : null;
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
+  return useQuery<SlowWrappedStats>(
+    ["calculateSlowWrappedStats", wrappedYear, ids],
+    async () => {
+      const resp = (await ipcRenderer.invoke("calculateSlowWrappedStats", wrappedYear, ids)) as SlowWrappedStats;
       console.log(resp);
       return resp;
     },
