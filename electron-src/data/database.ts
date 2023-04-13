@@ -302,6 +302,9 @@ export class SQLDatabase {
     const allMessages = [...matchedMessages, ...unmatchedMessages];
     return this.enhanceMessageResponses<typeof messages[number]>(allMessages);
   };
+  private convertDate = (date: number) => {
+    return new Date(date / 1000000 + 978307200000);
+  };
 
   private addDateToMessage = (message: {
     date?: number | null;
@@ -312,13 +315,13 @@ export class SQLDatabase {
     date_obj_read?: Date;
   }) => {
     if (message.date) {
-      message.date_obj = new Date(message.date / 1000000 + 978307200000);
+      message.date_obj = this.convertDate(message.date);
     }
     if (message.date_delivered) {
-      message.date_obj_delivered = new Date(message.date_delivered / 1000000 + 978307200000);
+      message.date_obj_delivered = this.convertDate(message.date_delivered);
     }
     if (message.date_read) {
-      message.date_obj_read = new Date(message.date_read / 1000000 + 978307200000);
+      message.date_obj_read = this.convertDate(message.date_read);
     }
   };
   private enhanceMessageResponses = async <T extends JoinedMessageType = JoinedMessageType>(messages: T[]) => {
@@ -644,13 +647,21 @@ export class SQLDatabase {
   };
 
   getMessageDates = async (year: number, chatIds?: number[]) => {
-    const query = this.getMessageQueryByYear(year, chatIds).select("date");
+    const query = this.getMessageQueryByYear(year, chatIds).select(["date", "message.handle_id"]);
     const data = await query.execute();
     for (const message of data) {
       // maybe this is slow and its better not to pay serialization cost? idk
       this.addDateToMessage(message);
     }
-    return data[0];
+    type AddedDates = Array<
+      typeof data[number] & {
+        date_obj?: Date;
+        date_obj_delivered?: Date;
+        date_obj_read?: Date;
+      }
+    >;
+
+    return data as AddedDates;
   };
 }
 

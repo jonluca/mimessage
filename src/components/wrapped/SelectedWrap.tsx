@@ -11,52 +11,12 @@ import {
 } from "../../hooks/dataHooks";
 import Typography from "@mui/material/Typography";
 import type { WrappedStats } from "../../interfaces";
-import type { BoxProps } from "@mui/material/Box/Box";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { LinearProgress } from "@mui/material";
-const GenericValue = ({ text, number }: { text: string; number: string | bigint | number }) => {
-  return (
-    <Box display={"flex"} justifyContent={"center"} alignItems={"center"}>
-      <Typography sx={{ color: "#5871f5", display: "flex", mr: 1, width: 70, fontWeight: "bold" }}>
-        {(number || 0).toLocaleString()}
-      </Typography>
-      <Typography
-        title={text}
-        sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}
-      >
-        {text}
-      </Typography>
-    </Box>
-  );
-};
+import { GenericValue, SECTION_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
+import { MessagesByYear } from "./Charts";
 
-const SectionWrapper = (props: BoxProps) => {
-  return (
-    <Box
-      {...props}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        background: "#2c2c2c",
-        py: 1,
-        px: 2,
-        m: 1,
-        borderRadius: 2,
-        height: "fit-content",
-        width: "fit-content",
-        ...props.sx,
-      }}
-    />
-  );
-};
-
-const SectionHeader = ({ children }: React.PropsWithChildren) => {
-  return <Typography variant={"h2"}>{children}</Typography>;
-};
-const SECTION_WIDTH = 550;
-const SECTION_HEIGHT = 200;
 const TwoSidedSection = ({
   title,
   data,
@@ -301,9 +261,9 @@ export const SelectedWrap = () => {
         height: "100%",
         flexDirection: "column",
         background: "#1e1e1e",
-        alignItems: "center",
         overflowY: "hidden",
         p: 1,
+        display: "flex",
       }}
     >
       <EntryHeader />
@@ -314,22 +274,21 @@ export const SelectedWrap = () => {
           sx={{
             zIndex: 999,
             width: "100%",
-            height: "100%",
-            flexDirection: "column",
             background: "#1e1e1e",
             overflowY: "auto",
-            display: "inline-flex",
+            flexGrow: 1,
+            flexBasis: 1,
           }}
         >
           <MessageCount />
-          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", maxHeight: "100%" }}>
             <TopConversationPartners />
             <BusiestDay />
             <BusiestMonth />
             <MostPopularOpeners />
             <LateNightChatter />
             <FavoriteWords />
-            {wrappedYear === WRAPPED_ALL_TIME_YEAR && null}
+            {wrappedYear === WRAPPED_ALL_TIME_YEAR && <MessagesByYear />}
           </Box>
         </Box>
       )}

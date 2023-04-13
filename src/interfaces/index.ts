@@ -11,5 +11,6 @@ export type SemanticSearchStats = NonNullable<Awaited<ReturnType<SQLDatabase["ca
 export type GlobalSearchResult = GlobalSearchResponse[number];
 export type Message = MessagesForChat[number];
 export type Chat = ChatList[number];
+export type MessageDate = MessageDates[number];
 export type Handle = ChatList[number]["handles"][number];
 export type Contacts = Contact[];
