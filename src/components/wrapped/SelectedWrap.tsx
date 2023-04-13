@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage, WRAPPED_ALL_TIME_YEAR } from "../../context";
-import { useChatById, useChatMap, useSlowWrappedStats, useWrappedStats } from "../../hooks/dataHooks";
+import {
+  useChatById,
+  useChatMap,
+  useHandleMap,
+  useIsCurrentChatSingleMember,
+  useSlowWrappedStats,
+  useWrappedStats,
+} from "../../hooks/dataHooks";
 import Typography from "@mui/material/Typography";
 import type { WrappedStats } from "../../interfaces";
 import type { BoxProps } from "@mui/material/Box/Box";
@@ -110,7 +117,7 @@ const TwoSidedSection = ({
 };
 const MessageCount = () => {
   const { data: wrappedStats } = useWrappedStats();
-  const chatId = useMimessage((state) => state.chatId);
+  const isCurrentChatSingleMember = useIsCurrentChatSingleMember();
 
   const chatMap = useChatMap();
   const contacts = React.useMemo(() => {
@@ -143,7 +150,7 @@ const MessageCount = () => {
           <SectionHeader>Received</SectionHeader>
           <Typography sx={sx}>{(wrappedStats?.messageCount?.received || 0).toLocaleString()}</Typography>
         </SectionWrapper>
-        {!chatId && (
+        {!isCurrentChatSingleMember && (
           <SectionWrapper sx={wrapperStyle}>
             <SectionHeader>People</SectionHeader>
             <Typography sx={sx}>{(uniqueContacts?.size || 0).toLocaleString()}</Typography>
@@ -176,9 +183,19 @@ const ChatInteraction = ({
   chatInteraction: { chat_id: number | null; message_count: number | string | bigint };
 }) => {
   const chatMap = useChatMap();
-  const chatId = useMimessage((state) => state.chatId);
   const chat = chatMap?.get(chatInteraction.chat_id!);
-  return <GenericValue text={chatId ? "" : chat?.name || ""} number={chatInteraction.message_count || 0} />;
+  const isSingleMemberChat = useIsCurrentChatSingleMember();
+  return <GenericValue text={isSingleMemberChat ? "" : chat?.name || ""} number={chatInteraction.message_count || 0} />;
+};
+
+const HandleInteraction = ({
+  handle,
+}: {
+  handle: { handle_id: number | null; message_count: number | string | bigint };
+}) => {
+  const handleMap = useHandleMap();
+  const h = handleMap?.[handle.handle_id!];
+  return <GenericValue text={h?.contact?.parsedName || h?.id || "Unknown"} number={handle.message_count || 0} />;
 };
 
 const DayInteraction = ({ day }: { day: WrappedStats["weekdayInteractions"]["sent"][number] }) => {
@@ -224,18 +241,24 @@ const MostPopularOpeners = () => {
 
 const TopConversationPartners = () => {
   const { data: wrappedStats } = useWrappedStats();
-  const chatId = useMimessage((state) => state.chatId);
+  const isSingleMemberChat = useIsCurrentChatSingleMember();
 
-  if (chatId) {
+  if (isSingleMemberChat) {
     // dont render this page for an individual
     return null;
   }
   const interactions = wrappedStats?.chatInteractions;
+  const handleInteractions = wrappedStats?.handleInteractions;
   return (
     <TwoSidedSection
       title={"People"}
-      data={interactions}
-      render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
+      data={handleInteractions || interactions}
+      render={(i) => {
+        if (handleInteractions) {
+          return <HandleInteraction key={i.handle_id} handle={i} />;
+        }
+        return <ChatInteraction key={i.chat_id} chatInteraction={i} />;
+      }}
     />
   );
 };

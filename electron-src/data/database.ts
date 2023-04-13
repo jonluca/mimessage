@@ -423,7 +423,7 @@ export class SQLDatabase {
     return { sent, received };
   };
 
-  private countMessagesByHandle = async (year: number, chatIds?: number[]) => {
+  private countMessagesByChat = async (year: number, chatIds?: number[]) => {
     const queryByOriginator = (isFromMe: boolean) => {
       return this.getMessageQueryByYear(year, chatIds)
         .select((e) => e.fn.count("message.ROWID").as("message_count"))
@@ -435,6 +435,27 @@ export class SQLDatabase {
 
     const sent = await queryByOriginator(true).execute();
     const received = await queryByOriginator(false).execute();
+    return { sent, received };
+  };
+
+  private countMessagesByHandle = async (year: number, chatIds?: number[]) => {
+    if (!chatIds || !chatIds.length) {
+      return null;
+    }
+    const queryByOriginator = async (isFromMe: boolean) => {
+      const query = this.getMessageQueryByYear(year, chatIds)
+        .select((e) => e.fn.count("message.ROWID").as("message_count"))
+        .select("message.handle_id as handle_id")
+        .leftJoin("handle", "handle.ROWID", "message.handle_id")
+        .where("is_from_me", "=", Number(isFromMe))
+        .groupBy("message.handle_id")
+        .orderBy("message_count", "desc");
+      const data = await query.execute();
+      return data;
+    };
+
+    const sent = await queryByOriginator(true);
+    const received = await queryByOriginator(false);
     return { sent, received };
   };
 
@@ -570,12 +591,14 @@ export class SQLDatabase {
     const [
       messageCount,
       chatInteractions,
+      handleInteractions,
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,
       mostPopularOpeners,
     ] = await Promise.all([
       this.countMessagesByYear(year, chatIds),
+      this.countMessagesByChat(year, chatIds),
       this.countMessagesByHandle(year, chatIds),
       this.countMessagesByWeekday(year, chatIds),
       this.countMessagesByMonth(year, chatIds),
@@ -585,6 +608,7 @@ export class SQLDatabase {
     return {
       messageCount,
       chatInteractions,
+      handleInteractions,
       weekdayInteractions,
       monthlyInteractions,
       lateNightInteractions,

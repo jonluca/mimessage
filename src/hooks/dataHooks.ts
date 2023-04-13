@@ -83,7 +83,8 @@ export const useChatList = () => {
         if (contacts) {
           if (chat.handles.length) {
             for (const handle of chat.handles) {
-              handle.contact = getContactFromHandle(handle.id, contacts);
+              handle.contact =
+                getContactFromHandle(handle.id, contacts) || getContactFromHandle(handle.uncanonicalized_id, contacts);
             }
           }
         }
@@ -134,6 +135,21 @@ export const useHandleMap = () => {
     for (const handle of handles) {
       handleMap[handle.ROWID!] = handle;
     }
+
+    handleMap[0] = {
+      ROWID: 0,
+      id: "You",
+      handle_id: 0,
+      contact: {
+        parsedName: "You",
+        identifier: "you",
+      },
+      uncanonicalized_id: null,
+      chat_id: null,
+      person_centric_id: null,
+      service: "iMessage",
+      country: null,
+    };
     return handleMap;
   }, [chatList, chatList?.length]);
 };
@@ -276,6 +292,19 @@ export const useAiMessagesForChatId = (id: number | null) => {
   return (id ? extendedConversations[id] : []) || [];
 };
 
+export const useIsCurrentChatSingleMember = () => {
+  const chatMap = useChatMap();
+  const chatId = useMimessage((state) => state.chatId);
+  if (!chatId) {
+    return false;
+  }
+  const chat = chatMap?.get(chatId!);
+  if (!chat) {
+    return false;
+  }
+  return chat.handles.length === 1;
+};
+
 export const useContactMap = () => {
   const { data: contacts } = useContacts();
   return useQuery<Map<string | null, Contact>>(
@@ -288,6 +317,7 @@ export const useContactMap = () => {
       for (const contact of contacts) {
         for (const email of contact.emailAddresses || []) {
           map.set(email, contact);
+          map.set(email.toLowerCase(), contact);
         }
         for (const phone of contact.phoneNumbers || []) {
           map.set(phone, contact);
@@ -387,6 +417,23 @@ interface ChatStat {
   message_count: string | number | bigint;
   chat_id: number | null;
 }
+
+const useDbWrappedStats = () => {
+  const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const chatId = useMimessage((state) => state.chatId);
+  const chatMap = useChatMap();
+  const chat = chatMap?.get(chatId!);
+  const ids = chatId ? chat?.sameParticipantChatIds || [chatId] : null;
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
+  return useQuery<WrappedStats>(
+    ["calculateWrappedStats", wrappedYear, ids],
+    async () => {
+      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear, ids)) as WrappedStats;
+      return resp;
+    },
+    { enabled: isInWrapped },
+  );
+};
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   const chatId = useMimessage((state) => state.chatId);

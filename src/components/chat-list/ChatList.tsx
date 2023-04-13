@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import Box from "@mui/material/Box";
-import { useChatList, useWrappedStats } from "../../hooks/dataHooks";
+import { useChatList } from "../../hooks/dataHooks";
 import type { Chat } from "../../interfaces";
 import { useMimessage } from "../../context";
 import { SearchBar } from "./SearchBox";
@@ -9,7 +9,6 @@ import { ImessageWrapped } from "./ImessageWrapped";
 import { ChatEntry } from "./ChatEntry";
 import { Virtuoso } from "react-virtuoso";
 import { YearSelector } from "../wrapped/YearSelector";
-import { LinearProgress } from "@mui/material";
 
 export const CHAT_LIST_WIDTH = 320;
 export const ChatListWrapper = ({ children }: React.PropsWithChildren) => {
@@ -71,7 +70,6 @@ export const ChatList = () => {
   const { data } = useChatList();
   const search = useMimessage((state) => state.search);
   const isInWrapped = useMimessage((state) => state.isInWrapped);
-  const { isFetching } = useWrappedStats();
   const chatsToRender = useMemo(() => {
     if (search) {
       const fuse = new Fuse<Chat>(data || [], {
@@ -113,7 +111,6 @@ export const ChatList = () => {
     <ChatListWrapper>
       {isInWrapped ? <YearSelector /> : <SearchBar />}
       <ImessageWrapped back={isInWrapped} />
-      {isFetching && <LinearProgress />}
       <VirtualizedList key={deduplicatedIndividualChats.length} chats={deduplicatedIndividualChats} />
     </ChatListWrapper>
   );

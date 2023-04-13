@@ -7,6 +7,7 @@ import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
 import "./data/semantic-search";
 import "./data/ipc";
+import "./data/ipc-onboarding";
 import "better-sqlite3";
 import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
