@@ -13,7 +13,7 @@ class DbWorker {
   worker!: WorkerType<SQLDatabase> | SQLDatabase;
 
   startWorker = async () => {
-    const path = isDev ? "data/worker.js" : join("..", "..", "..", "assets", "worker.js");
+    const path = isDev ? "data/worker.js" : join("..", "..", "..", "app.asar.unpacked", "worker.js");
 
     this.worker = isDev
       ? db

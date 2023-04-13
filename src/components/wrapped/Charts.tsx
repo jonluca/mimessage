@@ -8,6 +8,7 @@ import type { UserSerie } from "react-charts/types/types";
 import type { MessageDate } from "../../interfaces";
 import { SectionHeader, SectionWrapper } from "./Containers";
 import Box from "@mui/material/Box";
+import { ErrorBoundary } from "../ErrorBoundary";
 const Chart = dynamic(() => import("react-charts").then((mod) => mod.Chart), {
   ssr: false,
 }) as typeof ChartType;
@@ -54,6 +55,7 @@ export const BaseChart = <T extends { primary: Date; secondary: number }>({ data
           return v?.getFullYear().toString();
         },
       },
+      scaleType: "time",
     }),
     [],
   );
@@ -69,13 +71,15 @@ export const BaseChart = <T extends { primary: Date; secondary: number }>({ data
   );
 
   return (
-    <Chart
-      options={{
-        data,
-        primaryAxis,
-        secondaryAxes,
-        dark: true,
-      }}
-    />
+    <ErrorBoundary>
+      <Chart
+        options={{
+          data,
+          primaryAxis,
+          secondaryAxes,
+          dark: true,
+        }}
+      />
+    </ErrorBoundary>
   );
 };

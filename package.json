@@ -116,8 +116,9 @@
   "build": {
     "asar": true,
     "asarUnpack": [
-      "node_modules/sqlite3/**/*",
-      "node_modules/better-sqlite3/**/*"
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/bindings/**/*",
+      "**/build/electron-src/data/worker.js"
     ],
     "appId": "com.jonluca.mimessage",
     "extends": null,
@@ -138,7 +139,7 @@
       "assets/**/*",
       {
         "from": "build/electron-src/data/worker.js",
-        "to": "assets/worker.js"
+        "to": "app.asar.unpacked/worker.js"
       }
     ],
     "mac": {
