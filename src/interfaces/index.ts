@@ -4,6 +4,7 @@ import type { Contact } from "electron-mac-contacts";
 export type ChatList = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>;
 export type WrappedStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateWrappedStats"]>>>;
 export type SlowWrappedStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateSlowWrappedStats"]>>>;
+export type MessageDates = NonNullable<Awaited<ReturnType<SQLDatabase["getMessageDates"]>>>;
 export type MessagesForChat = NonNullable<Awaited<ReturnType<SQLDatabase["getMessagesForChatId"]>>>;
 export type GlobalSearchResponse = NonNullable<Awaited<ReturnType<SQLDatabase["fullTextMessageSearch"]>>>;
 export type SemanticSearchStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateSemanticSearchStats"]>>>;

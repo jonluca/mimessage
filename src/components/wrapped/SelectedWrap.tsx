@@ -110,6 +110,7 @@ const TwoSidedSection = ({
 };
 const MessageCount = () => {
   const { data: wrappedStats } = useWrappedStats();
+  const chatId = useMimessage((state) => state.chatId);
 
   const chatMap = useChatMap();
   const contacts = React.useMemo(() => {
@@ -142,10 +143,12 @@ const MessageCount = () => {
           <SectionHeader>Received</SectionHeader>
           <Typography sx={sx}>{(wrappedStats?.messageCount?.received || 0).toLocaleString()}</Typography>
         </SectionWrapper>
-        <SectionWrapper sx={wrapperStyle}>
-          <SectionHeader>People</SectionHeader>
-          <Typography sx={sx}>{(uniqueContacts?.size || 0).toLocaleString()}</Typography>
-        </SectionWrapper>
+        {!chatId && (
+          <SectionWrapper sx={wrapperStyle}>
+            <SectionHeader>People</SectionHeader>
+            <Typography sx={sx}>{(uniqueContacts?.size || 0).toLocaleString()}</Typography>
+          </SectionWrapper>
+        )}
       </Box>
     </>
   );

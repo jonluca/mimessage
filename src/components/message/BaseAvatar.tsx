@@ -7,7 +7,6 @@ import type { AvatarClasses } from "@mui/material/Avatar/avatarClasses";
 import type { SxProps } from "@mui/system";
 import type { OverridableStringUnion } from "@mui/types";
 import type { OverrideProps } from "@mui/material/OverridableComponent";
-import { unstable_generateUtilityClasses as generateUtilityClasses } from "@mui/utils";
 import { useThemeProps } from "@mui/material/styles";
 const defaultGenerator = (componentName: string) => componentName;
 
@@ -64,15 +63,7 @@ function generateUtilityClass(componentName: string, slot: string, globalStatePr
 function getAvatarUtilityClass(slot: string) {
   return generateUtilityClass("MuiAvatar", slot);
 }
-const avatarClasses = generateUtilityClasses("MuiAvatar", [
-  "root",
-  "colorDefault",
-  "circular",
-  "rounded",
-  "square",
-  "img",
-  "fallback",
-]);
+
 export interface AvatarPropsVariantOverrides {}
 
 export interface AvatarTypeMap<P = object> {

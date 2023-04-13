@@ -16,6 +16,7 @@ import type { GlobalSearchResponse } from "../interfaces";
 import { shallow } from "zustand/shallow";
 import type { SemanticSearchStats } from "../interfaces";
 import type { SlowWrappedStats } from "../interfaces";
+import type { MessageDates } from "../interfaces";
 
 const ipcRenderer = global.ipcRenderer;
 const useDbChatList = () => {
@@ -435,6 +436,23 @@ export const useSlowWrappedStats = () => {
     ["calculateSlowWrappedStats", wrappedYear, ids],
     async () => {
       const resp = (await ipcRenderer.invoke("calculateSlowWrappedStats", wrappedYear, ids)) as SlowWrappedStats;
+      console.log(resp);
+      return resp;
+    },
+    { enabled: isInWrapped },
+  );
+};
+export const useWrappedDates = () => {
+  const wrappedYear = useMimessage((state) => state.wrappedYear);
+  const chatId = useMimessage((state) => state.chatId);
+  const chatMap = useChatMap();
+  const chat = chatMap?.get(chatId!);
+  const ids = chatId ? chat?.sameParticipantChatIds || [chatId] : null;
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
+  return useQuery<MessageDates>(
+    ["getMessageDates", wrappedYear, ids],
+    async () => {
+      const resp = (await ipcRenderer.invoke("getMessageDates", wrappedYear, ids)) as MessageDates;
       console.log(resp);
       return resp;
     },

@@ -303,6 +303,24 @@ export class SQLDatabase {
     return this.enhanceMessageResponses<typeof messages[number]>(allMessages);
   };
 
+  private addDateToMessage = (message: {
+    date?: number | null;
+    date_delivered?: number | null;
+    date_read?: number | null;
+    date_obj?: Date;
+    date_obj_delivered?: Date;
+    date_obj_read?: Date;
+  }) => {
+    if (message.date) {
+      message.date_obj = new Date(message.date / 1000000 + 978307200000);
+    }
+    if (message.date_delivered) {
+      message.date_obj_delivered = new Date(message.date_delivered / 1000000 + 978307200000);
+    }
+    if (message.date_read) {
+      message.date_obj_read = new Date(message.date_read / 1000000 + 978307200000);
+    }
+  };
   private enhanceMessageResponses = async <T extends JoinedMessageType = JoinedMessageType>(messages: T[]) => {
     type EnhancedMessage = T & {
       attachmentMessages?: EnhancedMessage[];
@@ -315,15 +333,7 @@ export class SQLDatabase {
 
     await Promise.all(
       enhancedMessages.map(async (message) => {
-        if (message.date) {
-          message.date_obj = new Date(message.date / 1000000 + 978307200000);
-        }
-        if (message.date_delivered) {
-          message.date_obj_delivered = new Date(message.date_delivered / 1000000 + 978307200000);
-        }
-        if (message.date_read) {
-          message.date_obj_read = new Date(message.date_read / 1000000 + 978307200000);
-        }
+        this.addDateToMessage(message);
         if (message.text) {
           message.text = message.text.replace(/[\u{FFFC}-\u{FFFD}]/gu, "");
         }
@@ -607,6 +617,16 @@ export class SQLDatabase {
       topOneHundred,
       topEmojis,
     };
+  };
+
+  getMessageDates = async (year: number, chatIds?: number[]) => {
+    const query = this.getMessageQueryByYear(year, chatIds).select("date");
+    const data = await query.execute();
+    for (const message of data) {
+      // maybe this is slow and its better not to pay serialization cost? idk
+      this.addDateToMessage(message);
+    }
+    return data[0];
   };
 }
 
