@@ -117,6 +117,7 @@
     "asar": true,
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/file-uri-to-path/**/*",
       "**/node_modules/bindings/**/*",
       "**/build/electron-src/data/worker.js"
     ],
