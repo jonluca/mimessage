@@ -2,7 +2,9 @@
 
 Welcome to the iMessage Alternative UI project! This is an open-source alternative user interface for Apple's native iMessage application, built using TypeScript, Electron, and Kysely.
 
-![App screenshot](readme-assets/img.png?raw=true "Mimessage App")
+## Installation
+
+To install the application, check out the releases tab and download the app for your architecture.https://github.com/jonluca/mimessage/releases
 
 ## Features
 
@@ -17,6 +19,8 @@ This alternative UI provides several advanced features, including:
 
 Please note that this application is for viewing and managing iMessage conversations only. It does **NOT** allow you to send messages.
 
+![App screenshot](readme-assets/img.png?raw=true "Mimessage App")
+
 ### Wrapped
 
 Mimessage also creates an "iMessage Wrapped" - a Spotify Wrapped, but for your conversations. It will generate some statistics about your conversations.
@@ -26,10 +30,6 @@ Mimessage also creates an "iMessage Wrapped" - a Spotify Wrapped, but for your c
 Fun sidenote: ChatGPT actually came up with a lot of the stats that would be interesting to see.
 
 ![ChatGPT ideas](readme-assets/chatgpt.png?raw=true "ChatGPT generated the stats")
-
-## Installation
-
-To install the application, check out the releases tab and download the app for your architecture.https://github.com/jonluca/mimessage/releases
 
 ### My stats look wrong
 
