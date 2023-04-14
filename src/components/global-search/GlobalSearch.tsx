@@ -8,6 +8,7 @@ import {
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
+  useSemanticSearch,
 } from "../../hooks/dataHooks";
 import { Button, LinearProgress } from "@mui/material";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -281,6 +282,35 @@ const DateFilter = ({
         />
       </Popover>
     </>
+  );
+};
+
+const EmbeddingsResults = () => {
+  const { data: results, isLoading } = useSemanticSearch();
+  const virtuoso = useRef<VirtuosoHandle>(null);
+
+  const count = results?.length || 0;
+
+  const searchResultRenderer = (index: number) => {
+    const result = results?.[index];
+
+    if (!result) {
+      return null;
+    }
+
+    return <SearchResult result={result} key={`${result.chat_id}-${index}`} />;
+  };
+
+  return (
+    <Virtuoso
+      key={`${count}-${isLoading}`}
+      totalCount={count}
+      style={{ height: "100%" }}
+      itemContent={searchResultRenderer}
+      overscan={100}
+      increaseViewportBy={2000}
+      ref={virtuoso}
+    />
   );
 };
 export const GlobalSearch = () => {

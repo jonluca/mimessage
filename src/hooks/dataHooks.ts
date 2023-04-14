@@ -374,13 +374,14 @@ export const useDoesLocalDbExist = () => {
 };
 
 export const useGlobalSearch = () => {
-  const { startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
+  const { openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
     (state) => ({
       startDate: state.startDate,
       endDate: state.endDate,
       contactFilter: state.contactFilter,
       chatFilter: state.chatFilter,
       globalSearch: state.globalSearch,
+      openAiKey: state.openAiKey,
     }),
     shallow,
   );
@@ -397,6 +398,7 @@ export const useGlobalSearch = () => {
       endDate,
       handleMap.size,
       Boolean(hasSemanticSearch),
+      openAiKey,
     ],
     async () => {
       if (!globalSearch) {
@@ -411,6 +413,55 @@ export const useGlobalSearch = () => {
         handleIds,
         startDate,
         endDate,
+        openAiKey,
+      )) as GlobalSearchResponse;
+      // ignore attachments for now, but we should probably show them in the future
+      return resp.filter((l) => l.text);
+    },
+  );
+};
+
+export const useSemanticSearch = () => {
+  const { openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
+    (state) => ({
+      startDate: state.startDate,
+      endDate: state.endDate,
+      contactFilter: state.contactFilter,
+      chatFilter: state.chatFilter,
+      globalSearch: state.globalSearch,
+      openAiKey: state.openAiKey,
+    }),
+    shallow,
+  );
+
+  const { data: hasSemanticSearch } = useHasSemanticSearch();
+  const handleMap = useContactToHandleMap();
+  return useQuery<GlobalSearchResponse>(
+    [
+      "globalSearch",
+      globalSearch,
+      chatFilter,
+      contactFilter,
+      startDate,
+      endDate,
+      handleMap.size,
+      Boolean(hasSemanticSearch),
+      openAiKey,
+    ],
+    async () => {
+      if (!hasSemanticSearch || !openAiKey) {
+        return [];
+      }
+      const chatIds = chatFilter?.map((c) => c.chat_id!);
+      const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c.identifier) || [])]))];
+      const resp = (await ipcRenderer.invoke(
+        "semanticQuery",
+        globalSearch,
+        chatIds,
+        handleIds,
+        startDate,
+        endDate,
+        openAiKey,
       )) as GlobalSearchResponse;
       // ignore attachments for now, but we should probably show them in the future
       return resp.filter((l) => l.text);

@@ -239,9 +239,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
   if (!embed.data?.[0]?.embedding) {
     return [];
   }
-  const results = await collection.query(embed.data[0].embedding, 100, undefined, [queryText]);
-
-  return results;
+  return await collection.query(embed.data[0].embedding, 100, undefined, [queryText]);
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -253,6 +251,24 @@ handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
 handleIpc("getEmbeddingsCompleted", async () => {
   return numCompleted;
 });
-handleIpc("semanticQuery", async (opts: SemanticQueryOpts) => {
-  return semanticQuery(opts);
-});
+handleIpc(
+  "semanticQuery",
+  async (
+    searchTerm: string,
+    chatIds?: number[],
+    handleIds?: number[],
+    startDate?: Date | null,
+    endDate?: Date | null,
+    openAiKey?: string,
+  ) => {
+    if (!openAiKey || !searchTerm) {
+      return [];
+    }
+    const queryResults = await semanticQuery({
+      openAiKey,
+      queryText: searchTerm,
+    });
+
+    return queryResults;
+  },
+);
