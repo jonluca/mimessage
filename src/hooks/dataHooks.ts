@@ -130,11 +130,11 @@ export const useHandleMap = () => {
   const { data: chatList } = useChatList();
 
   return React.useMemo<Record<number | string, Handle>>(() => {
-    const handleMap: Record<number, Handle> | null = {};
+    const handleMap: Record<number | string, Handle> | null = {};
     const handles: Handle[] = chatList?.flatMap((chat) => chat.handles) || [];
     for (const handle of handles) {
       handleMap[handle.ROWID!] = handle;
-      handleMap[String(handle.ROWID)!] = handle;
+      handleMap[String(handle.ROWID)] = handle;
     }
 
     handleMap[0] = {
