@@ -20,7 +20,7 @@ const setupNext = async () => {
           development: "../src",
           production: join(app.getAppPath(), "src"),
         },
-        3000,
+        3020,
       ),
     );
   } catch (e) {
@@ -84,7 +84,7 @@ export const createMainWindow = async () => {
   windowState.manage(mainWindow);
 
   const url = isDev
-    ? "http://localhost:3000/"
+    ? "http://localhost:3020/"
     : format({
         pathname: join(__dirname, "../../src/out/index.html"),
         protocol: "file:",

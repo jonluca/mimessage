@@ -5,7 +5,6 @@ import { windows } from "../index";
 import { showApp } from "../utils/util";
 import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../data/options";
-import dbWorker from "../data/database-worker";
 import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
 
 export const getMenu = () => {
@@ -23,8 +22,8 @@ export const getMenu = () => {
           type: "normal",
           click: async () => {
             await copyLatestDb();
-            await dbWorker.worker.reloadDb();
-            windows[0]?.webContents.send("refreshChats");
+            app.relaunch();
+            app.exit(0);
           },
         },
         {
@@ -39,8 +38,8 @@ export const getMenu = () => {
               return;
             }
             await copyDbAtPath(location.filePaths[0]);
-            await dbWorker.worker.reloadDb();
-            windows[0]?.webContents.send("refreshChats");
+            app.relaunch();
+            app.exit(0);
           },
         },
         { type: "separator" },
