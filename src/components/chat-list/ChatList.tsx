@@ -109,8 +109,9 @@ export const ChatList = () => {
 
   return (
     <ChatListWrapper>
-      {isInWrapped ? <YearSelector /> : <SearchBar />}
+      <SearchBar />
       <ImessageWrapped back={isInWrapped} />
+      {isInWrapped && <YearSelector />}
       <VirtualizedList key={deduplicatedIndividualChats.length} chats={deduplicatedIndividualChats} />
     </ChatListWrapper>
   );

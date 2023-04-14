@@ -8,10 +8,12 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { LinearProgress } from "@mui/material";
 
 const options = {
+  enableOptimizations: true,
   deterministic: true,
-  fontSizes: [15, 90],
-  padding: 10,
+  fontSizes: [15, 80],
+  padding: 5,
   rotations: 0,
+  fontFamily: "arbeit",
 } as OptionsProp;
 
 const callbacks = {
@@ -25,10 +27,12 @@ export const SimpleWordcloud = () => {
   const topOneHundred = wrappedStats?.topOneHundred;
   const data = React.useMemo(
     () =>
-      topOneHundred?.map((l) => ({
-        text: l[0],
-        value: l[1],
-      })) || [],
+      (
+        topOneHundred?.map((l) => ({
+          text: l[0],
+          value: l[1],
+        })) || []
+      ).slice(0, 50),
     [topOneHundred],
   );
   return (

@@ -14,7 +14,7 @@ interface ChatEntryProps {
   chat: Chat;
 }
 
-export const ChatEntryRenderer = ({
+const ChatEntryRenderer = ({
   name,
   contact,
   text,
@@ -29,6 +29,8 @@ export const ChatEntryRenderer = ({
   contact?: Contact | null | undefined;
   style?: React.CSSProperties;
 }) => {
+  const isInWrapped = useMimessage((state) => state.isInWrapped);
+
   return (
     <Box
       sx={{
@@ -59,9 +61,16 @@ export const ChatEntryRenderer = ({
           overflow: "hidden",
         }}
       >
-        <Typography sx={{ textOverflow: "ellipsis", whiteSpace: "pre", fontWeight: "bold" }} variant={"h5"}>
-          {name}
-        </Typography>
+        <Box sx={{ display: "inline-flex", whiteSpace: "pre", textOverflow: "ellipsis", alignItems: "center" }}>
+          <Typography sx={{ textOverflow: "ellipsis", fontWeight: "bold", display: "inline-flex" }} variant={"h5"}>
+            {name}
+          </Typography>
+          {isInWrapped && (
+            <Box className={"glow"} sx={{ ml: 0.5, fontStyle: "italic", display: "inline-flex" }}>
+              Wrapped
+            </Box>
+          )}
+        </Box>
         {text && (
           <Typography
             sx={{

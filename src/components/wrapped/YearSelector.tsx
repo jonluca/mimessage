@@ -65,7 +65,7 @@ export const YearSelector = () => {
   }, [earliestDate]);
 
   return (
-    <Box sx={{ m: 1.25 }}>
+    <Box sx={{ mb: 1.25, mx: 1.25 }}>
       <Select<{ value: number; label: string }>
         value={yearOptions.find((option) => option.value === wrappedYear)}
         options={yearOptions}
