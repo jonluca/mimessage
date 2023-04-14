@@ -71,9 +71,14 @@ export const Onboarding = () => {
       >
         <Typography variant={"h1"}>{isPastPermissions ? "Setup" : "Permissions"}</Typography>
         {isPastPermissions ? (
-          <Typography variant={"body1"}>
+          <Typography variant={"body1"} sx={{ pb: 1 }}>
             Mimessage needs to analyze and parse your messages. This should take between 5 - 120 seconds, depending on
             how many messages you have.
+            <br />
+            <br />
+            This is all happening on your machine, and is fully private. No data is ever sent or given to anyone by
+            default. If you enable the OpenAI chat integration or semantic search, the AI chats will be sent to ChatGPT,
+            but will be explicitly prompted to do so when using those features.
           </Typography>
         ) : (
           <>
