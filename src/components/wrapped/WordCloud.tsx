@@ -9,7 +9,7 @@ import { LinearProgress } from "@mui/material";
 
 const options = {
   deterministic: true,
-  fontSizes: [20, 70],
+  fontSizes: [15, 90],
   padding: 10,
   rotations: 0,
 } as OptionsProp;

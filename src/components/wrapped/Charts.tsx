@@ -1,5 +1,5 @@
 import React from "react";
-import { useWrappedDates } from "../../hooks/dataHooks";
+import { useHandleMap, useWrappedDates } from "../../hooks/dataHooks";
 import { groupBy } from "lodash-es";
 import type { MessageDate } from "../../interfaces";
 import { CHART_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
@@ -150,29 +150,6 @@ const getMessagesByHour = (dates: MessageDates | undefined): ChartData<"bar"> | 
   };
 };
 
-const getMessagesByPerson = (dates: MessageDates | undefined): ChartData<"bar"> | null => {
-  const grouped = groupBy(dates || [], (d: MessageDate) => {
-    if (d.handle_id) {
-      return d.handle_id;
-    }
-  });
-
-  const datums = Object.entries(grouped)
-    .filter((l) => l[0] !== "undefined")
-    .map(([handle, dates]) => ({
-      primary: handle,
-      secondary: dates.length,
-    }))
-    .filter((l) => l.primary);
-
-  if (!datums) {
-    return null;
-  }
-  return {
-    labels: datums.map((l) => l.primary),
-    datasets: [{ label: "Messages by Hour", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
-  };
-};
 export const MessagesByYear = () => {
   return <MessagesByBase title={"Messages by Year"} getDataCallback={getMessagesByYear} />;
 };
@@ -185,6 +162,39 @@ export const MessagesByHour = () => {
 };
 
 export const MessagesByPerson = () => {
+  const handleMap = useHandleMap();
+  const getMessagesByPerson = React.useCallback(
+    (dates: MessageDates | undefined): ChartData<"bar"> | null => {
+      const grouped = groupBy(dates || [], (d: MessageDate) => {
+        if (d.handle_id) {
+          return d.handle_id;
+        }
+      });
+
+      const datums = Object.entries(grouped)
+        .filter((l) => l[0] !== "undefined")
+        .map(([handle, dates]) => ({
+          primary: handle,
+          secondary: dates.length,
+        }))
+        .filter((l) => l.primary);
+
+      if (!datums) {
+        return null;
+      }
+      return {
+        labels: datums.map((l) => {
+          const handle = handleMap[l.primary];
+          if (handle) {
+            return handle.contact?.parsedName || handle.id;
+          }
+          return l.primary;
+        }),
+        datasets: [{ label: "Messages by Hour", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
+      };
+    },
+    [handleMap],
+  );
   return <MessagesByBase title={"Messages by Person"} getDataCallback={getMessagesByPerson} />;
 };
 const axisStyles = {
