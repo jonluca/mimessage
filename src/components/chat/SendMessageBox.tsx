@@ -75,21 +75,39 @@ const SetRelationButton = () => {
           sx: { p: 2, backgroundColor: "#2c2c2c" },
         }}
       >
-        <Box display={"flex"} flexDirection={"column"}>
-          <Typography variant={"h4"}>Set Persons Relation To You</Typography>
-          {RELATION_OPTIONS.map((option) => (
-            <Button
-              key={option}
-              variant={"contained"}
-              sx={{ my: 0.5 }}
-              onClick={() => {
-                setRelation(option);
+        <Box display={"flex"} flexDirection={"row"}>
+          <Box display={"flex"} flexDirection={"column"} width={"400px"} p={2}>
+            <Typography variant={"h4"}>How do you want to change them?</Typography>
+            <textarea
+              style={{
+                fontSize: 15,
+                fontFamily: "arbeit",
+                color: "black",
+                border: "none",
+                background: "white",
+                height: "100%",
+                width: "100%",
+                borderRadius: 14,
+                padding: 10,
               }}
-            >
-              {relation === option && <Check />}
-              {option}
-            </Button>
-          ))}
+            />
+          </Box>
+          <Box display={"flex"} flexDirection={"column"}>
+            <Typography variant={"h4"}>Set Persons Relation To You</Typography>
+            {RELATION_OPTIONS.map((option) => (
+              <Button
+                key={option}
+                variant={"contained"}
+                sx={{ my: 0.5 }}
+                onClick={() => {
+                  setRelation(option);
+                }}
+              >
+                {relation === option && <Check />}
+                {option}
+              </Button>
+            ))}
+          </Box>
         </Box>
       </Popover>
     </>

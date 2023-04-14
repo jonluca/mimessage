@@ -386,20 +386,9 @@ export const useGlobalSearch = () => {
     shallow,
   );
 
-  const { data: hasSemanticSearch } = useHasSemanticSearch();
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
-    [
-      "globalSearch",
-      globalSearch,
-      chatFilter,
-      contactFilter,
-      startDate,
-      endDate,
-      handleMap.size,
-      Boolean(hasSemanticSearch),
-      openAiKey,
-    ],
+    ["globalSearch", globalSearch, chatFilter, contactFilter, startDate, endDate, handleMap.size],
     async () => {
       if (!globalSearch) {
         return [];
@@ -413,7 +402,6 @@ export const useGlobalSearch = () => {
         handleIds,
         startDate,
         endDate,
-        openAiKey,
       )) as GlobalSearchResponse;
       // ignore attachments for now, but we should probably show them in the future
       return resp.filter((l) => l.text);
@@ -438,7 +426,7 @@ export const useSemanticSearch = () => {
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
     [
-      "globalSearch",
+      "globalSearchSemantic",
       globalSearch,
       chatFilter,
       contactFilter,

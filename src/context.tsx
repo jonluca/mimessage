@@ -65,7 +65,7 @@ const useMimessage = create<AppContext>((set) => ({
   messageIdToBringToFocus: null,
   globalSearch: null,
   regexSearch: false,
-  isInWrapped: true,
+  isInWrapped: false,
   setIsInWrapped: (isInWrapped: boolean) => set({ isInWrapped }),
   setRegexSearch: (regexSearch: boolean) => set({ regexSearch }),
   setSearch: (search: string | null) => set({ search }),
