@@ -1,9 +1,10 @@
 import { GPT4Tokenizer } from "gpt4-tokenizer";
-import { PineconeClient } from "pinecone-client";
 import { Configuration, OpenAIApi } from "openai";
 import dbWorker from "./database-worker";
 import { pRateLimit } from "p-ratelimit";
-import { handleIpc } from "./ipc"; // TypeScript
+import { handleIpc } from "./ipc";
+import type { Collection } from "chromadb";
+import { ChromaClient } from "chromadb";
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -29,7 +30,7 @@ export interface Chunk {
   end: number;
 }
 const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
-
+const debugLoggingEnabled = process.env.DEBUG_LOGGING === "true";
 const OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002";
 export const MAX_INPUT_TOKENS = 200;
 
@@ -145,31 +146,25 @@ const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => 
 
   return chunks;
 };
+const COLLECTION_NAME = "mimessage-embeddings";
 
-export const createEmbeddings = async ({
-  openAiKey,
-  pineconeApiKey,
-  pineconeBaseUrl,
-  pineconeNamespace,
-}: {
-  openAiKey: string;
-  pineconeApiKey: string;
-  pineconeBaseUrl: string;
-  pineconeNamespace: string;
-}) => {
+export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
   numCompleted = 0;
+  await dbWorker.startWorker();
+  await dbWorker.worker.initialize();
+
   const messages = await dbWorker.worker.getAllMessageTexts();
   const configuration = new Configuration({
     apiKey: openAiKey,
   });
   const openai = new OpenAIApi(configuration);
-  const pinecone = new PineconeClient<SemanticSearchMetadata>({
-    apiKey: pineconeApiKey,
-    baseUrl: pineconeBaseUrl,
-    namespace: pineconeNamespace,
-  });
 
-  const messageIds = messages.map((message) => message.guid);
+  const client = new ChromaClient();
+  const collections = await client.listCollections();
+  const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
+    ? await client.getCollection(COLLECTION_NAME)
+    : await client.createCollection(COLLECTION_NAME, {});
+
   // create a rate limiter that allows up to 30 API calls per second,
   // with max concurrency of 10
   const limit = pRateLimit({
@@ -177,68 +172,85 @@ export const createEmbeddings = async ({
     rate: 3500, // 3500 calls per minute
     concurrency: 60, // no more than 60 running at once
   });
-
-  const promises = messages.map(async (message) => {
-    return limit(async () => {
+  const processMessage = async (message: typeof messages[number]) => {
+    try {
       if (!message.text) {
         return;
       }
+
       const chunks = splitIntoChunks(message.text);
+      const exists = await collection.get(chunks.map((_, idx) => `${message.guid}:${idx}`));
+      if (exists && exists.ids.length) {
+        return; // dont process existing
+      }
+
       const itemEmbeddings = await getEmbeddings({
         id: message.guid,
         content: { chunks },
         openai,
       });
-      await pinecone.upsert({
-        vectors: itemEmbeddings,
-      });
+      const ids = itemEmbeddings.map((item) => item.id);
+      const embeddings = itemEmbeddings.map((item) => item.values);
+      const text = itemEmbeddings.map((item) => item.metadata.text);
+      const metadata = itemEmbeddings.map((item) => item.metadata);
+      await collection.add(ids, embeddings, metadata, text);
+      if (debugLoggingEnabled) {
+        console.log(
+          `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
       numCompleted++;
-    });
+    }
+  };
+  await processMessage(messages[0]);
+  const promises = messages.map(async (message) => {
+    return limit(() => processMessage(message));
   });
   await Promise.all(promises);
 };
-export interface SemanticQueryOptions {
-  /** Default: 10 */
-  limit?: number;
-  /** Default: false */
-  includeValues?: boolean;
+
+interface SemanticQueryOpts {
+  openAiKey: string;
+  queryText: string;
 }
-export async function semanticQuery(
-  query: string,
-  openai: OpenAIApi,
-  pinecone: PineconeClient<SemanticSearchMetadata>,
-  options?: SemanticQueryOptions,
-) {
+
+export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts) {
+  const configuration = new Configuration({
+    apiKey: openAiKey,
+  });
+  const openai = new OpenAIApi(configuration);
+
+  const client = new ChromaClient();
+  const collections = await client.listCollections();
+  const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
+    ? await client.getCollection(COLLECTION_NAME)
+    : await client.createCollection(COLLECTION_NAME, {});
   const embed = (
     await openai.createEmbedding({
-      input: query,
+      input: queryText,
       model: OPENAI_EMBEDDING_MODEL,
     })
   ).data;
-
-  if (!embed.data.length || !embed.data[0]) {
-    throw new Error(`Error generating embedding for query: ${query}`);
+  if (!embed.data?.[0]?.embedding) {
+    return [];
   }
+  const results = await collection.query(embed.data[0].embedding, 100, undefined, [queryText]);
 
-  const response = await pinecone.query({
-    vector: embed.data[0].embedding,
-    topK: options?.limit ?? 10,
-    includeMetadata: true,
-    includeValues: options?.includeValues ?? false,
-  });
-
-  return response;
+  return results;
 }
 
-handleIpc("createEmbeddings", async ({ openAiKey: openAiKey, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }) => {
+handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
   return await createEmbeddings({
     openAiKey,
-    pineconeApiKey,
-    pineconeNamespace,
-    pineconeBaseUrl,
   });
 });
 
 handleIpc("getEmbeddingsCompleted", async () => {
   return numCompleted;
+});
+handleIpc("semanticQuery", async (opts: SemanticQueryOpts) => {
+  return semanticQuery(opts);
 });

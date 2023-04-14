@@ -60,24 +60,18 @@ const humanReadableMinutes = (minutes: number) => {
   return `${hours} hours ${Math.round(remainingMinutes)} minutes`;
 };
 export const SemanticSearchInfo = () => {
-  const { setOpenAiKey, setPineconeNamespace, setPineconeApiKey, setPineconeBaseUrl } = useMimessage((state) => state);
+  const { setOpenAiKey } = useMimessage((state) => state);
   const [modalOpen, setModalOpen] = useState(false);
   const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
   const { data, isLoading } = useSemanticSearchStats(modalOpen);
   const { data: numCompleted } = useEmbeddingsCreationProgress();
   const ref = useRef<HTMLInputElement>(null);
-  const pineconeApiRef = useRef<HTMLInputElement>(null);
-  const pineconeNamespaceRef = useRef<HTMLInputElement>(null);
-  const pineconeBaseUrlRef = useRef<HTMLInputElement>(null);
   const onSubmit = async () => {
     if (isCreatingEmbeddings) {
       return;
     }
     const key = ref.current?.value;
-    const pineconeApiKey = pineconeApiRef.current?.value;
-    const pineconeNamespace = pineconeNamespaceRef.current?.value;
-    const pineconeBaseUrl = pineconeBaseUrlRef.current?.value;
-    if (!key || !pineconeApiKey || !pineconeNamespace || !pineconeBaseUrl) {
+    if (!key) {
       toast("Please enter all API information", { type: "error" });
       return;
     }
@@ -85,16 +79,10 @@ export const SemanticSearchInfo = () => {
       toast("Invalid OpenAI API key - must start with sk- and be 51 chars long", { type: "error" });
       return;
     }
-    setPineconeApiKey(pineconeApiKey);
-    setPineconeNamespace(pineconeNamespace);
-    setPineconeBaseUrl(pineconeBaseUrl);
     setOpenAiKey(key ?? null);
 
     await mutateAsync({
       openAiKey: key,
-      pineconeApiKey,
-      pineconeNamespace,
-      pineconeBaseUrl,
     });
   };
 
@@ -115,31 +103,21 @@ export const SemanticSearchInfo = () => {
             You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
             below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
           </Typography>
+          <Typography variant="body1" sx={{ color: "white", fontWeight: "bold" }}>
+            Important! Chroma must be running locally for this to work, on port 8000!
+          </Typography>
 
           {isLoading && <CircularProgress />}
           {hasProgressInEmbeddings ? (
-            <LinearProgress variant="determinate" value={numCompleted / data.totalMessages} />
+            <>
+              <LinearProgress variant="determinate" value={numCompleted / data.totalMessages} />
+              {numCompleted} completed / {data.totalMessages} total
+            </>
           ) : (
             <>
-              {" "}
               <input
                 ref={ref}
                 placeholder={"Enter your OpenAI API key"}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-              />
-              <input
-                ref={pineconeApiRef}
-                placeholder={"Enter your Pinecone API key"}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-              />
-              <input
-                ref={pineconeNamespaceRef}
-                placeholder={"Enter your Pinecone Namespace"}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-              />
-              <input
-                ref={pineconeBaseUrlRef}
-                placeholder={"Enter your Pinecone Base URL"}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
               />
             </>
@@ -155,9 +133,19 @@ export const SemanticSearchInfo = () => {
               <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
             </>
           )}
-          <Button disabled={hasProgressInEmbeddings} onClick={onSubmit}>
-            Close and submit
-          </Button>
+          <Box>
+            <Button
+              sx={{ mr: 2 }}
+              variant={"outlined"}
+              disabled={hasProgressInEmbeddings}
+              onClick={() => setModalOpen(false)}
+            >
+              Close
+            </Button>
+            <Button variant={"contained"} disabled={hasProgressInEmbeddings} onClick={onSubmit}>
+              Submit
+            </Button>
+          </Box>
         </Box>
       </Backdrop>
       <Button title={"Semantic Search"} onClick={() => setModalOpen(true)}>

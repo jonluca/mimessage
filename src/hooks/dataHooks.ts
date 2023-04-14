@@ -384,9 +384,20 @@ export const useGlobalSearch = () => {
     }),
     shallow,
   );
+
+  const { data: hasSemanticSearch } = useHasSemanticSearch();
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
-    ["globalSearch", globalSearch, chatFilter, contactFilter, startDate, endDate, handleMap.size],
+    [
+      "globalSearch",
+      globalSearch,
+      chatFilter,
+      contactFilter,
+      startDate,
+      endDate,
+      handleMap.size,
+      Boolean(hasSemanticSearch),
+    ],
     async () => {
       if (!globalSearch) {
         return [];
@@ -554,9 +565,13 @@ export const useSemanticSearchStats = (enabled: boolean) => {
   );
 };
 export const useEmbeddingsCreationProgress = () => {
-  return useQuery<number>(["getEmbeddingsCompleted"], async () => {
-    return (await ipcRenderer.invoke("getEmbeddingsCompleted")) as number;
-  });
+  return useQuery<number>(
+    ["getEmbeddingsCompleted"],
+    async () => {
+      return (await ipcRenderer.invoke("getEmbeddingsCompleted")) as number;
+    },
+    { refetchInterval: 1000 },
+  );
 };
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {
@@ -566,18 +581,12 @@ export const useCopyDbMutation = () => {
 
 interface CreateEmbeddingsOpts {
   openAiKey: string;
-  pineconeApiKey: string;
-  pineconeNamespace: string;
-  pineconeBaseUrl: string;
 }
 export const useCreateSemanticEmbeddings = () => {
   return useMutation({
-    mutationFn: async ({ openAiKey, pineconeApiKey, pineconeNamespace, pineconeBaseUrl }: CreateEmbeddingsOpts) => {
+    mutationFn: async ({ openAiKey }: CreateEmbeddingsOpts) => {
       await ipcRenderer.invoke("createEmbeddings", {
         openAiKey,
-        pineconeApiKey,
-        pineconeNamespace,
-        pineconeBaseUrl,
       });
     },
   });
