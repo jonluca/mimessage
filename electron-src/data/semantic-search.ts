@@ -154,7 +154,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   numCompleted = 0;
 
   const messages = await dbWorker.worker.getAllMessageTexts();
-  logger.info("Got messages", messages.length);
+  logger.info(`Got ${messages.length} messages`);
   const configuration = new Configuration({
     apiKey: openAiKey,
   });
@@ -211,6 +211,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
     });
   });
   await Promise.all(promises);
+  logger.info("Done creating embeddings");
 };
 
 interface SemanticQueryOpts {

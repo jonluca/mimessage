@@ -14,7 +14,7 @@ const nextConfig = {
   env,
   experimental: {
     legacyBrowsers: false,
-    preCompiledNextServer: false,
+    // preCompiledNextServer: false,
     // disableOptimizedLoading: true,
   },
   compiler: {

@@ -110,7 +110,7 @@ export const SemanticSearchInfo = () => {
           {isLoading && <CircularProgress />}
           {hasProgressInEmbeddings && data ? (
             <>
-              <LinearProgress variant="determinate" value={(numCompleted || 0) / data.totalMessages} />
+              <LinearProgress variant="determinate" value={((numCompleted || 0) / data.totalMessages) * 100} />
               {numCompleted || 0} completed / {data.totalMessages} total
             </>
           ) : (
