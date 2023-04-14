@@ -75,7 +75,9 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
 
         return (
           <Box>
-            <a href={message.text}>{message.text}</a>
+            <a href={message.text} target={"_blank"} rel="noreferrer">
+              {message.text}
+            </a>
           </Box>
         );
       } catch {
