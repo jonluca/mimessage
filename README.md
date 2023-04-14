@@ -13,6 +13,7 @@ This alternative UI provides several advanced features, including:
 3. **Conversation Export**: Export all the data of a given conversation in a user-friendly format for archival purposes or analysis.
 4. **Media Export**: Easily export all media (images, videos, etc.) from a conversation to a separate folder.
 5. **AI Conversation**: Have a conversation with anyone you've talked to before, in their voice
+6. **Semantic Search**: Using OpenAI and a locally running version of chroma you can do semantic search on your messages
 
 Please note that this application is for viewing and managing iMessage conversations only. It does **NOT** allow you to send messages.
 

@@ -5,6 +5,7 @@ import { pRateLimit } from "p-ratelimit";
 import { handleIpc } from "./ipc";
 import type { Collection } from "chromadb";
 import { ChromaClient } from "chromadb";
+import logger from "../utils/logger";
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -149,11 +150,11 @@ const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => 
 const COLLECTION_NAME = "mimessage-embeddings";
 
 export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
+  logger.info("Creating embeddings");
   numCompleted = 0;
-  await dbWorker.startWorker();
-  await dbWorker.worker.initialize();
 
   const messages = await dbWorker.worker.getAllMessageTexts();
+  logger.info("Got messages", messages.length);
   const configuration = new Configuration({
     apiKey: openAiKey,
   });
@@ -194,20 +195,20 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
       const text = itemEmbeddings.map((item) => item.metadata.text);
       const metadata = itemEmbeddings.map((item) => item.metadata);
       await collection.add(ids, embeddings, metadata, text);
+    } catch (e) {
+      logger.error(e);
+    }
+  };
+  const promises = messages.map(async (message) => {
+    return limit(async () => {
+      await processMessage(message);
+      numCompleted++;
       if (debugLoggingEnabled) {
-        console.log(
+        logger.info(
           `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
         );
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      numCompleted++;
-    }
-  };
-  await processMessage(messages[0]);
-  const promises = messages.map(async (message) => {
-    return limit(() => processMessage(message));
+    });
   });
   await Promise.all(promises);
 };

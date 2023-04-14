@@ -86,7 +86,7 @@ export const SemanticSearchInfo = () => {
     });
   };
 
-  const hasProgressInEmbeddings = isCreatingEmbeddings && data && numCompleted !== undefined && numCompleted > 0;
+  const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
       <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
@@ -108,10 +108,10 @@ export const SemanticSearchInfo = () => {
           </Typography>
 
           {isLoading && <CircularProgress />}
-          {hasProgressInEmbeddings ? (
+          {hasProgressInEmbeddings && data ? (
             <>
-              <LinearProgress variant="determinate" value={numCompleted / data.totalMessages} />
-              {numCompleted} completed / {data.totalMessages} total
+              <LinearProgress variant="determinate" value={(numCompleted || 0) / data.totalMessages} />
+              {numCompleted || 0} completed / {data.totalMessages} total
             </>
           ) : (
             <>
