@@ -17,7 +17,7 @@
     "clean": "rimraf dist build src/out .next src/.next",
     "dev": "yarn start:app",
     "dev:debug": "DEBUG_LOGGING=true yarn start:app",
-    "gen-types": "node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only scripts/gen-types.ts",
+    "gen-types": "node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only src/scripts/gen-types.ts",
     "typecheck": "tsc -p src --noEmit && tsc --noEmit"
   },
   "dependencies": {
