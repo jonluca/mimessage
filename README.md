@@ -20,6 +20,8 @@ Please note that this application is for viewing and managing iMessage conversat
 
 Mimessage also creates an "iMessage Wrapped" - a Spotify Wrapped, but for your conversations. It will generate some statistics about your conversations.
 
+![Wrapped](readme-assets/wrapped.png?raw=true "My iMessage Wrapped")
+
 Fun sidenote: ChatGPT actually came up with a lot of the stats that would be interesting to see.
 
 ![ChatGPT ideas](readme-assets/chatgpt.png?raw=true "ChatGPT generated the stats")

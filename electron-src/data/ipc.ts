@@ -28,6 +28,10 @@ handleIpc("openFileAtFolder", (filePath: string) => {
   shell.showItemInFolder(filePath);
 });
 
+handleIpc("getHomeDir", () => {
+  return os.homedir();
+});
+
 type EnhancedChat = NonNullable<Awaited<ReturnType<SQLDatabase["getChatList"]>>>[number];
 handleIpc(
   "export",

@@ -4,7 +4,7 @@ import { isProd } from "../../config";
 import { useMimessage } from "../../context";
 import Box from "@mui/material/Box";
 import { MessageBubbleText } from "./MessageBubble";
-import { useOpenFileAtLocation } from "../../hooks/dataHooks";
+import { useHomeDir, useOpenFileAtLocation } from "../../hooks/dataHooks";
 const ASSET_WIDTH = "100%";
 const ASSET_HEIGHT = "100%";
 
@@ -15,8 +15,9 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
   const ref = useRef<HTMLVideoElement>(null);
   const setHighlightedMessage = useMimessage((state) => state.setHighlightedMessage);
 
+  const { data: homedir } = useHomeDir();
   const data = useOpenFileAtLocation();
-  const absolutePath = (message.filename || "").replace("~", process.env.HOME!);
+  const absolutePath = (message.filename || "").replace("~", homedir!);
   const filename = ((isProd ? "file://" : "mimessage-asset://") + absolutePath) as string;
   const fileType = filename.split(".").pop()?.toLowerCase();
   const isVideo = VIDEO_TYPES.includes(fileType!);

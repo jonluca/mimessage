@@ -538,6 +538,12 @@ export const useHasSemanticSearch = () => {
   });
 };
 
+export const useHomeDir = () => {
+  return useQuery<string>(["getHomeDir"], async () => {
+    return (await ipcRenderer.invoke("getHomeDir")) as string;
+  });
+};
+
 export const useSemanticSearchStats = (enabled: boolean) => {
   return useQuery<SemanticSearchStats>(
     ["calculateSemanticSearchStats"],
