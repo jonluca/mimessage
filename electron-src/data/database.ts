@@ -625,6 +625,8 @@ export class SQLDatabase {
       .distinct()
       .where("text", "not like", "")
       .where("text", "is not", null)
+      .where("item_type", "not in", [1, 3, 4, 5, 6])
+      .where("associated_message_type", "=", 0)
       .execute();
 
     const counts: Record<string, number> = {};
