@@ -1,5 +1,5 @@
 import React from "react";
-import type { OptionsProp, CallbacksProp, Word } from "react-wordcloud";
+import type { OptionsProp, CallbacksProp } from "react-wordcloud";
 import ReactWordcloud from "react-wordcloud";
 import { useSlowWrappedStats } from "../../hooks/dataHooks";
 import { CHART_HEIGHT, SectionHeader, SectionWrapper } from "./Containers";
@@ -17,7 +17,7 @@ const options = {
 } as OptionsProp;
 
 const callbacks = {
-  getWordColor: (word: Word) => {
+  getWordColor: () => {
     return "#5871f5";
   },
 } as CallbacksProp;

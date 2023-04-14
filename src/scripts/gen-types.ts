@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import jetpack from "fs-jetpack";
 import { execa } from "execa";
-import packageJson from "../package.json" assert { type: "json" };
+import packageJson from "../../package.json" assert { type: "json" };
 import * as os from "os";
 import SqliteDb from "better-sqlite3";
 
@@ -40,7 +40,7 @@ const run = async () => {
     await sqliteDb.exec("INSERT INTO message_fts SELECT text, ROWID as message_id FROM message");
   }
 
-  const dir = path.join(__dirname, "../_generated");
+  const dir = path.join(__dirname, "../../_generated");
   const out = await execa(`DATABASE_URL="${dbDir}" yarn kysely-codegen`, { shell: true });
   console.log(out.stdout);
   console.log(out.stderr);
