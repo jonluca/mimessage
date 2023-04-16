@@ -27,6 +27,9 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
   };
 
   const renderPlayableAsset = () => {
+    if (!homedir) {
+      return null;
+    }
     if (isVideo) {
       return (
         <video

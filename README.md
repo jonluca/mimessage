@@ -4,7 +4,7 @@ Welcome to the iMessage Alternative UI project! This is an open-source alternati
 
 ## Installation
 
-To install the application, check out the releases tab and download the app for your architecture.https://github.com/jonluca/mimessage/releases
+To install the application, check out the releases tab and download the app for your architecture. https://github.com/jonluca/mimessage/releases
 
 ## Features
 
