@@ -10,11 +10,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 19
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
 
-      - run: bun install --no-save --ignore-scripts
+      - run: yarn install --frozen-lockfile
       - run: yarn build
       - run: yarn package -p onTag
         env:
