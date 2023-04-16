@@ -107,29 +107,29 @@ const baseThemeOptions = {
     buttonShadow: "rgba(0, 0, 0, 0.1)",
     overlay: "rgba(0, 0, 0, 0.3)",
   },
-  // components: {
-  //   MuiOutlinedInput: {
-  //     styleOverrides: {
-  //       root: {
-  //         "& fieldset": {
-  //           borderColor: "white",
-  //         },
-  //         input: {
-  //           color: "white",
-  //         },
-  //       },
-  //     },
-  //   },
-  //   MuiInputBase: {
-  //     styleOverrides: {
-  //       root: {
-  //         "& fieldset": {
-  //           borderColor: "white",
-  //         },
-  //       },
-  //     },
-  //   },
-  // },
+  components: {
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "& fieldset": {
+            borderColor: "white",
+          },
+          input: {
+            color: "white",
+          },
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          "& fieldset": {
+            borderColor: "white",
+          },
+        },
+      },
+    },
+  },
 
   typography: {
     allVariants: {

@@ -1,13 +1,17 @@
-import type { CustomScheme } from "electron";
 import { app, Menu, nativeTheme, protocol, shell } from "electron";
+// Global imports to monkeypatch/polyfill/register
+import "./data/semantic-search";
+import "./data/ipc";
+import "./data/ipc-onboarding";
+import "./utils/dns-cache";
+// normal imports
+import type { CustomScheme } from "electron";
 import { addFlags } from "./utils/flags";
 import isDev from "electron-is-dev";
 import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils/util";
 import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
-import "./data/semantic-search";
-import "./data/ipc";
-import "./data/ipc-onboarding";
+
 import "better-sqlite3";
 import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";

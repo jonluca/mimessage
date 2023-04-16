@@ -596,9 +596,9 @@ export const useHomeDir = () => {
 
 export const useSemanticSearchStats = (enabled: boolean) => {
   return useQuery<SemanticSearchStats>(
-    ["calculateSemanticSearchStats"],
+    ["calculateSemanticSearchStatsEnhanced"],
     async () => {
-      return (await ipcRenderer.invoke("calculateSemanticSearchStats")) as SemanticSearchStats;
+      return (await ipcRenderer.invoke("calculateSemanticSearchStatsEnhanced")) as SemanticSearchStats;
     },
     { enabled },
   );

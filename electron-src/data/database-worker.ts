@@ -19,7 +19,7 @@ class DbWorker {
       ? db
       : await spawn<WorkerType<SQLDatabase>>(
           new Worker(path, {
-            resourceLimits: { maxOldGenerationSizeMb: 16384, maxYoungGenerationSizeMb: 16384 },
+            resourceLimits: { maxOldGenerationSizeMb: 32678, maxYoungGenerationSizeMb: 32678 },
           }),
         );
   };

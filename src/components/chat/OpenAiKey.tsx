@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
-import { Button, CircularProgress, LinearProgress } from "@mui/material";
+import { Button, LinearProgress, TextField } from "@mui/material";
 import Backdrop from "@mui/material/Backdrop";
 import Typography from "@mui/material/Typography";
 import { toast } from "react-toastify";
@@ -57,7 +57,7 @@ const humanReadableMinutes = (minutes: number) => {
   }
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return `${hours} hours ${Math.round(remainingMinutes)} minutes`;
+  return `${hours} hour${hours === 1 ? "" : "s"} ${Math.round(remainingMinutes)} minutes`;
 };
 export const SemanticSearchInfo = () => {
   const { setOpenAiKey } = useMimessage((state) => state);
@@ -92,7 +92,7 @@ export const SemanticSearchInfo = () => {
       <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
         <Box
           onClick={(e) => e.stopPropagation()}
-          sx={{ background: "#2c2c2c", maxWidth: 600, p: 1, m: 1 }}
+          sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
           display={"flex"}
           flexDirection={"column"}
         >
@@ -103,37 +103,51 @@ export const SemanticSearchInfo = () => {
             You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
             below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
           </Typography>
-          <Typography variant="body1" sx={{ color: "white", fontWeight: "bold" }}>
+          <Typography variant="body1" sx={{ color: "white", fontWeight: "bold", mt: 2 }}>
             Important! Chroma must be running locally for this to work, on port 8000!
           </Typography>
+          <a
+            style={{ textDecoration: "underline", marginBottom: 8 }}
+            href={"https://docs.trychroma.com/usage-guide#running-chroma-in-clientserver-mode"}
+          >
+            Learn more
+          </a>
 
-          {isLoading && <CircularProgress />}
+          {isLoading && <LinearProgress />}
           {hasProgressInEmbeddings && data ? (
-            <>
+            <Box>
               <LinearProgress variant="determinate" value={((numCompleted || 0) / data.totalMessages) * 100} />
-              {numCompleted || 0} completed / {data.totalMessages} total
-            </>
+              <Box sx={{ my: 1, fontSize: 20 }}>
+                {(numCompleted || 0).toLocaleString()} completed / {data.totalMessages.toLocaleString()} total
+              </Box>
+            </Box>
           ) : (
             <>
-              <input
-                ref={ref}
+              <TextField
                 placeholder={"Enter your OpenAI API key"}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+                sx={{ mt: 1 }}
+                inputProps={{ ref }}
               />
             </>
           )}
           {data && (
-            <>
-              <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
-              <Typography>Total Tokens: {data.totalTokens.toLocaleString()}</Typography>
-              <Typography>Avg Tokens / msg: {data.averageTokensPerLine.toLocaleString()}</Typography>
-              <Typography>
-                Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
-              </Typography>
-              <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
-            </>
+            <Box sx={{ display: "flex", my: 2 }}>
+              <Box>
+                <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
+                <Typography>Total Tokens: {data.totalTokens.toLocaleString()}</Typography>
+                <Typography>Avg Tokens / msg: {data.averageTokensPerLine.toLocaleString()}</Typography>
+              </Box>
+              <Box sx={{ pl: 2 }}>
+                <Typography>
+                  Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
+                </Typography>
+                <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
+                <Typography>Embeddings Created: {(data.completedAlready || 0).toLocaleString()}</Typography>
+              </Box>
+            </Box>
           )}
-          <Box>
+          <Box sx={{ mt: 1 }}>
             <Button
               sx={{ mr: 2 }}
               variant={"outlined"}

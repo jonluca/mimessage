@@ -6,6 +6,7 @@ import { handleIpc } from "./ipc";
 import type { Collection } from "chromadb";
 import { ChromaClient } from "chromadb";
 import logger from "../utils/logger";
+import { chunk } from "lodash-es";
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -86,10 +87,14 @@ export async function getEmbeddings({
         model,
       });
 
+      const embedding = embed.data[0]?.embedding;
+      if (!embedding) {
+        continue;
+      }
       const vector: SemanticSearchVector = {
         id: pendingVector.id,
         metadata: pendingVector.metadata,
-        values: embed.data[0]?.embedding || [],
+        values: embedding || [],
       };
 
       vectors.push(vector);
@@ -149,6 +154,18 @@ const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => 
 };
 const COLLECTION_NAME = "mimessage-embeddings";
 
+const getCollection = async () => {
+  try {
+    const client = new ChromaClient();
+    const collections = await client.listCollections();
+    const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
+      ? await client.getCollection(COLLECTION_NAME)
+      : await client.createCollection(COLLECTION_NAME, {});
+    return collection;
+  } catch (e) {
+    return null;
+  }
+};
 export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
   logger.info("Creating embeddings");
   numCompleted = 0;
@@ -160,11 +177,12 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   });
   const openai = new OpenAIApi(configuration);
 
-  const client = new ChromaClient();
-  const collections = await client.listCollections();
-  const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
-    ? await client.getCollection(COLLECTION_NAME)
-    : await client.createCollection(COLLECTION_NAME, {});
+  const collection = await getCollection();
+
+  if (!collection) {
+    logger.error("Could not get collection");
+    return;
+  }
 
   // create a rate limiter that allows up to 30 API calls per second,
   // with max concurrency of 10
@@ -173,42 +191,52 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
     rate: 3500, // 3500 calls per minute
     concurrency: 60, // no more than 60 running at once
   });
-  const processMessage = async (message: typeof messages[number]) => {
+  const processMessage = async (message: (typeof messages)[number]) => {
     try {
       if (!message.text) {
         return;
       }
 
       const chunks = splitIntoChunks(message.text);
-      const exists = await collection.get(chunks.map((_, idx) => `${message.guid}:${idx}`));
-      if (exists && exists.ids.length) {
-        return; // dont process existing
-      }
-
       const itemEmbeddings = await getEmbeddings({
         id: message.guid,
         content: { chunks },
         openai,
       });
+
+      return itemEmbeddings;
+    } catch (e) {
+      logger.error(e);
+    }
+  };
+
+  const chunked = chunk(messages, 1000);
+  const notSeenYet = [];
+  for (const chunk of chunked) {
+    const seen = await collection.get(chunk.map((m) => `${m.guid}:0`));
+    const seenIds = new Set<string>(seen.ids.map((m: string) => m.split(":")[0]));
+    numCompleted += seen.ids.length;
+    const notSeen = chunk.filter((m) => !seenIds.has(m.guid));
+    notSeenYet.push(...notSeen);
+  }
+  const promises = notSeenYet.map(async (message) => {
+    const itemEmbeddings = await limit(async () => {
+      return processMessage(message);
+    });
+
+    if (itemEmbeddings && itemEmbeddings.length) {
       const ids = itemEmbeddings.map((item) => item.id);
       const embeddings = itemEmbeddings.map((item) => item.values);
       const text = itemEmbeddings.map((item) => item.metadata.text);
       const metadata = itemEmbeddings.map((item) => item.metadata);
       await collection.add(ids, embeddings, metadata, text);
-    } catch (e) {
-      logger.error(e);
     }
-  };
-  const promises = messages.map(async (message) => {
-    return limit(async () => {
-      await processMessage(message);
-      numCompleted++;
-      if (debugLoggingEnabled) {
-        logger.info(
-          `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
-        );
-      }
-    });
+    numCompleted++;
+    if (debugLoggingEnabled) {
+      logger.info(
+        `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
+      );
+    }
   });
   await Promise.all(promises);
   logger.info("Done creating embeddings");
@@ -224,12 +252,12 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
     apiKey: openAiKey,
   });
   const openai = new OpenAIApi(configuration);
+  const collection = await getCollection();
+  if (!collection) {
+    logger.error("Could not get collection");
+    return;
+  }
 
-  const client = new ChromaClient();
-  const collections = await client.listCollections();
-  const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
-    ? await client.getCollection(COLLECTION_NAME)
-    : await client.createCollection(COLLECTION_NAME, {});
   const embed = (
     await openai.createEmbedding({
       input: queryText,
@@ -250,6 +278,16 @@ handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
 
 handleIpc("getEmbeddingsCompleted", async () => {
   return numCompleted;
+});
+
+handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
+  const stats = await dbWorker.worker.calculateSemanticSearchStats();
+  const collection = await getCollection();
+  if (!collection) {
+    return stats;
+  }
+  const count = await collection.count();
+  return { ...stats, completedAlready: count };
 });
 handleIpc(
   "semanticQuery",

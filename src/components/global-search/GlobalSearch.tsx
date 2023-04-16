@@ -330,7 +330,8 @@ export const GlobalSearch = () => {
 
   const { data: results, isLoading } = useGlobalSearch();
   const { data: semanticResults } = useSemanticSearch();
-  const count = (results?.length || 0) + (semanticResults?.length || 0);
+  const sqlResultCount = results?.length || 0;
+  const count = sqlResultCount + (semanticResults?.length || 0);
 
   return (
     <Box
@@ -348,7 +349,9 @@ export const GlobalSearch = () => {
       {isLoading && <LinearProgress />}
       <GlobalSearchFilter />
       <EmbeddingsResults />
-      <ToggleableResults key={`${count}-${isLoading}`} results={results} title={"SQL Search Results"} />
+      {sqlResultCount > 0 && (
+        <ToggleableResults key={`${count}-${isLoading}`} results={results} title={"SQL Search Results"} />
+      )}
     </Box>
   );
 };
