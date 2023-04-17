@@ -3822,7 +3822,7 @@ got@^11.8.5:
     p-cancelable "^2.0.0"
     responselike "^2.0.0"
 
-gpt4-tokenizer@^1.1.0:
+gpt4-tokenizer@1.1.0:
   version "1.1.0"
   resolved "https://registry.npmjs.org/gpt4-tokenizer/-/gpt4-tokenizer-1.1.0.tgz#ca83afe671af4626d7b55940fca5652ebac5c732"
   integrity sha512-BEft81+0RaCvvb3dELLxbrStZj70DrHVUvvZcbbr7EWfWxTPu8OaUQmQuhbobuGfin5iT36e517DopZD4uZdCQ==
