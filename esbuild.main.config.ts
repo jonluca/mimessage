@@ -7,7 +7,6 @@ const config: BuildOptions = {
     path.resolve("electron-src/index.ts"),
     path.resolve("electron-src/data/worker.ts"),
     path.resolve("electron-src/utils/preload.ts"),
-    path.resolve("electron-src/hooks/notarize.ts"),
   ],
   bundle: true,
   external: ["next", "better-sqlite3", "electron-mac-contacts", "node-mac-permissions"],
