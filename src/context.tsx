@@ -45,6 +45,8 @@ export interface AppContext {
   setContactFilter: (updated: Contact[]) => void;
   chatFilter: ChatList;
   setChatFilter: (updated: ChatList) => void;
+  useSemanticSearch: boolean;
+  setUseSemanticSearch: (updated: boolean) => void;
   // message filter
   filter: string | null;
   setFilter: (updated: string | null) => void;
@@ -63,6 +65,8 @@ const useMimessage = create<AppContext>((set) => ({
   setChatFilter: (chatFilter: ChatList) => set({ chatFilter }),
   filter: null,
   messageIdToBringToFocus: null,
+  useSemanticSearch: false,
+  setUseSemanticSearch: (useSemanticSearch: boolean) => set({ useSemanticSearch }),
   globalSearch: null,
   regexSearch: false,
   isInWrapped: false,

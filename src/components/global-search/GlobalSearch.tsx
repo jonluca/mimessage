@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
 import {
@@ -8,7 +8,6 @@ import {
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
-  useSemanticSearch,
 } from "../../hooks/dataHooks";
 import { Button, LinearProgress } from "@mui/material";
 import { Virtuoso } from "react-virtuoso";
@@ -32,6 +31,8 @@ import { SemanticSearchInfo } from "../chat/OpenAiKey";
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
+  const useSemanticSearch = useMimessage((state) => state.useSemanticSearch);
+  const setUseSemanticSearch = useMimessage((state) => state.setUseSemanticSearch);
 
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -191,8 +192,7 @@ const GroupChatFilter = () => {
 
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
-  const { data: semanticResults } = useSemanticSearch();
-  const count = (results?.length || 0) + (semanticResults?.length || 0);
+  const count = results?.length || 0;
   const { startDate, setStartDate, setEndDate, endDate, globalSearch } = useMimessage(
     (state) => ({
       startDate: state.startDate,
@@ -284,9 +284,11 @@ const DateFilter = ({
     </>
   );
 };
-const ToggleableResults = ({ results, title }: { results: undefined | any[]; title: string }) => {
-  const [isOpen, setIsOpen] = useState(true);
+
+const SearchResults = () => {
+  const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
+
   const searchResultRenderer = (index: number) => {
     const result = results?.[index];
 
@@ -297,41 +299,20 @@ const ToggleableResults = ({ results, title }: { results: undefined | any[]; tit
     return <SearchResult result={result} key={`${result.chat_id}-${index}`} />;
   };
   return (
-    <>
-      <Typography variant={"h3"}>{title}</Typography>
-      {isOpen && (
-        <Virtuoso
-          totalCount={count}
-          style={{ height: "100%" }}
-          itemContent={searchResultRenderer}
-          overscan={100}
-          increaseViewportBy={2000}
-        />
-      )}
-    </>
-  );
-};
-
-const EmbeddingsResults = () => {
-  const { data: results, isLoading } = useSemanticSearch();
-  const count = results?.length || 0;
-
-  if (!results || results.length === 0) {
-    return null;
-  }
-
-  return (
-    <ToggleableResults key={`${count}-${isLoading}-semantic`} results={results} title={"Semantic Search Results"} />
+    <Virtuoso
+      totalCount={count}
+      style={{ height: "100%" }}
+      itemContent={searchResultRenderer}
+      overscan={100}
+      increaseViewportBy={2000}
+    />
   );
 };
 
 export const GlobalSearch = () => {
   const chatId = useMimessage((state) => state.chatId);
 
-  const { data: results, isLoading } = useGlobalSearch();
-  const { data: semanticResults } = useSemanticSearch();
-  const sqlResultCount = results?.length || 0;
-  const count = sqlResultCount + (semanticResults?.length || 0);
+  const { isLoading } = useGlobalSearch();
 
   return (
     <Box
@@ -348,12 +329,7 @@ export const GlobalSearch = () => {
       <GloablSearchInput />
       {isLoading && <LinearProgress />}
       <GlobalSearchFilter />
-      <EmbeddingsResults />
-      {sqlResultCount > 0 ? (
-        <ToggleableResults key={`${count}-${isLoading}`} results={results} title={"SQL Search Results"} />
-      ) : (
-        <Box sx={{ height: "100%" }} />
-      )}
+      <SearchResults />
     </Box>
   );
 };

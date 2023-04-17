@@ -374,7 +374,7 @@ export const useDoesLocalDbExist = () => {
 };
 
 export const useGlobalSearch = () => {
-  const { openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
+  const { useSemanticSearch, openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
     (state) => ({
       startDate: state.startDate,
       endDate: state.endDate,
@@ -382,13 +382,24 @@ export const useGlobalSearch = () => {
       chatFilter: state.chatFilter,
       globalSearch: state.globalSearch,
       openAiKey: state.openAiKey,
+      useSemanticSearch: state.useSemanticSearch,
     }),
     shallow,
   );
 
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
-    ["globalSearch", globalSearch, chatFilter, contactFilter, startDate, endDate, handleMap.size],
+    [
+      "globalSearch",
+      globalSearch,
+      chatFilter,
+      contactFilter,
+      startDate,
+      endDate,
+      handleMap.size,
+      openAiKey,
+      useSemanticSearch,
+    ],
     async () => {
       if (!globalSearch) {
         return [];
@@ -396,60 +407,14 @@ export const useGlobalSearch = () => {
       const chatIds = chatFilter?.map((c) => c.chat_id!);
       const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c.identifier) || [])]))];
       const resp = (await ipcRenderer.invoke(
-        "fullTextMessageSearch",
-        globalSearch,
-        chatIds,
-        handleIds,
-        startDate,
-        endDate,
-      )) as GlobalSearchResponse;
-      // ignore attachments for now, but we should probably show them in the future
-      return resp.filter((l) => l.text);
-    },
-  );
-};
-
-export const useSemanticSearch = () => {
-  const { openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
-    (state) => ({
-      startDate: state.startDate,
-      endDate: state.endDate,
-      contactFilter: state.contactFilter,
-      chatFilter: state.chatFilter,
-      globalSearch: state.globalSearch,
-      openAiKey: state.openAiKey,
-    }),
-    shallow,
-  );
-
-  const { data: hasSemanticSearch } = useHasSemanticSearch();
-  const handleMap = useContactToHandleMap();
-  return useQuery<GlobalSearchResponse>(
-    [
-      "globalSearchSemantic",
-      globalSearch,
-      chatFilter,
-      contactFilter,
-      startDate,
-      endDate,
-      handleMap.size,
-      Boolean(hasSemanticSearch),
-      openAiKey,
-    ],
-    async () => {
-      if (!hasSemanticSearch || !openAiKey) {
-        return [];
-      }
-      const chatIds = chatFilter?.map((c) => c.chat_id!);
-      const handleIds = [...new Set(contactFilter?.flatMap((c) => [...(handleMap.get(c.identifier) || [])]))];
-      const resp = (await ipcRenderer.invoke(
-        "semanticQuery",
+        "globalSearch",
         globalSearch,
         chatIds,
         handleIds,
         startDate,
         endDate,
         openAiKey,
+        useSemanticSearch,
       )) as GlobalSearchResponse;
       // ignore attachments for now, but we should probably show them in the future
       return resp.filter((l) => l.text);
@@ -469,22 +434,6 @@ interface ChatStat {
   chat_id: number | null;
 }
 
-const useDbWrappedStats = () => {
-  const wrappedYear = useMimessage((state) => state.wrappedYear);
-  const chatId = useMimessage((state) => state.chatId);
-  const chatMap = useChatMap();
-  const chat = chatMap?.get(chatId!);
-  const ids = chatId ? chat?.sameParticipantChatIds || [chatId] : null;
-  const isInWrapped = useMimessage((state) => state.isInWrapped);
-  return useQuery<WrappedStats>(
-    ["calculateWrappedStats", wrappedYear, ids],
-    async () => {
-      const resp = (await ipcRenderer.invoke("calculateWrappedStats", wrappedYear, ids)) as WrappedStats;
-      return resp;
-    },
-    { enabled: isInWrapped },
-  );
-};
 export const useWrappedStats = () => {
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   const chatId = useMimessage((state) => state.chatId);

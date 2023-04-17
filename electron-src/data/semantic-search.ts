@@ -278,7 +278,7 @@ handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
   return { ...stats, completedAlready: count };
 });
 handleIpc(
-  "semanticQuery",
+  "globalSearch",
   async (
     searchTerm: string,
     chatIds?: number[],
@@ -286,15 +286,20 @@ handleIpc(
     startDate?: Date | null,
     endDate?: Date | null,
     openAiKey?: string,
+    useSemanticSearch?: boolean,
   ) => {
     if (!openAiKey || !searchTerm) {
       return [];
     }
-    const queryResults = await semanticQuery({
-      openAiKey,
-      queryText: searchTerm,
-    });
+    if (useSemanticSearch) {
+      const queryResults = await semanticQuery({
+        openAiKey,
+        queryText: searchTerm,
+      });
 
-    return queryResults;
+      return queryResults;
+    } else {
+      return await dbWorker.worker.fullTextMessageSearch(searchTerm, chatIds, handleIds, startDate, endDate);
+    }
   },
 );

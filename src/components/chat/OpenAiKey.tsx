@@ -64,7 +64,7 @@ const humanReadableMinutes = (minutes: number) => {
   }`;
 };
 export const SemanticSearchInfo = () => {
-  const { setOpenAiKey } = useMimessage((state) => state);
+  const { openAiKey, setOpenAiKey } = useMimessage((state) => state);
   const [modalOpen, setModalOpen] = useState(false);
   const [startTime, setStartTime] = useState<null | Dayjs>(null);
   const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
@@ -139,6 +139,7 @@ export const SemanticSearchInfo = () => {
           ) : (
             <>
               <TextField
+                defaultValue={openAiKey}
                 placeholder={"Enter your OpenAI API key"}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
                 sx={{ mt: 1 }}
