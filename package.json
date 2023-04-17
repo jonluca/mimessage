@@ -151,7 +151,6 @@
       "binaries": [
         "build/electron-src/data/worker.js"
       ],
-      "strictVerify": true,
       "target": {
         "target": "zip",
         "arch": [
