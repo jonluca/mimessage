@@ -11,6 +11,9 @@ export const clearSkipContactsPermsCheck = () => store.delete(SKIP_CONTACTS_PERM
 ipcMain.handle("electron-store-get", async (event, val) => {
   return store.get(val);
 });
+ipcMain.handle("electron-store-delete", async (event, val) => {
+  return store.delete(val);
+});
 
 ipcMain.handle("electron-store-has", async (event, val) => {
   return store.has(val);

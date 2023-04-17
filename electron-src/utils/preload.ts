@@ -2,6 +2,7 @@ import type { IpcRenderer } from "electron";
 import { ipcRenderer } from "electron";
 interface Store {
   get: (key: string) => Promise<any>;
+  delete: (key: string) => Promise<any>;
   has: (key: string) => Promise<boolean>;
   set: (key: string, val: any) => Promise<void>;
   // any other methods you've defined...
@@ -24,6 +25,9 @@ process.once("loaded", () => {
     },
     has(key: string) {
       return ipcRenderer.invoke("electron-store-has", key);
+    },
+    delete(key: string) {
+      return ipcRenderer.invoke("electron-store-delete", key);
     },
     set(property: string, val: any) {
       return ipcRenderer.invoke("electron-store-set", property, val);

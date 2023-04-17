@@ -2,6 +2,7 @@ import { app, Menu, nativeTheme, protocol, shell } from "electron";
 // Global imports to monkeypatch/polyfill/register
 import "./data/semantic-search";
 import "./data/ipc";
+import "./data/options";
 import "./data/ipc-onboarding";
 import "./utils/dns-cache";
 // normal imports

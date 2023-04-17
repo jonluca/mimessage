@@ -153,7 +153,6 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
     logger.error("Could not get collection");
     return;
   }
-
   const embed = (
     await openai.createEmbedding({
       input: queryText,
@@ -205,9 +204,17 @@ handleIpc(
         queryText: searchTerm,
       });
 
-      return queryResults;
+      const ids = queryResults.ids[0].map((id: string) => id.split(":")[0]);
+      return await dbWorker.worker.fullTextMessageSearchWithGuids(
+        ids,
+        searchTerm,
+        chatIds,
+        handleIds,
+        startDate,
+        endDate,
+      );
     } else {
-      return await dbWorker.worker.fullTextMessageSearch(searchTerm, chatIds, handleIds, startDate, endDate);
+      return await dbWorker.worker.globalSearchTextBased(searchTerm, chatIds, handleIds, startDate, endDate);
     }
   },
 );

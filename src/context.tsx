@@ -56,7 +56,7 @@ export interface AppContext {
   search: string | null;
   setSearch: (updated: string | null) => void;
 }
-const openAiLocalStorageKey = "openai-key";
+export const openAiLocalStorageKey = "openai-key";
 const useMimessage = create<AppContext>((set) => ({
   search: null,
   contactFilter: [],
@@ -84,9 +84,9 @@ const useMimessage = create<AppContext>((set) => ({
   setEndDate: (endDate: MaybeDate) => set({ endDate }),
   setOpenAiKey: (openAiKey: string | null) => {
     if (openAiKey) {
-      localStorage.setItem(openAiLocalStorageKey, openAiKey);
+      global.store.set(openAiLocalStorageKey, openAiKey);
     } else {
-      localStorage.removeItem(openAiLocalStorageKey);
+      global.store.delete(openAiLocalStorageKey);
     }
     return set({ openAiKey });
   },

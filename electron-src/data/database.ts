@@ -176,8 +176,8 @@ export class SQLDatabase {
       .leftJoin("chat_handle_join", "handle.ROWID", "chat_handle_join.handle_id")
       .selectAll()
       .execute();
-    type Handles = Array<typeof handles[number] & { contact?: Contact | null }>;
-    type EnhancedChat = typeof chats[number] & { handles: Handles; name: string; sameParticipantChatIds: number[] };
+    type Handles = Array<(typeof handles)[number] & { contact?: Contact | null }>;
+    type EnhancedChat = (typeof chats)[number] & { handles: Handles; name: string; sameParticipantChatIds: number[] };
     const handlesByChatId = groupBy(handles, "chat_id");
     const enhancedChats = chats as EnhancedChat[];
     for (const chat of enhancedChats) {
@@ -212,6 +212,7 @@ export class SQLDatabase {
       .leftJoin("attachment", "message_attachment_join.attachment_id", "attachment.ROWID")
       .select([
         "attachment_id",
+        "message.guid as guid",
         "attributedBody",
         "chat_message_join.chat_id as chat_id",
         "date",
@@ -236,7 +237,7 @@ export class SQLDatabase {
       .select(sql<number>`message.ROWID`.as("message_id"));
   };
 
-  fullTextMessageSearch = async (
+  globalSearchTextBased = async (
     searchTerm: string,
     chatIds?: number[],
     handleIds?: number[],
@@ -252,6 +253,16 @@ export class SQLDatabase {
       .orderBy(sql`rank`, "asc")
       .execute();
     const messageGuids = textMatch.map((m) => m.message_id as string);
+    return this.fullTextMessageSearchWithGuids(messageGuids, searchTerm, chatIds, handleIds, startDate, endDate);
+  };
+  fullTextMessageSearchWithGuids = async (
+    messageGuids: string[],
+    searchTerm: string,
+    chatIds?: number[],
+    handleIds?: number[],
+    startDate?: Date | null,
+    endDate?: Date | null,
+  ) => {
     const messageGuidsSet = new Set(messageGuids);
 
     let query = this.getJoinedMessageQuery()
@@ -293,6 +304,7 @@ export class SQLDatabase {
 
     const messages = await query.limit(10000).execute();
     const [matchedMessages, unmatchedMessages] = partition(messages, (m) => messageGuidsSet.has(m.guid));
+    logger.info(`Matched ${matchedMessages.length} messages, unmatched ${unmatchedMessages.length} messages`);
     matchedMessages.sort((a, b) => {
       return messageGuids.indexOf(a.guid) - messageGuids.indexOf(b.guid);
     });
@@ -300,7 +312,7 @@ export class SQLDatabase {
       return (b.date || 0) - (a.date || 0);
     });
     const allMessages = [...matchedMessages, ...unmatchedMessages];
-    return this.enhanceMessageResponses<typeof messages[number]>(allMessages);
+    return this.enhanceMessageResponses<(typeof messages)[number]>(allMessages);
   };
   private convertDate = (date: number) => {
     return new Date(date / 1000000 + 978307200000);
@@ -334,6 +346,8 @@ export class SQLDatabase {
 
     const enhancedMessages = messages as EnhancedMessage[];
 
+    const messageGuids = enhancedMessages.map((m) => m.guid);
+
     await Promise.all(
       enhancedMessages.map(async (message) => {
         this.addDateToMessage(message);
@@ -359,9 +373,11 @@ export class SQLDatabase {
       const messageToUse = messages[0];
       messageToUse.attachmentMessages = messages.slice(1);
       return messageToUse;
-    });
+    }) as EnhancedMessage[];
 
-    return flat as EnhancedMessage[];
+    return flat.sort((a, b) => {
+      return messageGuids.indexOf(a.guid) - messageGuids.indexOf(b.guid);
+    });
   };
 
   getAllMessageTexts = async () => {
@@ -536,7 +552,7 @@ export class SQLDatabase {
       return Object.entries(grouped).map(([chat_id, messages]) => {
         const message_count = messages.reduce((acc, curr) => acc + Number(curr.message_count || 0) || 0, 0);
         return { chat_id: Number(chat_id), message_count };
-      }) as Array<Omit<typeof data[number], "hour">>;
+      }) as Array<Omit<(typeof data)[number], "hour">>;
     };
 
     const received = await getByOriginator(false);
@@ -658,7 +674,7 @@ export class SQLDatabase {
       this.addDateToMessage(message);
     }
     type AddedDates = Array<
-      typeof data[number] & {
+      (typeof data)[number] & {
         date_obj?: Date;
         date_obj_delivered?: Date;
         date_obj_read?: Date;

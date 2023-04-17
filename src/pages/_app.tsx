@@ -30,6 +30,8 @@ import { ToastContainer } from "react-toastify";
 import { useDoesLocalDbExist, useHasAllowedPermissions } from "../hooks/dataHooks";
 import { Onboarding } from "../components/Onboarding";
 import { CircularProgress } from "@mui/material";
+import { openAiLocalStorageKey, useMimessage } from "../context";
+
 const Container = styled("div")`
   width: 100%;
   height: 100%;
@@ -56,10 +58,24 @@ const clientSideEmotionCache = createEmotionCache();
 export const MimessageApp = ({ Component, pageProps }: AppProps) => {
   const { data: localDbExists } = useDoesLocalDbExist();
   const { data: permissions } = useHasAllowedPermissions();
+  const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
   const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
   const hasContactsAccess = permissions?.contactsStatus === "authorized";
 
   const isInOnboarding = localDbExists === false || !hasDiskAccess || !hasContactsAccess;
+  useEffect(() => {
+    global.store
+      .get(openAiLocalStorageKey)
+      .then((key) => {
+        if (key) {
+          setOpenAiKey(key);
+        }
+      })
+      .catch((e) => {
+        console.error(e);
+      });
+  }, [setOpenAiKey]);
+
   return (
     <Container>
       {isInOnboarding ? <Onboarding /> : localDbExists === true ? <Component {...pageProps} /> : <CircularProgress />}
