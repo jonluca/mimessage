@@ -10,7 +10,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build": "yarn build:electron && yarn build:ui",
     "build:electron": "APP_ENV=production electron-esbuild build",
-    "build:ui": "APP_ENV=production next build src && APP_ENV=production next export src",
+    "build:ui": "APP_ENV=production next build src",
     "package": "electron-builder build",
     "notarize": "DEBUG=electron* node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only electron-src/hooks/notarize.ts",
     "start:app": "electron-esbuild dev",
@@ -122,8 +122,7 @@
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*",
       "**/node_modules/file-uri-to-path/**/*",
-      "**/node_modules/bindings/**/*",
-      "**/build/electron-src/data/worker.js"
+      "**/node_modules/bindings/**/*"
     ],
     "appId": "com.jonluca.mimessage",
     "extends": null,
@@ -159,7 +158,6 @@
       "icon": "assets/icon.icns",
       "entitlements": "electron-src/entitlements.plist",
       "entitlementsInherit": "electron-src/entitlements.plist",
-      "minimumSystemVersion": "13.0.0",
       "extendInfo": {
         "NSContactsUsageDescription": "Mimessage needs access to your contacts to show you their name.",
         "NSSystemAdministrationUsageDescription": "Mimessage needs access to your files to read your messages."
@@ -169,7 +167,7 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-      "artifactName": "Mimessage-${arch}-${version}.dmg",
+      "artifactName": "Mimessage-${arch}.dmg",
       "sign": false
     },
     "appImage": {
@@ -180,7 +178,7 @@
     }
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=19.0.0"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [

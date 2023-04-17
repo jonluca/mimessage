@@ -33,8 +33,6 @@ import { SemanticSearchInfo } from "../chat/OpenAiKey";
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
   const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
-  const useSemanticSearch = useMimessage((state) => state.useSemanticSearch);
-  const setUseSemanticSearch = useMimessage((state) => state.setUseSemanticSearch);
 
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

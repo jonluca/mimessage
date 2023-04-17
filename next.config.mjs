@@ -14,8 +14,7 @@ const nextConfig = {
   env,
   experimental: {
     legacyBrowsers: false,
-    // preCompiledNextServer: false,
-    // disableOptimizedLoading: true,
+    fallbackNodePolyfills: false,
   },
   compiler: {
     styledComponents: true,
@@ -30,7 +29,12 @@ const nextConfig = {
       transform: "@mui/material/{{member}}",
       preventFullImport: true,
     },
+    "@mui/icons-material": {
+      transform: "@mui/icons-material/{{member}}",
+      preventFullImport: true,
+    },
   },
+  output: "export",
   webpack: (config, { isServer }) => {
     if (Array.isArray(config.target) && config.target.includes("web")) {
       config.target = ["web", "es2022"];
