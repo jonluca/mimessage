@@ -11,6 +11,8 @@ import {
   useEmbeddingsCreationProgress,
   useSemanticSearchStats,
 } from "../../hooks/dataHooks";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 export const OpenAiKey = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
@@ -62,6 +64,7 @@ const humanReadableMinutes = (minutes: number) => {
 export const SemanticSearchInfo = () => {
   const { setOpenAiKey } = useMimessage((state) => state);
   const [modalOpen, setModalOpen] = useState(false);
+  const [startTime, setStartTime] = useState<null | Dayjs>(null);
   const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
   const { data, isLoading } = useSemanticSearchStats(modalOpen);
   const { data: numCompleted } = useEmbeddingsCreationProgress();
@@ -81,13 +84,22 @@ export const SemanticSearchInfo = () => {
     }
     setOpenAiKey(key ?? null);
 
-    await mutateAsync({
-      openAiKey: key,
-    });
+    setStartTime(dayjs());
+    try {
+      await mutateAsync({
+        openAiKey: key,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    setStartTime(null);
   };
 
   const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
   const completed = numCompleted || 0;
+
+  const timeElapsed = startTime ? dayjs().diff(startTime, "minute") : 0;
+  const timeRemaining = data ? humanReadableMinutes((data.totalMessages - completed) * (timeElapsed / completed)) : "";
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
       <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
@@ -143,7 +155,9 @@ export const SemanticSearchInfo = () => {
                 <Typography>
                   Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
                 </Typography>
-                <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
+                <Typography>
+                  Estimated Time: {timeRemaining ? timeRemaining : humanReadableMinutes(data.estimatedTimeMin)}
+                </Typography>
                 <Typography>
                   Embeddings Created: {Math.max(data.completedAlready || 0, completed).toLocaleString()}
                 </Typography>
