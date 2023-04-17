@@ -11,7 +11,7 @@
     "build": "yarn build:electron && yarn build:ui",
     "build:electron": "APP_ENV=production electron-esbuild build",
     "build:ui": "APP_ENV=production next build src",
-    "check-signature": "spctl --assess -vvvv dist/mac/Mimessage.app && spctl --assess -vvvv dist/mac-arm64/Mimessage.app && codesign -vvv --deep --strict dist/mac/Mimessage.app && codesign -vvv --deep --strict dist/mac-arm64/Mimessage.app",
+    "check-signature": "spctl --assess -vvvv dist/mac/Mimessage.app; spctl --assess -vvvv dist/mac-arm64/Mimessage.app; codesign -vvv --deep --strict dist/mac/Mimessage.app; codesign -vvv --deep --strict dist/mac-arm64/Mimessage.app",
     "package": "electron-builder build",
     "notarize": "DEBUG=electron* node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only electron-src/hooks/notarize.ts",
     "start:app": "electron-esbuild dev",
@@ -152,7 +152,7 @@
         "build/electron-src/data/worker.js"
       ],
       "target": {
-        "target": "zip",
+        "target": "default",
         "arch": [
           "x64",
           "arm64"
