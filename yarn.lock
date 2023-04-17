@@ -5031,7 +5031,7 @@ node-gyp@8.x:
     tar "^6.1.2"
     which "^2.0.2"
 
-node-mac-permissions@^2.3.0:
+node-mac-permissions@^2.2.1:
   version "2.3.0"
   resolved "https://registry.npmjs.org/node-mac-permissions/-/node-mac-permissions-2.3.0.tgz#17b2d9b8c155b6abd43cce51fedc19d34537a333"
   integrity sha512-kZ/bUeXv+Xp6+VLS77ShgSfS8df9HB13SnS1ql+d3Cd5ry0uZkOgNh434cAhZBHiagYQWykPqgY7n9jd7t74Fw==
