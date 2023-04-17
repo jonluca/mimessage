@@ -55,11 +55,13 @@ export const OpenAiKey = () => {
 
 const humanReadableMinutes = (minutes: number) => {
   if (minutes < 60) {
-    return `${minutes} minutes`;
+    return `${minutes.toLocaleString()} minutes`;
   }
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return `${hours} hour${hours === 1 ? "" : "s"} ${Math.round(remainingMinutes)} minutes`;
+  return `${hours} hour${hours === 1 ? "" : "s"} ${Math.round(remainingMinutes)} minute${
+    remainingMinutes === 1 ? "" : "s"
+  }`;
 };
 export const SemanticSearchInfo = () => {
   const { setOpenAiKey } = useMimessage((state) => state);
@@ -98,7 +100,7 @@ export const SemanticSearchInfo = () => {
   const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
   const completed = numCompleted || 0;
 
-  const timeElapsed = startTime ? dayjs().diff(startTime, "minute") : 0;
+  const timeElapsed = startTime ? dayjs().diff(startTime, "seconds") / 60 : 0;
   const timeRemaining = data ? humanReadableMinutes((data.totalMessages - completed) * (timeElapsed / completed)) : "";
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
