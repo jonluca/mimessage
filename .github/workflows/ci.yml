@@ -21,6 +21,9 @@ jobs:
           node-version: 19
 
       - run: yarn install --frozen-lockfile
+        env:
+          NODE_ENV: development
+
       - run: yarn build
       - run: yarn package -p onTag
       - run: yarn notarize
