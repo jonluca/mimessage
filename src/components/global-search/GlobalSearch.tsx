@@ -195,19 +195,28 @@ const GroupChatFilter = () => {
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-  const { setUseSemanticSearch, useSemanticSearch, startDate, setStartDate, setEndDate, endDate, globalSearch } =
-    useMimessage(
-      (state) => ({
-        startDate: state.startDate,
-        endDate: state.endDate,
-        setStartDate: state.setStartDate,
-        setEndDate: state.setEndDate,
-        globalSearch: state.globalSearch,
-        useSemanticSearch: state.useSemanticSearch,
-        setUseSemanticSearch: state.setUseSemanticSearch,
-      }),
-      shallow,
-    );
+  const {
+    openAiKey,
+    setUseSemanticSearch,
+    useSemanticSearch,
+    startDate,
+    setStartDate,
+    setEndDate,
+    endDate,
+    globalSearch,
+  } = useMimessage(
+    (state) => ({
+      startDate: state.startDate,
+      endDate: state.endDate,
+      setStartDate: state.setStartDate,
+      setEndDate: state.setEndDate,
+      globalSearch: state.globalSearch,
+      useSemanticSearch: state.useSemanticSearch,
+      setUseSemanticSearch: state.setUseSemanticSearch,
+      openAiKey: state.openAiKey,
+    }),
+    shallow,
+  );
   return (
     <Box
       sx={{
@@ -239,6 +248,8 @@ const GlobalSearchFilter = () => {
               }}
               checked={useSemanticSearch}
               onChange={() => setUseSemanticSearch(!useSemanticSearch)}
+              disabled={!openAiKey}
+              title={openAiKey ? "" : "OpenAI Key Required"}
             />
           }
           label="Use Semantic Search"

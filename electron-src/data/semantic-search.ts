@@ -6,6 +6,7 @@ import logger from "../utils/logger";
 import { chunk } from "lodash-es";
 import { BatchChroma, BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
 import { getCollection } from "./chroma";
+import pMap from "p-map";
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -87,50 +88,52 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
     return;
   }
 
-  const batchChroma = new BatchChroma(collection);
-  const batchOpenai = new BatchOpenAi(openai);
-
-  const processMessage = async (message: (typeof messages)[number]) => {
-    try {
-      if (!message.text) {
-        return [];
-      }
-
-      const chunks = splitIntoChunks(message.text);
-      return await batchOpenai.addPendingVectors(chunks, message.guid);
-    } catch (e) {
-      logger.error(e);
-    }
-    return [];
-  };
-
-  const chunked = chunk(messages, 1000);
+  // remove already parsed messages
+  const chunked = chunk(messages, 5000);
   const notParsed = [];
   logger.info(`Checking if ${messages.length} messages have been parsed already`);
 
   for (const chunk of chunked) {
     const parsed = await collection.get(chunk.map((m) => `${m.guid}:0`));
     const parsedIds = new Set<string>(parsed.ids.map((m: string) => m.split(":")[0]));
-    numCompleted += parsed.ids.length;
-    const notSeen = chunk.filter((m) => !parsedIds.has(m.guid));
-    notParsed.push(...notSeen);
+    numCompleted += parsedIds.size;
+    for (const m of chunk) {
+      if (!parsedIds.has(m.guid)) {
+        notParsed.push(m);
+      }
+    }
   }
   logger.info(`Found ${notParsed.length} messages that need to be parsed`);
 
-  const promises = notParsed.map(async (message) => {
-    const itemEmbeddings = await processMessage(message);
-    if (itemEmbeddings && itemEmbeddings.length) {
-      await batchChroma.insert(itemEmbeddings);
-      numCompleted += itemEmbeddings.length;
-    }
+  const batchChroma = new BatchChroma(collection);
+  const batchOpenai = new BatchOpenAi(openai);
 
-    if (debugLoggingEnabled) {
-      logger.info(
-        `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
-      );
+  const processMessage = async (message: (typeof messages)[number]) => {
+    try {
+      if (!message.text) {
+        return;
+      }
+
+      const chunks = splitIntoChunks(message.text);
+      const itemEmbeddings = await batchOpenai.addPendingVectors(chunks, message.guid);
+
+      if (itemEmbeddings && itemEmbeddings.length) {
+        await batchChroma.insert(itemEmbeddings);
+        numCompleted += itemEmbeddings.length;
+      }
+
+      if (debugLoggingEnabled) {
+        logger.info(
+          `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
+        );
+      }
+    } catch (e) {
+      logger.error(e);
     }
-  });
-  await Promise.all(promises);
+    return [];
+  };
+
+  await pMap(notParsed, processMessage, { concurrency: 100 });
   await batchChroma.flush();
   logger.info("Done creating embeddings");
 };

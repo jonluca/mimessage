@@ -8,7 +8,7 @@ import { pRateLimit } from "p-ratelimit";
 export class BatchOpenAi {
   private openai: OpenAIApi;
   private batch: PendingVector[] = [];
-  private batchSize = 100; // create 100 embeddings at a time with the openai api
+  private batchSize = 250; // create 100 embeddings at a time with the openai api
 
   constructor(openai: OpenAIApi) {
     this.openai = openai;
@@ -49,8 +49,9 @@ export class BatchOpenAi {
 export class BatchChroma {
   private collection: Collection;
   private batch: SemanticSearchVector[] = [];
-  private batchSize = 400;
+  private batchSize = 1000;
 
+  flushPromise: Promise<void> | null = null;
   constructor(collection: Collection) {
     this.collection = collection;
     // @ts-ignore
@@ -60,9 +61,14 @@ export class BatchChroma {
   }
 
   public async insert(vector: SemanticSearchVector[]) {
+    const flushPromise = this.flushPromise;
+    if (flushPromise) {
+      await flushPromise;
+    }
     this.batch.push(...vector);
     if (this.batch.length >= this.batchSize) {
-      await this.flush();
+      this.flushPromise = this.flush();
+      await this.flushPromise;
     }
   }
 

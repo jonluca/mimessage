@@ -10,6 +10,7 @@ import { SelectedChatFilterBar } from "./SelectedChatFilterBar";
 import type { FlatIndexLocationWithAlign, VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import { shallow } from "zustand/shallow";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 export const SelectedChat = () => {
   const { chatId, filter, messageIdToBringToFocus, setMessageIdToBringToFocus } = useMimessage(
@@ -115,24 +116,28 @@ export const SelectedChat = () => {
         background: "#1e1e1e",
       }}
     >
-      {isLoading && <LinearProgress />}
-      {showFilterBar && <SelectedChatFilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />}
-      {count > 0 ? (
-        <Box height={"100%"} display={"block"}>
-          <Virtuoso
-            data={messages}
-            initialTopMostItemIndex={initialTopMostItemIndex}
-            itemContent={itemRenderer}
-            overscan={100}
-            increaseViewportBy={2000}
-            ref={virtuoso}
-            followOutput={"auto"}
-          />
-        </Box>
-      ) : (
-        <Box height={"100%"} />
-      )}
-      <SendMessageBox />
+      <ErrorBoundary>
+        {isLoading && <LinearProgress />}
+        {showFilterBar && (
+          <SelectedChatFilterBar showTimes={showTimes} setShowTimes={setShowTimes} virtuoso={virtuoso} />
+        )}
+        {count > 0 ? (
+          <Box height={"100%"} display={"block"}>
+            <Virtuoso
+              data={messages}
+              initialTopMostItemIndex={initialTopMostItemIndex}
+              itemContent={itemRenderer}
+              overscan={100}
+              increaseViewportBy={2000}
+              ref={virtuoso}
+              followOutput={"auto"}
+            />
+          </Box>
+        ) : (
+          <Box height={"100%"} />
+        )}
+        <SendMessageBox />
+      </ErrorBoundary>
     </Box>
   );
 };

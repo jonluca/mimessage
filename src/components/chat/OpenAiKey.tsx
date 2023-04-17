@@ -13,6 +13,7 @@ import {
 } from "../../hooks/dataHooks";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+import prettyMilliseconds from "pretty-ms";
 
 export const OpenAiKey = () => {
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
@@ -54,14 +55,11 @@ export const OpenAiKey = () => {
 };
 
 const humanReadableMinutes = (minutes: number) => {
-  if (minutes < 60) {
-    return `${minutes.toLocaleString()} minutes`;
+  if (isNaN(minutes) || minutes === 0 || minutes === Infinity) {
+    return "Unknown";
   }
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours} hour${hours === 1 ? "" : "s"} ${Math.round(remainingMinutes)} minute${
-    remainingMinutes === 1 ? "" : "s"
-  }`;
+
+  return prettyMilliseconds(minutes * 60 * 1000, { verbose: true, secondsDecimalDigits: 0 });
 };
 export const SemanticSearchInfo = () => {
   const { openAiKey, setOpenAiKey } = useMimessage((state) => state);

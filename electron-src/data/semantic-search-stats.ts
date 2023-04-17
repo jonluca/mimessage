@@ -12,8 +12,8 @@ export const getStatsForText = (text: { text: string | null }[]) => {
   }
 
   const totalMessages = text.length;
-  const estimatedTimeRpm = totalMessages / 3500;
-  const estimatedTimeTpm = totalTokens / 350000;
+  const estimatedTimeRpm = totalMessages / 3500 / 10; // we batch so divide it by 50
+  const estimatedTimeTpm = totalTokens / 350000 / 10; // we batch so divide it by 50
   const estimatedTime = Math.max(estimatedTimeRpm, estimatedTimeTpm);
   return {
     totalMessages,
@@ -23,6 +23,6 @@ export const getStatsForText = (text: { text: string | null }[]) => {
     // openai ratelimiter is
     // 3,500 RPM
     // 350,000 TPM
-    estimatedTimeMin: estimatedTime, // we can make 60 requests per minute, so we'll estimate 1 request per second
+    estimatedTimeMin: estimatedTime,
   };
 };
