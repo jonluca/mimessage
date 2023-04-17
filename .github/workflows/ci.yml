@@ -26,6 +26,7 @@ jobs:
 
       - run: yarn build
       - run: yarn package -p onTag
+      - run: yarn check-signature
       - run: yarn notarize
 
       - uses: actions/upload-artifact@v3
