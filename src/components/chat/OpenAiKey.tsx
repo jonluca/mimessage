@@ -99,9 +99,11 @@ export const SemanticSearchInfo = () => {
 
   const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
   const completed = numCompleted || 0;
-
+  const completedThisSession = Math.max(completed - (data?.completedAlready || 0), 0);
+  const leftToComplete = (data?.totalMessages || 0) - completed;
   const timeElapsed = startTime ? dayjs().diff(startTime, "seconds") / 60 : 0;
-  const timeRemaining = data ? humanReadableMinutes((data.totalMessages - completed) * (timeElapsed / completed)) : "";
+  const timeRemaining = data ? humanReadableMinutes(leftToComplete / (completedThisSession / timeElapsed)) : "";
+
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
       <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>

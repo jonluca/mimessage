@@ -9,7 +9,9 @@ import {
   useGroupChatList,
   useHandleMap,
 } from "../../hooks/dataHooks";
-import { Button, LinearProgress } from "@mui/material";
+import { LinearProgress } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
+
 import { Virtuoso } from "react-virtuoso";
 import { debounce } from "lodash-es";
 import InputBase from "@mui/material/InputBase";
@@ -193,16 +195,19 @@ const GroupChatFilter = () => {
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-  const { startDate, setStartDate, setEndDate, endDate, globalSearch } = useMimessage(
-    (state) => ({
-      startDate: state.startDate,
-      endDate: state.endDate,
-      setStartDate: state.setStartDate,
-      setEndDate: state.setEndDate,
-      globalSearch: state.globalSearch,
-    }),
-    shallow,
-  );
+  const { setUseSemanticSearch, useSemanticSearch, startDate, setStartDate, setEndDate, endDate, globalSearch } =
+    useMimessage(
+      (state) => ({
+        startDate: state.startDate,
+        endDate: state.endDate,
+        setStartDate: state.setStartDate,
+        setEndDate: state.setEndDate,
+        globalSearch: state.globalSearch,
+        useSemanticSearch: state.useSemanticSearch,
+        setUseSemanticSearch: state.setUseSemanticSearch,
+      }),
+      shallow,
+    );
   return (
     <Box
       sx={{
@@ -225,6 +230,20 @@ const GlobalSearchFilter = () => {
       <GroupChatFilter />
       <DateFilter selection={startDate} setSelection={setStartDate} text={"Start Date"} />
       <DateFilter selection={endDate} setSelection={setEndDate} text={"End Date"} />
+      <FormGroup>
+        <FormControlLabel
+          control={
+            <Checkbox
+              style={{
+                color: "white",
+              }}
+              checked={useSemanticSearch}
+              onChange={() => setUseSemanticSearch(!useSemanticSearch)}
+            />
+          }
+          label="Use Semantic Search"
+        />
+      </FormGroup>
     </Box>
   );
 };

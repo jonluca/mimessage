@@ -43,6 +43,10 @@ If a lot of your conversations are missing attachments, or the stats look wrong,
 
 This will force iMessage to download all the attachments and messages to your computer. This process might take a while depending on how many messages you have.
 
+## Creating embedding is slow
+
+The [OpenAI rate limits](https://platform.openai.com/docs/guides/rate-limits/overview) are dependent on your tier and account age. Make sure you're on the "Pay as you go" plan, and your acount is at least 48 hours old.
+
 ## Developing
 
 First clone the repo, then run `yarn` to install dependencies. Then run `yarn dev` to start the application.
