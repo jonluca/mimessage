@@ -34,7 +34,7 @@ export interface Chunk {
 const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
 const debugLoggingEnabled = process.env.DEBUG_LOGGING === "true";
 const OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002";
-export const MAX_INPUT_TOKENS = 200;
+export const MAX_INPUT_TOKENS = 1000;
 
 export function isRateLimitExceeded(err: unknown): boolean {
   return (
@@ -114,41 +114,20 @@ export async function getEmbeddings({
 }
 const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => {
   const chunks: Chunk[] = [];
-  let chunk = {
-    tokens: [] as string[],
-    start: 0,
-    end: 0,
-  };
+
   let start = 0;
 
-  const { text } = tokenizer.encode(content);
+  const chunked = tokenizer.chunkText(content, maxInputTokens);
 
-  for (const word of text) {
-    const newChunkTokens = [...chunk.tokens, word];
-    if (newChunkTokens.length > maxInputTokens) {
-      const text = chunk.tokens.join("");
-      chunks.push({
-        text,
-        start,
-        end: start + text.length,
-      });
-      start += text.length + 1;
-      chunk = {
-        tokens: [word],
-        start,
-        end: start,
-      };
-    } else {
-      chunk = {
-        ...chunk,
-        tokens: newChunkTokens,
-      };
-    }
+  for (const chunk of chunked) {
+    chunks.push({
+      start,
+      end: start + chunk.text.length,
+      text: chunk.text,
+    });
+
+    start += chunk.text.length + 1;
   }
-  chunks.push({
-    ...chunk,
-    text: chunk.tokens.join(""),
-  });
 
   return chunks;
 };
@@ -156,11 +135,18 @@ const COLLECTION_NAME = "mimessage-embeddings";
 
 const getCollection = async () => {
   try {
-    const client = new ChromaClient();
-    const collections = await client.listCollections();
-    const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
-      ? await client.getCollection(COLLECTION_NAME)
-      : await client.createCollection(COLLECTION_NAME, {});
+    const collection: Collection | null = await Promise.race([
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
+      (async () => {
+        const client = new ChromaClient();
+        const collections = await client.listCollections();
+        const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
+          ? await client.getCollection(COLLECTION_NAME)
+          : await client.createCollection(COLLECTION_NAME, {});
+        return collection;
+      })(),
+    ]);
+
     return collection;
   } catch (e) {
     return null;
@@ -211,15 +197,17 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   };
 
   const chunked = chunk(messages, 1000);
-  const notSeenYet = [];
+  const notParsed = [];
+  logger.info(`Checking if ${messages.length} messages have been parsed already`);
   for (const chunk of chunked) {
-    const seen = await collection.get(chunk.map((m) => `${m.guid}:0`));
-    const seenIds = new Set<string>(seen.ids.map((m: string) => m.split(":")[0]));
-    numCompleted += seen.ids.length;
-    const notSeen = chunk.filter((m) => !seenIds.has(m.guid));
-    notSeenYet.push(...notSeen);
+    const parsed = await collection.get(chunk.map((m) => `${m.guid}:0`));
+    const parsedIds = new Set<string>(parsed.ids.map((m: string) => m.split(":")[0]));
+    numCompleted += parsed.ids.length;
+    const notSeen = chunk.filter((m) => !parsedIds.has(m.guid));
+    notParsed.push(...notSeen);
   }
-  const promises = notSeenYet.map(async (message) => {
+  logger.info(`Found ${notParsed.length} messages that need to be parsed`);
+  const promises = notParsed.map(async (message) => {
     const itemEmbeddings = await limit(async () => {
       return processMessage(message);
     });

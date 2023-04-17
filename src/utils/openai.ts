@@ -57,7 +57,7 @@ class OpenAIClient {
 
   private checkPromptLength = (prompt: string): number => {
     const encoded = this.encoder.encode(prompt);
-    return encoded.bpe.length;
+    return encoded.length;
   };
 
   generatePrompts = (
