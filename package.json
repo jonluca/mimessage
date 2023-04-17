@@ -159,7 +159,6 @@
       "icon": "assets/icon.icns",
       "entitlements": "electron-src/entitlements.plist",
       "entitlementsInherit": "electron-src/entitlements.plist",
-      "forceCodeSigning": false,
       "minimumSystemVersion": "13.0.0",
       "extendInfo": {
         "NSContactsUsageDescription": "Mimessage needs access to your contacts to show you their name.",

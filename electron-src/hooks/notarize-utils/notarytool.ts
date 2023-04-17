@@ -75,16 +75,17 @@ export async function notarizeAndWaitForNotaryTool(opts: NotaryToolStartOptions)
 
     const result = await spawn("xcrun", notarizeArgs);
 
-    if (result.code !== 0) {
-      try {
-        const parsed = JSON.parse(result.output.trim());
-        if (parsed && parsed.id) {
-          const logResult = await spawn("xcrun", ["notarytool", "log", parsed.id, ...authorizationArgs(opts)]);
-          d("notarization log", logResult.output);
-        }
-      } catch (e) {
-        d("failed to pull notarization logs", e);
+    try {
+      const parsed = JSON.parse(result.output.trim());
+      d("notarization results", parsed);
+      if (parsed && parsed.id) {
+        const logResult = await spawn("xcrun", ["notarytool", "log", parsed.id, ...authorizationArgs(opts)]);
+        d("notarization log", logResult.output);
       }
+    } catch (e) {
+      d("failed to pull notarization logs", e);
+    }
+    if (result.code !== 0) {
       throw new Error(`Failed to notarize via notarytool\n\n${result.output}`);
     }
     d("notarization success");
