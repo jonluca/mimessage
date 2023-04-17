@@ -6,7 +6,7 @@ export type WrappedStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculate
 export type SlowWrappedStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateSlowWrappedStats"]>>>;
 export type MessageDates = NonNullable<Awaited<ReturnType<SQLDatabase["getMessageDates"]>>>;
 export type MessagesForChat = NonNullable<Awaited<ReturnType<SQLDatabase["getMessagesForChatId"]>>>;
-export type GlobalSearchResponse = NonNullable<Awaited<ReturnType<SQLDatabase["fullTextMessageSearch"]>>>;
+export type GlobalSearchResponse = NonNullable<Awaited<ReturnType<SQLDatabase["fullTextMessageSearchWithGuids"]>>>;
 export type SemanticSearchStats = NonNullable<Awaited<ReturnType<SQLDatabase["calculateSemanticSearchStats"]>>> & {
   completedAlready?: number;
 };
