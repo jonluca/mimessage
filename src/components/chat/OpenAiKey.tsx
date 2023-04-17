@@ -156,7 +156,10 @@ export const SemanticSearchInfo = () => {
                   Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
                 </Typography>
                 <Typography>
-                  Estimated Time: {timeRemaining ? timeRemaining : humanReadableMinutes(data.estimatedTimeMin)}
+                  Estimated Time:{" "}
+                  {hasProgressInEmbeddings && completed > 0
+                    ? timeRemaining
+                    : humanReadableMinutes(data.estimatedTimeMin)}
                 </Typography>
                 <Typography>
                   Embeddings Created: {Math.max(data.completedAlready || 0, completed).toLocaleString()}
