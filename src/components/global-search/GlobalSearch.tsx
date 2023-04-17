@@ -349,8 +349,10 @@ export const GlobalSearch = () => {
       {isLoading && <LinearProgress />}
       <GlobalSearchFilter />
       <EmbeddingsResults />
-      {sqlResultCount > 0 && (
+      {sqlResultCount > 0 ? (
         <ToggleableResults key={`${count}-${isLoading}`} results={results} title={"SQL Search Results"} />
+      ) : (
+        <Box sx={{ height: "100%" }} />
       )}
     </Box>
   );

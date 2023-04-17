@@ -87,6 +87,7 @@ export const SemanticSearchInfo = () => {
   };
 
   const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
+  const completed = numCompleted || 0;
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
       <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
@@ -116,9 +117,9 @@ export const SemanticSearchInfo = () => {
           {isLoading && <LinearProgress />}
           {hasProgressInEmbeddings && data ? (
             <Box>
-              <LinearProgress variant="determinate" value={((numCompleted || 0) / data.totalMessages) * 100} />
+              <LinearProgress variant="determinate" value={(completed / data.totalMessages) * 100} />
               <Box sx={{ my: 1, fontSize: 20 }}>
-                {(numCompleted || 0).toLocaleString()} completed / {data.totalMessages.toLocaleString()} total
+                {completed.toLocaleString()} completed / {data.totalMessages.toLocaleString()} total
               </Box>
             </Box>
           ) : (
@@ -143,7 +144,9 @@ export const SemanticSearchInfo = () => {
                   Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
                 </Typography>
                 <Typography>Estimated Time: {humanReadableMinutes(data.estimatedTimeMin)}</Typography>
-                <Typography>Embeddings Created: {(data.completedAlready || 0).toLocaleString()}</Typography>
+                <Typography>
+                  Embeddings Created: {Math.max(data.completedAlready || 0, completed).toLocaleString()}
+                </Typography>
               </Box>
             </Box>
           )}
