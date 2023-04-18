@@ -20,7 +20,11 @@ jobs:
         with:
           node-version: 19
 
-      - run: yarn install --frozen-lockfile
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - run: bun install --no-save --ignore-scripts
         env:
           NODE_ENV: development
 
