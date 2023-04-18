@@ -252,10 +252,12 @@ export class SQLDatabase {
   ) => {
     const db = this.db;
     // SELECT * FROM message_fts WHERE text MATCH 'jonluca' ORDER BY rank;
+
+    const cleanedQuery = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
     const textMatch = await db
       .selectFrom("message_fts")
       .select(["message_id"])
-      .where("text", sql`match`, searchTerm)
+      .where("text", "match", cleanedQuery)
       .orderBy(sql`rank`, "asc")
       .execute();
     const messageGuids = textMatch.map((m) => m.message_id as string);
@@ -394,6 +396,8 @@ export class SQLDatabase {
       .distinct()
       .where("text", "not like", "")
       .where("text", "is not", null)
+      .where("item_type", "not in", [1, 3, 4, 5, 6])
+      .where("associated_message_type", "=", 0)
       .execute();
   };
 

@@ -93,6 +93,7 @@ export const SemanticSearchInfo = () => {
       console.error(e);
     }
     setStartTime(null);
+    setModalOpen(false);
   };
 
   const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);

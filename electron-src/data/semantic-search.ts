@@ -159,10 +159,12 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
       model: OPENAI_EMBEDDING_MODEL,
     })
   ).data;
-  if (!embed.data?.[0]?.embedding) {
+  const embedding = embed.data?.[0]?.embedding;
+  if (!embedding) {
     return [];
   }
-  return await collection.query(embed.data[0].embedding, 100, undefined, [queryText]);
+  const results = await collection.query(embedding, 100, undefined, [queryText]);
+  return results.ids[0].map((id: string) => id.split(":")[0]);
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -199,12 +201,13 @@ handleIpc(
       return [];
     }
     if (useSemanticSearch) {
-      const queryResults = await semanticQuery({
+      logger.info("Using semantic search");
+      const ids = await semanticQuery({
         openAiKey,
         queryText: searchTerm,
       });
+      logger.info(`Got ${ids.length} results`);
 
-      const ids = queryResults.ids[0].map((id: string) => id.split(":")[0]);
       return await dbWorker.worker.fullTextMessageSearchWithGuids(
         ids,
         searchTerm,
