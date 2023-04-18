@@ -131,6 +131,7 @@
       "assets/**/*",
       "src/out/**/*",
       "!**/node_modules/*",
+      "!**/*.mk",
       "package.json"
     ],
     "extraResources": [
