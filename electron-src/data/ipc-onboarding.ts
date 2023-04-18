@@ -1,7 +1,7 @@
 // deconstructing assignment
 import { getAllContacts, getAuthStatus, requestAccess } from "electron-mac-contacts";
 import logger from "../utils/logger";
-import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-mac-permissions";
+import { askForFullDiskAccess, getAuthStatus as getPermissionsStatus } from "node-electron-permissions";
 import { setSkipContactsPermsCheck, shouldSkipContactsCheck } from "./options";
 import { handleIpc } from "./ipc";
 import { v4 as uuid } from "uuid";

@@ -14,7 +14,6 @@ const nextConfig = {
   env,
   experimental: {
     legacyBrowsers: false,
-    fallbackNodePolyfills: false,
   },
   compiler: {
     styledComponents: true,

@@ -7,7 +7,7 @@ import { groupBy, uniq } from "lodash-es";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 import type { Message } from "../interfaces";
-import type { PermissionType } from "node-mac-permissions";
+import type { PermissionType } from "node-electron-permissions";
 import Fuse from "fuse.js";
 import type { WrappedStats } from "../interfaces";
 import type { Chat } from "../interfaces";
