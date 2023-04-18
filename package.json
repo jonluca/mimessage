@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "MiMessage",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
