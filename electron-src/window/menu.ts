@@ -145,6 +145,7 @@ export const getMenu = () => {
         click: () => {
           console.log("Cmd + Q is pressed");
           windows.forEach((win) => win.close());
+          app.quit();
         },
       },
     ],

@@ -20,6 +20,7 @@ import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./data/database-worker";
+import winston from "winston";
 addFlags(app);
 
 registerContextMenu({
@@ -40,6 +41,11 @@ const MAX_ERROR_TRIES = 5;
 
 const amMainInstance = app.requestSingleInstanceLock();
 
+logger.transports.push(
+  new winston.transports.Stream({
+    stream: logStream,
+  }),
+);
 logger.info(`Starting logging to ${logPath}`);
 if (!amMainInstance) {
   logStream.write("Not the main instance - quitting");

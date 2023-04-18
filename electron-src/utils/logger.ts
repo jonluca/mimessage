@@ -2,7 +2,6 @@ import type { LeveledLogMethod } from "winston";
 import winston from "winston";
 import type { TransformCallback } from "stream";
 import { Transform } from "stream";
-import { logStream } from "../constants";
 
 const { combine, timestamp, printf, colorize, errors, json, splat } = winston.format;
 const ts = timestamp({
@@ -28,9 +27,6 @@ export const logger = winston.createLogger({
     new winston.transports.Console({
       format: localFormat,
       level: "debug",
-    }),
-    new winston.transports.Stream({
-      stream: logStream,
     }),
   ],
 });
