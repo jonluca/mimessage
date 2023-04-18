@@ -1,6 +1,8 @@
-# Mimessage
+# MiMessage
 
 Welcome to the iMessage Alternative UI project! This is an open-source alternative user interface for Apple's native iMessage application, built using TypeScript, Electron, and Kysely.
+
+MiMessage is a local-only alternative UI for iMessage. It helps export conversations, search conversations, and visualize stats about your conversations.
 
 ## Installation
 
@@ -10,12 +12,14 @@ To install the application, check out the releases tab and download the app for 
 
 This alternative UI provides several advanced features, including:
 
-1. **Regex Search**: Search your conversations using powerful regular expressions to find specific messages or patterns.
-2. **Custom Filters**: Apply custom filters to refine your search results and find exactly what you're looking for.
-3. **Conversation Export**: Export all the data of a given conversation in a user-friendly format for archival purposes or analysis.
-4. **Media Export**: Easily export all media (images, videos, etc.) from a conversation to a separate folder.
-5. **AI Conversation**: Have a conversation with anyone you've talked to before, in their voice
-6. **Semantic Search**: Using OpenAI and a locally running version of chroma you can do semantic search on your messages
+- **Semantic Search**: Using OpenAI and a locally running version of chroma you can do semantic search on your messages
+- **Wrapped**: See the stats for all your iMessage conversations
+- **Custom Filters**: Apply custom filters to refine your search results and find exactly what you're looking for.
+- **Custom Filters**: Apply custom filters to refine your search results and find exactly what you're looking for.
+- **Conversation Export**: Export all the data of a given conversation in a user-friendly format for archival purposes or analysis.
+- **Regex Search**: Search your conversations using powerful regular expressions to find specific messages or patterns.
+- **Media Export**: Easily export all media (images, videos, etc.) from a conversation to a separate folder.
+- **AI Conversation**: Have a conversation with anyone you've talked to before, in their voice
 
 Please note that this application is for viewing and managing iMessage conversations only. It does **NOT** allow you to send messages.
 

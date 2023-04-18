@@ -1,5 +1,12 @@
 name: CI
-on: push
+on:
+  push:
+    paths:
+      - electron-src/**
+      - src/**
+      - package.json
+      - _generated/**
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   NODE_ENV: production
