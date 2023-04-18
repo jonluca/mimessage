@@ -259,6 +259,7 @@ export class SQLDatabase {
       .select(["message_id"])
       .where("text", "match", cleanedQuery)
       .orderBy(sql`rank`, "asc")
+      .limit(1000)
       .execute();
     const messageGuids = textMatch.map((m) => m.message_id as string);
     return this.fullTextMessageSearchWithGuids(messageGuids, searchTerm, chatIds, handleIds, startDate, endDate);

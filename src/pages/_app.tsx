@@ -117,7 +117,7 @@ export const MimessageApp = ({ Component, pageProps }: AppProps) => {
     if (isInitialized === false) {
       return <Initializing />;
     }
-    if (localDbExists === true) {
+    if (localDbExists === true && isInitialized) {
       return <Component {...pageProps} />;
     }
     return <CircularProgress />;
