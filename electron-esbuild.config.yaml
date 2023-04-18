@@ -1,6 +1,6 @@
 mainConfig:
   type: esbuild
-  path: esbuild.main.config.ts
+  path: electron-src/esbuild.main.config.ts
   src: electron-src/index.ts
   output:
     dir: build/electron-src

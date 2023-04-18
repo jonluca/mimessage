@@ -9,7 +9,7 @@
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
     "build": "yarn build:electron && yarn build:ui",
-    "build:electron": "DEBUG=true APP_ENV=production electron-esbuild build",
+    "build:electron": "APP_ENV=production electron-esbuild build",
     "build:ui": "APP_ENV=production next build src",
     "check-signature": "spctl --assess -vvvv dist/mac/Mimessage.app; spctl --assess -vvvv dist/mac-arm64/Mimessage.app; codesign -vvv --deep --strict dist/mac/Mimessage.app; codesign -vvv --deep --strict dist/mac-arm64/Mimessage.app",
     "package": "electron-builder build",
@@ -57,7 +57,7 @@
     "electron": "^24",
     "electron-builder": "^23.6.0",
     "electron-context-menu": "^3.6.1",
-    "electron-esbuild-17x": "^7.0.2",
+    "electron-esbuild-17x": "^7.0.3",
     "electron-extension-installer": "^1.0.4",
     "electron-is-dev": "^2.0.0",
     "electron-store": "^8.1.0",

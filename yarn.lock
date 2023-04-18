@@ -2460,10 +2460,10 @@ electron-dl@^3.2.1:
     pupa "^2.0.1"
     unused-filename "^2.1.0"
 
-electron-esbuild-17x@^7.0.2:
-  version "7.0.2"
-  resolved "https://registry.npmjs.org/electron-esbuild-17x/-/electron-esbuild-17x-7.0.2.tgz#79833903583e298b78aed837b97a8369ea823f9b"
-  integrity sha512-pQkZft+RrLhJQS0O4cgq9w64wt57Lw+3GPpYcVOrzPlXeZnTk0NhazT6qFtXYmoWTM1rCBN94j4rn66gkL3NyQ==
+electron-esbuild-17x@^7.0.3:
+  version "7.0.3"
+  resolved "https://registry.npmjs.org/electron-esbuild-17x/-/electron-esbuild-17x-7.0.3.tgz#9ee48cd9631d7e7100142bc559a8fd8ed85c125e"
+  integrity sha512-/Mi7BKwXgbSuSTkktJ6v3IjfiKqYV3oOyQnmhEd5/55JbvR8SiQT7I2fkmwW37S7au1qpqx/FsWgS7C/Ul1sfA==
   dependencies:
     chokidar "^3.5.3"
     compression "^1.7.4"
