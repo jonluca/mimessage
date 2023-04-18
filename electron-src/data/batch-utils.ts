@@ -45,7 +45,9 @@ export class BatchOpenAi {
     return [];
   }
 }
-
+const chromaLimit = pRateLimit({
+  concurrency: 8, // no more than 60 running at once
+});
 export class BatchChroma {
   private collection: Collection;
   private batch: SemanticSearchVector[] = [];
@@ -84,7 +86,9 @@ export class BatchChroma {
     const text = batch.map((item) => item.metadata.text);
     const metadata = batch.map((item) => item.metadata);
     try {
-      await this.collection.add(ids, embeddings, metadata, text);
+      await chromaLimit(async () => {
+        await this.collection.add(ids, embeddings, metadata, text);
+      });
     } catch (e) {
       logger.error(e);
     }

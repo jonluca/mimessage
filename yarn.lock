@@ -1712,10 +1712,10 @@ chownr@^2.0.0:
   resolved "https://registry.npmjs.org/chownr/-/chownr-2.0.0.tgz#15bfbe53d2eab4cf70f18a8cd68ebe5b3cb1dece"
   integrity sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==
 
-chromadb@^1.3.1:
-  version "1.3.1"
-  resolved "https://registry.npmjs.org/chromadb/-/chromadb-1.3.1.tgz#9aee73159179bd7cfe6a082c01413e3add4f7815"
-  integrity sha512-me4u1lVNY3udBjOEzpYa9WELMztrh23j+hwaCdKoD4xYEcKTysx3sb65ktdvb5MwujflEddecRt398Gam3goIQ==
+chromadb@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.npmjs.org/chromadb/-/chromadb-1.4.0.tgz#2cd3c9ca3f38327743b0b1046e86680f434f6b73"
+  integrity sha512-FeIidtLSXhjqapdPmY+46QlB0rzf4ZWNwIyp8ZAkGF7su//78yozafA3ayor7bs6CK3T27C0isNVxZaoq0uQOg==
   dependencies:
     axios "^0.26.0"
 
@@ -4212,10 +4212,10 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-libphonenumber-js@^1.10.26:
-  version "1.10.26"
-  resolved "https://registry.npmjs.org/libphonenumber-js/-/libphonenumber-js-1.10.26.tgz#3e6604357b3434b0005f85778b44153f4fadeecd"
-  integrity sha512-oB3l4J5gEhMV+ymmlIjWedsbCpsNRqbEZ/E/MpN2QVyinKNra6DcuXywxSk/72M3DZDoH/6kzurOq1erznBMwQ==
+libphonenumber-js@^1.10.28:
+  version "1.10.28"
+  resolved "https://registry.npmjs.org/libphonenumber-js/-/libphonenumber-js-1.10.28.tgz#cae7e929cad96cee5ecc9449027192ecba39ee72"
+  integrity sha512-1eAgjLrZA0+2Wgw4hs+4Q/kEBycxQo8ZLYnmOvZ3AlM8ImAVAJgDPlZtISLEzD1vunc2q8s2Pn7XwB7I8U3Kzw==
 
 lie@~3.3.0:
   version "3.3.0"
@@ -5392,10 +5392,10 @@ react-transition-group@^4.3.0, react-transition-group@^4.4.5:
     loose-envify "^1.4.0"
     prop-types "^15.6.2"
 
-react-virtuoso@^4.2.1:
-  version "4.2.1"
-  resolved "https://registry.npmjs.org/react-virtuoso/-/react-virtuoso-4.2.1.tgz#7d37ea16cd771239009aa0a58d4af85e28144cae"
-  integrity sha512-IdbKabxa2Mq6f9m6BflvyzAbUHt0btCSq9rw2omcGAQt7ze80s2y6a2TvmSne1wLd0+75FgMGki2ru/dcAVmSQ==
+react-virtuoso@^4.2.2:
+  version "4.2.2"
+  resolved "https://registry.npmjs.org/react-virtuoso/-/react-virtuoso-4.2.2.tgz#13f2e4d1d0e7a0dcbc94da4c1948887e535b26ce"
+  integrity sha512-qF0yULGH7pzIZOpCAike9KssDiWkG3o/ldQGwZpUKMDH8TPyFHUObvT8+wvksz64gdQZqspRWHeCdiAM6sLYyQ==
 
 react-wordcloud@^1.2.7:
   version "1.2.7"
