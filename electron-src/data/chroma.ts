@@ -1,23 +1,9 @@
-import type { Collection } from "chromadb";
-import { ChromaClient } from "chromadb";
+import { BatchMilvus } from "./batch-utils";
 
-const COLLECTION_NAME = "mimessage-embeddings";
-export const getCollection = async () => {
+export const getMilvusClient = async () => {
   try {
-    const collection: Collection | null = await Promise.race([
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
-      (async () => {
-        const client = new ChromaClient();
-        const collections = await client.listCollections();
-        const collection: Collection = collections.find((l: any) => l.name === COLLECTION_NAME)
-          ? await client.getCollection(COLLECTION_NAME)
-          : await client.createCollection(COLLECTION_NAME, {});
-
-        return collection;
-      })(),
-    ]);
-
-    return collection;
+    const milvus = new BatchMilvus();
+    return milvus;
   } catch (e) {
     return null;
   }

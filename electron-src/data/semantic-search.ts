@@ -4,8 +4,8 @@ import dbWorker from "./database-worker";
 import { handleIpc } from "./ipc";
 import logger from "../utils/logger";
 import { chunk } from "lodash-es";
-import { BatchChroma, BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
-import { getCollection } from "./chroma";
+import { BatchMilvus, BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
+import { getMilvusClient } from "./chroma";
 import pMap from "p-map";
 
 export interface SemanticSearchMetadata {
@@ -81,7 +81,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   });
   const openai = new OpenAIApi(configuration);
 
-  const collection = await getCollection();
+  const collection = await getMilvusClient();
 
   if (!collection) {
     logger.error("Could not get collection");
@@ -105,7 +105,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   }
   logger.info(`Found ${notParsed.length} messages that need to be parsed`);
 
-  const batchChroma = new BatchChroma(collection);
+  const batchMilvus = new BatchMilvus();
   const batchOpenai = new BatchOpenAi(openai);
 
   const processMessage = async (message: (typeof messages)[number]) => {
@@ -118,7 +118,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
       const itemEmbeddings = await batchOpenai.addPendingVectors(chunks, message.guid);
 
       if (itemEmbeddings && itemEmbeddings.length) {
-        await batchChroma.insert(itemEmbeddings);
+        await batchMilvus.insert(itemEmbeddings);
         numCompleted += itemEmbeddings.length;
       }
 
@@ -134,7 +134,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   };
 
   await pMap(notParsed, processMessage, { concurrency: 100 });
-  await batchChroma.flush();
+  await batchMilvus.flush();
   logger.info("Done creating embeddings");
 };
 
@@ -148,7 +148,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
     apiKey: openAiKey,
   });
   const openai = new OpenAIApi(configuration);
-  const collection = await getCollection();
+  const collection = await getMilvusClient();
   if (!collection) {
     logger.error("Could not get collection");
     return;
@@ -162,7 +162,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
   if (!embed.data?.[0]?.embedding) {
     return [];
   }
-  return await collection.query(embed.data[0].embedding, 100, undefined, [queryText]);
+  return await collection.query(embed.data[0].embedding, queryText, 100);
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -177,11 +177,11 @@ handleIpc("getEmbeddingsCompleted", async () => {
 
 handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
   const stats = await dbWorker.worker.calculateSemanticSearchStats();
-  const collection = await getCollection();
-  if (!collection) {
+  const client = await getMilvusClient();
+  if (!client) {
     return stats;
   }
-  const count = await collection.count();
+  const count = await client.getCollectionDetails();
   return { ...stats, completedAlready: count };
 });
 handleIpc(
@@ -203,6 +203,9 @@ handleIpc(
         openAiKey,
         queryText: searchTerm,
       });
+      if (!queryResults) {
+        return [];
+      }
 
       const ids = queryResults.ids[0].map((id: string) => id.split(":")[0]);
       return await dbWorker.worker.fullTextMessageSearchWithGuids(
