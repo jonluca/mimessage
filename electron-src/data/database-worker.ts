@@ -5,6 +5,7 @@ import db from "./database";
 import { copyLatestDb, localDbExists } from "./db-file-utils";
 import isDev from "electron-is-dev";
 import { join } from "path";
+import logger from "../utils/logger";
 type WorkerType<T> = {
   [P in keyof T]: T[P] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never;
 };
@@ -44,12 +45,17 @@ class DbWorker {
   doesLocalDbCopyExist = async () => {
     return !this.isCopying && localDbExists();
   };
+  isInitialized = async () => {
+    return !this.isCopying && this.worker.isDbInitialized();
+  };
 
   copyLocalDb = async () => {
+    logger.info("Initiating local DB copy from DB worker");
     this.isCopying = true;
     await copyLatestDb();
     this.isCopying = false;
-    await this.worker.reloadDb();
+    await this.worker.initialize();
+    logger.info("Local DB copy complete");
   };
   localDbExists = async () => {
     return localDbExists();

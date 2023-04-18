@@ -16,6 +16,7 @@ const Index = () => {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [setChatId]);
+
   return (
     <Box
       display={"flex"}

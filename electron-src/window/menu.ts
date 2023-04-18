@@ -6,6 +6,7 @@ import { showApp } from "../utils/util";
 import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../data/options";
 import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
+import { logPath } from "../constants";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [
@@ -58,6 +59,13 @@ export const getMenu = () => {
           type: "normal",
           click: () => {
             shell.openExternal("mailto:mimessage@jonlu.ca");
+          },
+        },
+        {
+          label: "View Logs",
+          type: "normal",
+          click: () => {
+            shell.showItemInFolder(logPath);
           },
         },
         { type: "separator" },

@@ -372,6 +372,16 @@ export const useDoesLocalDbExist = () => {
     return resp;
   });
 };
+export const useIsInitialized = () => {
+  return useQuery<boolean>(
+    ["isDbInitialized"],
+    async () => {
+      const resp = (await ipcRenderer.invoke("isInitialized")) as boolean;
+      return resp;
+    },
+    { refetchInterval: (data) => (data ? false : 500) },
+  );
+};
 
 export const useGlobalSearch = () => {
   const { useSemanticSearch, openAiKey, startDate, endDate, globalSearch, chatFilter, contactFilter } = useMimessage(
@@ -564,6 +574,11 @@ export const useEmbeddingsCreationProgress = () => {
 export const useCopyDbMutation = () => {
   return useMutation(["copyDb"], async () => {
     await ipcRenderer.invoke("copyLocalDb");
+  });
+};
+export const useInitialize = () => {
+  return useMutation(["initialize"], async () => {
+    await ipcRenderer.invoke("initialize");
   });
 };
 

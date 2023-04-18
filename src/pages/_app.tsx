@@ -27,10 +27,13 @@ dayjs.extend(duration);
 dayjs.extend(relativeTime);
 import { ToastContainer } from "react-toastify";
 
-import { useDoesLocalDbExist, useHasAllowedPermissions } from "../hooks/dataHooks";
+import { useDoesLocalDbExist, useHasAllowedPermissions, useInitialize, useIsInitialized } from "../hooks/dataHooks";
 import { Onboarding } from "../components/Onboarding";
 import { CircularProgress } from "@mui/material";
 import { openAiLocalStorageKey, useMimessage } from "../context";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Backdrop from "@mui/material/Backdrop";
 
 const Container = styled("div")`
   width: 100%;
@@ -55,13 +58,37 @@ export const queryClient = new QueryClient({
 });
 const clientSideEmotionCache = createEmotionCache();
 
+const Initializing = () => {
+  return (
+    <Backdrop open={true}>
+      <Box
+        sx={{
+          background: "#2c2c2c",
+          m: 2,
+          p: 2,
+          maxWidth: 500,
+          minHeight: 300,
+          display: "flex",
+          justifyContent: "space-between",
+          flexDirection: "column",
+          width: "100%",
+        }}
+      >
+        <Typography variant={"h1"}>{"Setup"}</Typography>
+        <Typography variant={"body1"}>Initializing database...</Typography>
+        <CircularProgress />
+      </Box>
+    </Backdrop>
+  );
+};
 export const MimessageApp = ({ Component, pageProps }: AppProps) => {
   const { data: localDbExists } = useDoesLocalDbExist();
+  const { data: isInitialized } = useIsInitialized();
   const { data: permissions } = useHasAllowedPermissions();
   const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
   const hasDiskAccess = permissions?.diskAccessStatus === "authorized";
   const hasContactsAccess = permissions?.contactsStatus === "authorized";
-
+  const { mutateAsync } = useInitialize();
   const isInOnboarding = localDbExists === false || !hasDiskAccess || !hasContactsAccess;
   useEffect(() => {
     global.store
@@ -76,36 +103,29 @@ export const MimessageApp = ({ Component, pageProps }: AppProps) => {
       });
   }, [setOpenAiKey]);
 
-  return (
-    <Container>
-      {isInOnboarding ? <Onboarding /> : localDbExists === true ? <Component {...pageProps} /> : <CircularProgress />}
-    </Container>
-  );
+  useEffect(() => {
+    if (localDbExists === true) {
+      mutateAsync();
+    }
+  }, [localDbExists, mutateAsync]);
+
+  const render = () => {
+    if (isInOnboarding) {
+      return <Onboarding />;
+    }
+
+    if (isInitialized === false) {
+      return <Initializing />;
+    }
+    if (localDbExists === true) {
+      return <Component {...pageProps} />;
+    }
+    return <CircularProgress />;
+  };
+
+  return <Container>{render()}</Container>;
 };
 
-// const ServiceWorkerAndCache = () => {
-//   const [wb, setWb] = useState<Workbox | null>(null);
-//   useEffect(() => {
-//     if (!("serviceWorker" in navigator) || !isProd) {
-//       return;
-//     }
-//     const wb = new Workbox("sw.js", { scope: "/" });
-//     caches
-//       .keys()
-//       .then((cacheNames) => {
-//         cacheNames.forEach((cacheName) => {
-//           caches.delete(cacheName);
-//         });
-//       })
-//       .then(() => {
-//         wb.register().then(async () => {
-//           setWb(wb);
-//         });
-//       });
-//   }, []);
-//
-//   return null;
-// };
 export const ProvidedApp = (props: ProviderProps) => {
   const { emotionCache = clientSideEmotionCache, ...rest } = props;
 

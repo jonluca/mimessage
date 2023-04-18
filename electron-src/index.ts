@@ -20,7 +20,6 @@ import { setupRouteHandlers } from "./data/routes";
 import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./data/database-worker";
-import { localDbExists } from "./data/db-file-utils";
 addFlags(app);
 
 registerContextMenu({
@@ -107,9 +106,6 @@ if (!amMainInstance) {
     }
     await dbWorker.startWorker();
 
-    if (await localDbExists()) {
-      await dbWorker.worker.initialize();
-    }
     nativeTheme.themeSource = "dark";
     dbWorker.setupHandlers();
     appReady.resolve();

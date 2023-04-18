@@ -113,7 +113,7 @@ export const Filter = () => {
           ref: inputRef,
         }}
         onChange={onChangeDebounced}
-        placeholder={"Filter"}
+        placeholder={"Filter this conversation"}
       />
     </Box>
   );

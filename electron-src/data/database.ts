@@ -23,6 +23,10 @@ export class SQLDatabase {
 
   initializationPromise!: Promise<void>;
 
+  isDbInitialized = () => {
+    return !!this.dbWriter;
+  };
+
   initialize = () => {
     if (this.initializationPromise) {
       return this.initializationPromise;
@@ -92,18 +96,14 @@ export class SQLDatabase {
     return this.dbWriter;
   }
 
-  reloadDb = async () => {
-    if (this.dbWriter) {
-      await this.dbWriter.destroy();
-    }
-    this.dbWriter = undefined;
-    await this.trySetupDb();
-  };
+  isSettingUpDb = false;
   trySetupDb = async () => {
     try {
-      if (!(await localDbExists())) {
+      if (this.isSettingUpDb || !(await localDbExists())) {
         return false;
       }
+      this.isSettingUpDb = true;
+      logger.info("Setting up db");
       const sqliteDb = new SqliteDb(this.path);
       const dialect = new SqliteDialect({ database: sqliteDb });
       const options: KyselyConfig = {
@@ -132,18 +132,24 @@ export class SQLDatabase {
       const db = new Kysely<MesssagesDatabase>(options);
       this.dbWriter = db;
       // add in text
+      logger.info("Adding text column to messages");
       await this.addParsedTextToNullMessages();
+      logger.info("Adding text column to messages done");
 
       // create virtual table if not exists
+      logger.info("Creating virtual table");
       await sqliteDb.exec("CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(text,message_id)");
       const count = await db.selectFrom("message_fts").select("message_id").limit(1).executeTakeFirst();
       if (count === undefined) {
         await sqliteDb.exec("INSERT INTO message_fts SELECT text, guid as message_id FROM message");
       }
+      logger.info("Creating virtual table done");
       return true;
     } catch (e) {
       console.error(e);
       return false;
+    } finally {
+      this.isSettingUpDb = false;
     }
   };
   private getChatsWithMessagesQuery = () => {
