@@ -1,8 +1,6 @@
 # MiMessage
 
-Welcome to the iMessage Alternative UI project! This is an open-source alternative user interface for Apple's native iMessage application, built using TypeScript, Electron, and Kysely.
-
-MiMessage is a local-only alternative UI for iMessage. It helps export conversations, search conversations, and visualize stats about your conversations.
+MiMessage is a free, open source, privacy preserving UI to help search, export and visualize your iMessage conversations. It helps export conversations, search conversations, and visualize stats about your conversations.
 
 ## Installation
 
