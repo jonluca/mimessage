@@ -204,5 +204,8 @@
     "**/*.{json,md,html,scss,css}": [
       "prettier --write"
     ]
-  }
+  },
+  "browserslist": [
+    "last 1 Chrome versions"
+  ]
 }

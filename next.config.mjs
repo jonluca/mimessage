@@ -34,12 +34,6 @@ const nextConfig = {
     },
   },
   output: "export",
-  webpack: (config, { isServer }) => {
-    if (Array.isArray(config.target) && config.target.includes("web")) {
-      config.target = ["web", "es2022"];
-    }
-    return config;
-  },
 };
 
 export default nextConfig;
