@@ -69,14 +69,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
 
       const chunks = splitIntoChunks(message);
       const itemEmbeddings = await batchOpenai.addPendingVectors(chunks);
-      if (itemEmbeddings.length) {
-        try {
-          await dbWorker.embeddingsWorker.insertEmbeddings(itemEmbeddings);
-          numCompleted += itemEmbeddings.length;
-        } catch (e) {
-          logger.error(e);
-        }
-      }
+      numCompleted += itemEmbeddings;
     } catch (e) {
       logger.error(e);
     }
@@ -92,9 +85,11 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
     const set = new Set(existingText);
     numCompleted += existingText.length;
     const notParsed = messages.filter((m) => !set.has(m));
-    await pMap(notParsed, processMessage, { concurrency: 50 });
+    await pMap(notParsed, processMessage, { concurrency: 100 });
     logger.info(`Completed ${numCompleted} of ${messageCount} (${Math.round((numCompleted / messageCount) * 100)}%)`);
   }
+  const flushRemainingCount = await batchOpenai.flush();
+  numCompleted += flushRemainingCount;
   logger.info("Done creating embeddings");
 };
 

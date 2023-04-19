@@ -116,7 +116,13 @@
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*",
       "**/node_modules/file-uri-to-path/**/*",
-      "**/node_modules/bindings/**/*"
+      "**/node_modules/bindings/**/*",
+      "!**/node_modules/**/*.c",
+      "!**/node_modules/**/*.cpp",
+      "!**/node_modules/**/*.mm",
+      "!**/node_modules/**/*.Makefile",
+      "!**/node_modules/**/*.hpp",
+      "!**/node_modules/**/*.gyp"
     ],
     "appId": "com.jonluca.mimessage",
     "extends": null,
@@ -136,8 +142,11 @@
       "!**/*.mk",
       "!**/LICENSE",
       "!**/*.c",
+      "!**/*.mm",
+      "!**/*.cpp",
+      "!**/*.hpp",
       "!**/*.h",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj,vscode,env.example,eslintrc.json,prettierrc,tgz}",
+      "!**/*.{iml,o,Makefile,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj,vscode,env.example,eslintrc.json,prettierrc,tgz}",
       "!**/._*",
       "!**/.github/**/*",
       "!**/*.d.ts",
@@ -180,7 +189,7 @@
         ]
       },
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon.icns",
+      "icon": "electron-src/icon.icns",
       "entitlements": "electron-src/entitlements.plist",
       "entitlementsInherit": "electron-src/entitlements.plist",
       "extendInfo": {

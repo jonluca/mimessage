@@ -3,6 +3,7 @@ import type { OpenAIApi } from "openai";
 import type { SemanticSearchVector } from "./semantic-search";
 import { isRateLimitExceeded } from "./semantic-search";
 import { pRateLimit } from "p-ratelimit";
+import dbWorker from "../workers/database-worker";
 
 export class BatchOpenAi {
   private openai: OpenAIApi;
@@ -13,22 +14,31 @@ export class BatchOpenAi {
     this.openai = openai;
   }
 
-  async addPendingVectors(chunks: string[]) {
+  async addPendingVectors(chunks: string[]): Promise<number> {
     this.batch.push(...chunks);
 
     if (this.batch.length >= this.batchSize) {
       return await this.flush();
     }
-    return [];
+    return 0;
   }
 
-  async flush() {
+  async flush(): Promise<number> {
     if (this.batch.length) {
       const batch = this.batch;
       this.batch = [];
-      return await embeddingsFromPendingVectors(batch, this.openai);
+      const itemEmbeddings = await embeddingsFromPendingVectors(batch, this.openai);
+
+      if (itemEmbeddings.length) {
+        try {
+          await dbWorker.embeddingsWorker.insertEmbeddings(itemEmbeddings);
+          return itemEmbeddings.length;
+        } catch (e) {
+          logger.error(e);
+        }
+      }
     }
-    return [];
+    return 0;
   }
 }
 
