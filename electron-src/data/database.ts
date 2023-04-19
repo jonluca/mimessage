@@ -290,16 +290,33 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     });
   };
 
-  getAllMessageTexts = async () => {
-    return await this.db
+  private baseAllMessageQuery = () => {
+    return this.db
       .selectFrom("message")
-      .select(["text", "guid"])
-      .distinct()
       .where("text", "not like", "")
       .where("text", "is not", null)
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0)
-      .execute();
+      .orderBy("ROWID", "desc");
+  };
+
+  getAllMessageTexts = async (limit?: number, offset?: number) => {
+    let query = this.baseAllMessageQuery().select(["text", "guid"]);
+    if (limit) {
+      query = query.limit(limit);
+    }
+    if (offset) {
+      query = query.offset(offset);
+    }
+    return await query.execute();
+  };
+  countAllMessageTexts = async (): Promise<number> => {
+    const query = this.baseAllMessageQuery().select((e) => e.fn.count("message.ROWID").as("count"));
+    const results = await query.executeTakeFirst();
+    if (!results) {
+      return 0;
+    }
+    return Number(results.count);
   };
 
   calculateSemanticSearchStats = async () => {

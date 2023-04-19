@@ -16,7 +16,7 @@
     "notarize": "DEBUG=electron* node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only electron-src/hooks/notarize.ts",
     "start:app": "electron-esbuild dev",
     "clean": "rimraf dist build src/out .next src/.next",
-    "dev": "DEBUG=* yarn start:app",
+    "dev": "yarn start:app",
     "dev:debug": "DEBUG_LOGGING=true yarn start:app",
     "gen-types": "node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only scripts/gen-types.ts",
     "typecheck": "tsc -p src --noEmit && tsc --noEmit"

@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import React, { useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
@@ -9,6 +10,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import {
   useCreateSemanticEmbeddings,
   useEmbeddingsCreationProgress,
+  useMessageCount,
   useSemanticSearchStats,
 } from "../../hooks/dataHooks";
 import type { Dayjs } from "dayjs";
@@ -61,13 +63,22 @@ const humanReadableMinutes = (minutes: number) => {
 
   return prettyMilliseconds(minutes * 60 * 1000, { verbose: true, secondsDecimalDigits: 0 });
 };
-export const SemanticSearchInfo = () => {
+
+const SemanticSearchModal = ({
+  modalOpen,
+  setModalOpen,
+}: {
+  modalOpen: boolean;
+  setModalOpen: Dispatch<SetStateAction<boolean>>;
+}) => {
   const { openAiKey, setOpenAiKey } = useMimessage((state) => state);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [startTime, setStartTime] = useState<null | Dayjs>(null);
   const { mutateAsync, isLoading: isCreatingEmbeddings } = useCreateSemanticEmbeddings();
-  const { data, isLoading } = useSemanticSearchStats(modalOpen);
+  const { data: stats, isFetching } = useSemanticSearchStats(modalOpen && showStats);
   const { data: numCompleted } = useEmbeddingsCreationProgress();
+
+  const { data: count } = useMessageCount();
   const ref = useRef<HTMLInputElement>(null);
   const onSubmit = async () => {
     if (isCreatingEmbeddings) {
@@ -96,87 +107,106 @@ export const SemanticSearchInfo = () => {
     setModalOpen(false);
   };
 
-  const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && data);
+  const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && stats);
   const completed = numCompleted || 0;
-  const completedThisSession = Math.max(completed - (data?.completedAlready || 0), 0);
-  const leftToComplete = (data?.totalMessages || 0) - completed;
+  const totalMessages = stats?.totalMessages || count || 0;
+  const completedThisSession = Math.max(completed - (stats?.completedAlready || 0), 0);
+  const leftToComplete = (stats?.totalMessages || 0) - completed;
   const timeElapsed = startTime ? dayjs().diff(startTime, "seconds") / 60 : 0;
-  const timeRemaining = data ? humanReadableMinutes(leftToComplete / (completedThisSession / timeElapsed)) : "";
+  const timeRemaining = stats ? humanReadableMinutes(leftToComplete / (completedThisSession / timeElapsed)) : "";
+
+  return (
+    <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
+      <Box
+        onClick={(e) => e.stopPropagation()}
+        sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
+        display={"flex"}
+        flexDirection={"column"}
+      >
+        <Typography variant="h1" sx={{ color: "white" }}>
+          Semantic Search
+        </Typography>
+        <Typography variant="body1" sx={{ color: "white" }}>
+          You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
+          below. Note: this will take a <i>long</i> time and might cost you a bit.{" "}
+          {showStats && "The estimates are below."}
+        </Typography>
+
+        {isFetching && <LinearProgress />}
+        {hasProgressInEmbeddings ? (
+          <Box>
+            <LinearProgress variant="determinate" value={(completed / totalMessages) * 100} />
+            <Box sx={{ my: 1, fontSize: 20 }}>
+              {completed.toLocaleString()} completed / {totalMessages.toLocaleString()} total
+            </Box>
+          </Box>
+        ) : (
+          <>
+            <TextField
+              defaultValue={openAiKey}
+              placeholder={"Enter your OpenAI API key"}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
+              sx={{ mt: 1 }}
+              inputProps={{ ref }}
+            />
+          </>
+        )}
+        {stats && (
+          <Box sx={{ display: "flex", my: 2 }}>
+            <Box>
+              <Typography>Total Unique Messages: {totalMessages.toLocaleString()}</Typography>
+              <Typography>Total Tokens: {stats.totalTokens.toLocaleString()}</Typography>
+              <Typography>Avg Tokens / msg: {stats.averageTokensPerLine.toLocaleString()}</Typography>
+            </Box>
+            <Box sx={{ pl: 2 }}>
+              <Typography>
+                Estimated Cost: {stats.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
+              </Typography>
+              <Typography>
+                Estimated Time:{" "}
+                {hasProgressInEmbeddings && completed > 0
+                  ? timeRemaining
+                  : humanReadableMinutes(stats.estimatedTimeMin)}
+              </Typography>
+              <Typography>
+                Embeddings Created: {Math.max(stats.completedAlready || 0, completed).toLocaleString()}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        <Box sx={{ mt: 1 }}>
+          <Button
+            sx={{ mr: 2 }}
+            variant={"outlined"}
+            disabled={hasProgressInEmbeddings}
+            onClick={() => setModalOpen(false)}
+          >
+            Close
+          </Button>
+          <Button variant={"contained"} disabled={hasProgressInEmbeddings} onClick={onSubmit}>
+            Submit
+          </Button>
+          {!stats && (
+            <Button
+              sx={{ ml: 2 }}
+              variant={"outlined"}
+              disabled={hasProgressInEmbeddings}
+              onClick={() => setShowStats(true)}
+            >
+              Calculate Estimates
+            </Button>
+          )}
+        </Box>
+      </Box>
+    </Backdrop>
+  );
+};
+export const SemanticSearchInfo = () => {
+  const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "row" }}>
-      <Backdrop onClick={() => !hasProgressInEmbeddings && setModalOpen(false)} open={modalOpen}>
-        <Box
-          onClick={(e) => e.stopPropagation()}
-          sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
-          display={"flex"}
-          flexDirection={"column"}
-        >
-          <Typography variant="h1" sx={{ color: "white" }}>
-            Semantic Search
-          </Typography>
-          <Typography variant="body1" sx={{ color: "white" }}>
-            You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
-            below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
-          </Typography>
-
-          {isLoading && <LinearProgress />}
-          {hasProgressInEmbeddings && data ? (
-            <Box>
-              <LinearProgress variant="determinate" value={(completed / data.totalMessages) * 100} />
-              <Box sx={{ my: 1, fontSize: 20 }}>
-                {completed.toLocaleString()} completed / {data.totalMessages.toLocaleString()} total
-              </Box>
-            </Box>
-          ) : (
-            <>
-              <TextField
-                defaultValue={openAiKey}
-                placeholder={"Enter your OpenAI API key"}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && onSubmit()}
-                sx={{ mt: 1 }}
-                inputProps={{ ref }}
-              />
-            </>
-          )}
-          {data && (
-            <Box sx={{ display: "flex", my: 2 }}>
-              <Box>
-                <Typography>Total Unique Messages: {data.totalMessages.toLocaleString()}</Typography>
-                <Typography>Total Tokens: {data.totalTokens.toLocaleString()}</Typography>
-                <Typography>Avg Tokens / msg: {data.averageTokensPerLine.toLocaleString()}</Typography>
-              </Box>
-              <Box sx={{ pl: 2 }}>
-                <Typography>
-                  Estimated Cost: {data.estimatedPrice.toLocaleString("en", { currency: "USD", style: "currency" })}
-                </Typography>
-                <Typography>
-                  Estimated Time:{" "}
-                  {hasProgressInEmbeddings && completed > 0
-                    ? timeRemaining
-                    : humanReadableMinutes(data.estimatedTimeMin)}
-                </Typography>
-                <Typography>
-                  Embeddings Created: {Math.max(data.completedAlready || 0, completed).toLocaleString()}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-          <Box sx={{ mt: 1 }}>
-            <Button
-              sx={{ mr: 2 }}
-              variant={"outlined"}
-              disabled={hasProgressInEmbeddings}
-              onClick={() => setModalOpen(false)}
-            >
-              Close
-            </Button>
-            <Button variant={"contained"} disabled={hasProgressInEmbeddings} onClick={onSubmit}>
-              Submit
-            </Button>
-          </Box>
-        </Box>
-      </Backdrop>
+      {modalOpen && <SemanticSearchModal modalOpen={modalOpen} setModalOpen={setModalOpen} />}
       <Button title={"Semantic Search"} onClick={() => setModalOpen(true)}>
         <AutoFixHighIcon />
       </Button>

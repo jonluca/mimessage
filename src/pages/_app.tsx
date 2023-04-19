@@ -21,6 +21,7 @@ import utc from "dayjs/plugin/utc";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { isProd } from "../config";
 import { KeyPress } from "../utils/KeyPress";
+import { toast } from "react-toastify";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(duration);
@@ -53,6 +54,12 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: false,
       staleTime: Infinity,
       networkMode: "always",
+      onError: (err) => {
+        if (err && typeof err === "object" && "message" in err) {
+          toast.error(err.message as string);
+        }
+        console.error(err);
+      },
     },
   },
 });

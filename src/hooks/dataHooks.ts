@@ -561,6 +561,12 @@ export const useSemanticSearchStats = (enabled: boolean) => {
     { enabled },
   );
 };
+
+export const useMessageCount = () => {
+  return useQuery<number>(["messageCount"], async () => {
+    return (await ipcRenderer.invoke("messageCountcalculateSemanticSearchStatsEnhanced")) as number;
+  });
+};
 export const useEmbeddingsCreationProgress = () => {
   return useQuery<number>(
     ["getEmbeddingsCompleted"],

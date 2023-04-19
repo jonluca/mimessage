@@ -69,28 +69,26 @@ const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => 
   return chunks;
 };
 
+const PAGE_SIZE = 100_000;
+
 export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
   logger.info("Creating embeddings");
   numCompleted = 0;
+  await dbWorker.embeddingsWorker.initialize();
+  const messageCount = await dbWorker.worker.countAllMessageTexts();
 
-  const messages = await dbWorker.worker.getAllMessageTexts();
-  logger.info(`Got ${messages.length} messages`);
+  const pages = Math.ceil(messageCount / PAGE_SIZE);
+  const existingText = await dbWorker.embeddingsWorker.getAllText();
+  const set = new Set(existingText);
+
   const configuration = new Configuration({
     apiKey: openAiKey,
   });
+
   const openai = new OpenAIApi(configuration);
 
-  await dbWorker.embeddingsWorker.initialize();
-
-  const existingText = await dbWorker.embeddingsWorker.getAllText();
-  const set = new Set(existingText);
-  numCompleted = existingText.length;
-  const notParsed = messages.filter((m) => m.text && !set.has(m.text));
-
-  const uniqueMessages = uniqBy(notParsed, "text");
   const batchOpenai = new BatchOpenAi(openai);
-
-  const processMessage = async (message: (typeof messages)[number]) => {
+  const processMessage = async (message: Awaited<ReturnType<typeof dbWorker.worker.getAllMessageTexts>>[number]) => {
     try {
       if (!message.text) {
         return;
@@ -110,19 +108,27 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
           logger.error(e);
         }
       }
-
-      if (debugLoggingEnabled) {
-        logger.info(
-          `Completed ${numCompleted} of ${messages.length} (${Math.round((numCompleted / messages.length) * 100)}%)`,
-        );
-      }
     } catch (e) {
       logger.error(e);
     }
     return [];
   };
 
-  await pMap(uniqueMessages, processMessage, { concurrency: 100 });
+  for (let i = 0; i < pages; i++) {
+    const messages = await dbWorker.worker.getAllMessageTexts(PAGE_SIZE, i * PAGE_SIZE);
+    logger.info(`Got ${messages.length} messages - ${i + 1} of ${pages}`);
+
+    numCompleted = existingText.length;
+    const notParsed = messages.filter((m) => m.text && !set.has(m.text));
+
+    const uniqueMessages = uniqBy(notParsed, "text");
+
+    await pMap(uniqueMessages, processMessage, { concurrency: 100 });
+
+    if (debugLoggingEnabled) {
+      logger.info(`Completed ${numCompleted} of ${messageCount} (${Math.round((numCompleted / messageCount) * 100)}%)`);
+    }
+  }
   logger.info("Done creating embeddings");
 };
 
@@ -184,6 +190,11 @@ handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
     logger.error(e);
     return stats;
   }
+});
+
+handleIpc("messageCount", async () => {
+  const stats = await dbWorker.worker.countAllMessageTexts();
+  return stats;
 });
 handleIpc(
   "globalSearch",
