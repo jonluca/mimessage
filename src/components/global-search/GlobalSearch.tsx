@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import { useMimessage } from "../../context";
 import {
@@ -9,8 +9,9 @@ import {
   useGroupChatList,
   useHandleMap,
   useLoadSemanticResultsIntoMemory,
+  useSemanticSearchCacheSize,
 } from "../../hooks/dataHooks";
-import { CircularProgress, LinearProgress } from "@mui/material";
+import { CircularProgress, LinearProgress, TextField } from "@mui/material";
 import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
 
 import { Virtuoso } from "react-virtuoso";
@@ -26,6 +27,7 @@ import type { Contact } from "electron-mac-contacts";
 import { selectTheme } from "../wrapped/YearSelector";
 import Highlighter from "react-highlight-words";
 
+import type { DateRange } from "react-day-picker";
 import { DayPicker } from "react-day-picker";
 import Popover from "@mui/material/Popover";
 import { shallow } from "zustand/shallow";
@@ -141,7 +143,7 @@ const ContactFilter = () => {
         options={contacts || []}
         theme={selectTheme}
         name={"contactFilter"}
-        placeholder={"Contact Filter"}
+        placeholder={"Contacts"}
         blurInputOnSelect
         isSearchable
         isMulti
@@ -172,7 +174,7 @@ const GroupChatFilter = () => {
         options={groupChatList || []}
         theme={selectTheme}
         name={"chatFilter"}
-        placeholder={"Group Filter"}
+        placeholder={"Groups"}
         closeMenuOnSelect={false}
         isSearchable
         isMulti
@@ -193,54 +195,114 @@ const GroupChatFilter = () => {
 };
 
 const ToggleSemanticSearch = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const { mutateAsync, isLoading } = useLoadSemanticResultsIntoMemory();
-  const { openAiKey, setUseSemanticSearch, useSemanticSearch } = useMimessage(
+  const { data: cacheSize } = useSemanticSearchCacheSize();
+  const { setOpenAiKey, openAiKey, setUseSemanticSearch, useSemanticSearch } = useMimessage(
     (state) => ({
       useSemanticSearch: state.useSemanticSearch,
       setUseSemanticSearch: state.setUseSemanticSearch,
       openAiKey: state.openAiKey,
+      setOpenAiKey: state.setOpenAiKey,
     }),
     shallow,
   );
+  const disabled = !openAiKey || isLoading;
+  const cacheIsLoaded = (cacheSize || 0) > 0;
   return (
     <>
-      {isLoading && (
-        <Backdrop open>
-          <Box
-            onClick={(e) => e.stopPropagation()}
-            sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
-            display={"flex"}
-            flexDirection={"column"}
-          >
-            <Typography variant="h1" sx={{ color: "white" }}>
-              Loading Vectors into Memory
-            </Typography>
-            <Typography variant="h6" sx={{ color: "white", mb: 2 }}>
-              This takes ~2s per 100k messages
-            </Typography>
-            <CircularProgress />
-          </Box>
-        </Backdrop>
-      )}
-      <FormGroup>
-        <FormControlLabel
-          control={
-            <Checkbox
-              style={{
+      <Backdrop open={isOpen} onClick={() => !isLoading && setIsOpen(false)}>
+        <Box
+          onClick={(e) => e.stopPropagation()}
+          sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
+          display={"flex"}
+          flexDirection={"column"}
+        >
+          {isLoading ? (
+            <>
+              <Typography variant="h1" sx={{ color: "white" }}>
+                Loading Vectors into Memory
+              </Typography>
+              <Typography variant="h6" sx={{ color: "white" }}>
+                This takes ~2s per 100k messages
+              </Typography>
+              <CircularProgress sx={{ my: 2 }} />
+            </>
+          ) : disabled ? (
+            <>
+              <TextField
+                defaultValue={openAiKey}
+                placeholder={"Enter your OpenAI API key"}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                  const key = e.currentTarget.value;
+                  if (!key.startsWith("sk-") || key.length !== 51) {
+                    return;
+                  }
+                  setOpenAiKey(key);
+                }}
+                sx={{ mt: 1 }}
+              />
+            </>
+          ) : (
+            <>
+              <Typography variant="h1" sx={{ color: "white" }}>
+                Semantic Search
+              </Typography>
+              <Typography variant="h6" sx={{ color: "white" }}>
+                Semantic search uses the OpenAI API to find similar messages. This will load all messages and embeddings
+                into memory, which may take a while.
+                <br />
+                <br />
+                It will then create a new embedding for your query, and do a cosine similarity search to find messages
+                with similar content.
+              </Typography>
+            </>
+          )}
+          <FormGroup>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  style={{
+                    color: disabled ? "grey" : "white",
+                  }}
+                  checked={useSemanticSearch}
+                  onChange={async () => {
+                    const newUseSemanticSearch = !useSemanticSearch;
+                    setUseSemanticSearch(newUseSemanticSearch);
+                    if (newUseSemanticSearch) {
+                      await mutateAsync();
+                    }
+                    setIsOpen(false);
+                  }}
+                  disabled={disabled}
+                  title={openAiKey ? "" : "OpenAI Key Required"}
+                />
+              }
+              sx={{
                 color: "white",
+                "& .MuiFormControlLabel-label.Mui-disabled": {
+                  color: "#bbbbbb",
+                },
+                py: 3,
               }}
-              checked={useSemanticSearch}
-              onChange={() => {
-                setUseSemanticSearch(!useSemanticSearch);
-                mutateAsync();
-              }}
-              disabled={!openAiKey}
-              title={openAiKey ? "" : "OpenAI Key Required"}
+              label="Use Semantic Search"
             />
-          }
-          label="Use Semantic Search"
-        />
-      </FormGroup>
+          </FormGroup>
+          <Typography variant="h6" sx={{ color: "white" }}>
+            Cache Loaded: {cacheIsLoaded ? "Yes" : "No"}
+          </Typography>
+          {cacheIsLoaded && (
+            <>
+              <Typography variant="h6" sx={{ color: "white" }}>
+                Cache Size: {cacheSize!.toLocaleString()}
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Backdrop>
+      <Button sx={{ ml: 1, whiteSpace: "pre", wordWrap: "none" }} variant={"outlined"} onClick={() => setIsOpen(true)}>
+        Semantic Search
+      </Button>
     </>
   );
 };
@@ -248,16 +310,7 @@ const ToggleSemanticSearch = () => {
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-  const { startDate, setStartDate, setEndDate, endDate, globalSearch } = useMimessage(
-    (state) => ({
-      startDate: state.startDate,
-      endDate: state.endDate,
-      setStartDate: state.setStartDate,
-      setEndDate: state.setEndDate,
-      globalSearch: state.globalSearch,
-    }),
-    shallow,
-  );
+  const globalSearch = useMimessage((state) => state.globalSearch);
   return (
     <Box
       sx={{
@@ -278,22 +331,23 @@ const GlobalSearchFilter = () => {
       )}
       <ContactFilter />
       <GroupChatFilter />
-      <DateFilter selection={startDate} setSelection={setStartDate} text={"Start Date"} />
-      <DateFilter selection={endDate} setSelection={setEndDate} text={"End Date"} />
+      <DateFilter />
       <ToggleSemanticSearch />
     </Box>
   );
 };
 
-const DateFilter = ({
-  selection,
-  setSelection,
-  text,
-}: {
-  selection: Date | null | undefined;
-  setSelection: (newDate: Date | null | undefined) => void;
-  text: string;
-}) => {
+const DateFilter = () => {
+  const { startDate, setStartDate, setEndDate, endDate } = useMimessage(
+    (state) => ({
+      startDate: state.startDate,
+      endDate: state.endDate,
+      setStartDate: state.setStartDate,
+      setEndDate: state.setEndDate,
+    }),
+    shallow,
+  );
+
   const { data: earliestDate } = useEarliestMessageDate();
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -305,11 +359,21 @@ const DateFilter = ({
   };
 
   const open = Boolean(anchorEl);
-  const id = open ? `date-popover-${text.replaceAll(" ", "-")}` : undefined;
+  const id = open ? `date-popover-selector` : undefined;
+  const range = { from: startDate || undefined, to: endDate || undefined };
+  const onSelect = (range: DateRange | undefined) => {
+    if (range) {
+      setStartDate(range.from);
+      setEndDate(range.to);
+    } else {
+      setStartDate(null);
+      setEndDate(null);
+    }
+  };
   return (
     <>
-      <Button variant={"outlined"} sx={{ mx: 1 }} id={id} onClick={handleClick}>
-        {selection ? selection.toLocaleDateString() : text}
+      <Button sx={{ ml: 1, whiteSpace: "pre", wordWrap: "none" }} variant={"outlined"} id={id} onClick={handleClick}>
+        Dates
       </Button>
       <Popover
         id={id}
@@ -329,10 +393,10 @@ const DateFilter = ({
         }}
       >
         <DayPicker
-          selected={selection || undefined}
-          onSelect={setSelection}
+          selected={range || undefined}
+          onSelect={onSelect}
           captionLayout="dropdown-buttons"
-          mode={"single"}
+          mode={"range"}
           fromYear={earliestDate?.getFullYear()}
           toDate={new Date()}
         />

@@ -5,7 +5,7 @@ const { combine, timestamp, printf, colorize, errors, json, splat } = winston.fo
 const ts = timestamp({
   format: "YYYY-MM-DD HH:mm:ss",
 });
-const print = printf((info) => {
+export const print = printf((info) => {
   if (typeof info.message === "object") {
     info.message = JSON.stringify(info.message);
   }
@@ -17,10 +17,10 @@ const print = printf((info) => {
 });
 
 const localFormat = combine(ts, colorize(), splat(), errors({ stack: true }), print);
+export const fileLogFormat = combine(ts, splat(), errors({ stack: true }), print);
 
 export const logger = winston.createLogger({
   level: "debug",
-  format: localFormat,
   transports: [
     new winston.transports.Console({
       format: localFormat,

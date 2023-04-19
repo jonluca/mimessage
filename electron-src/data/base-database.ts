@@ -93,7 +93,7 @@ export class BaseDatabase<T> {
       this.dbWriter = db;
       return true;
     } catch (e) {
-      console.error(e);
+      logger.error(e);
       return false;
     } finally {
       this.isSettingUpDb = false;

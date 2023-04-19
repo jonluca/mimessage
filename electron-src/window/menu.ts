@@ -6,7 +6,8 @@ import { showApp } from "../utils/util";
 import { requestContactsPerms, requestFullDiskAccess } from "../ipc/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../options";
 import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
-import { logPath } from "../constants";
+import logger from "../utils/logger";
+import { logPath } from "../logs";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [
@@ -143,7 +144,7 @@ export const getMenu = () => {
         label: "Quit",
         accelerator: "CmdOrCtrl+Q",
         click: () => {
-          console.log("Cmd + Q is pressed");
+          logger.info("Cmd + Q is pressed");
           windows.forEach((win) => win.close());
           app.quit();
         },

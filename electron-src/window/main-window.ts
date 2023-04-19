@@ -3,7 +3,7 @@ import { app, screen } from "electron";
 import windowStateKeeper from "electron-window-state";
 import createWindow from "./create-window";
 import { join } from "path";
-import { logStream, mainAppIconDevPng } from "../constants";
+import { mainAppIconDevPng } from "../constants";
 import isDev from "electron-is-dev";
 import { format } from "url";
 import { showErrorAlert, withRetries } from "../utils/util";
@@ -11,6 +11,7 @@ import prepareNext from "../utils/next-helper";
 import logger from "../utils/logger";
 import { windows } from "../index";
 import { addWebRequestToSession } from "../utils/routes";
+import { logStream } from "../logs";
 
 const setupNext = async () => {
   try {

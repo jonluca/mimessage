@@ -617,11 +617,11 @@ export const useLoadSemanticResultsIntoMemory = () => {
   });
 };
 
-export const useAccessibilityPermissionsCheck = () => {
-  return useQuery<boolean | null>(
-    ["accessibility-permissions"],
+export const useSemanticSearchCacheSize = () => {
+  return useQuery<number | null>(
+    ["semanticSearchCacheSize"],
     async () => {
-      const resp = (await ipcRenderer.invoke("accessibility-permissions")) as boolean;
+      const resp = (await ipcRenderer.invoke("embeddingsCacheSize")) as number;
       return resp;
     },
     { refetchInterval: 2000 },

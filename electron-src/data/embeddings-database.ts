@@ -26,7 +26,7 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
   };
   loadVectorsIntoMemory = async () => {
     if (this.embeddingsCache.length) {
-      return this.embeddingsCache;
+      return;
     }
     await this.initialize();
     const result = await this.db.selectFrom("embeddings").selectAll().execute();
@@ -46,6 +46,10 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
   getAllEmbeddings = async () => {
     await this.loadVectorsIntoMemory();
     return this.embeddingsCache;
+  };
+
+  embeddingsCacheSize = () => {
+    return this.embeddingsCache.length;
   };
   getEmbeddingByText = async (text: string) => {
     await this.initialize();

@@ -3,6 +3,7 @@ import { app, dialog } from "electron";
 import { windows } from "../index";
 import { createMainWindow } from "../window/main-window";
 import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-extension-installer";
+import logger from "./logger";
 
 export interface Deferred<T> {
   resolve: (arg: T) => void;
@@ -28,7 +29,7 @@ export function showErrorAlert(title: string, body: string, logStream?: WriteStr
   if (logStream) {
     logStream.write(`ALERT: ${title}: ${body}\n`);
   }
-  console.warn(`${title}: ${body}`);
+  logger.warn(`${title}: ${body}`);
   dialog.showErrorBox(title, body);
 }
 export const showApp = () => {
@@ -46,7 +47,7 @@ export const withRetries = async (fn: () => Promise<void>, MAX_ERROR_TRIES = 5) 
       await fn();
       return;
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       if (i == MAX_ERROR_TRIES - 1) {
         throw e;
       }

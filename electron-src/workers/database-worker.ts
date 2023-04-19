@@ -8,6 +8,7 @@ import { join } from "path";
 import logger from "../utils/logger";
 import type { EmbeddingsDatabase } from "../data/embeddings-database";
 import embeddingsDb from "../data/embeddings-database";
+import type { ThreadsWorkerOptions } from "threads/dist/types/master";
 
 type WorkerType<T> = {
   [P in keyof T]: T[P] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never;
@@ -18,25 +19,22 @@ class DbWorker {
   embeddingsWorker!: WorkerType<EmbeddingsDatabase> | EmbeddingsDatabase;
 
   startWorker = async () => {
-    const path = isDev ? "workers/worker.js" : join("..", "..", "..", "app.asar.unpacked", "worker.js");
-    const embeddingWorkerPath = isDev
-      ? "workers/embeddings-worker.js"
-      : join("..", "..", "..", "app.asar.unpacked", "embeddings-worker.js");
+    if (isDev) {
+      this.worker = db;
+      this.embeddingsWorker = embeddingsDb;
+      return;
+    }
+    const path = join("..", "..", "..", "app.asar.unpacked", "worker.js");
+    const embeddingWorkerPath = join("..", "..", "..", "app.asar.unpacked", "embeddings-worker.js");
 
-    this.worker = isDev
-      ? db
-      : await spawn<WorkerType<SQLDatabase>>(
-          new Worker(path, {
-            resourceLimits: { maxOldGenerationSizeMb: 32678, maxYoungGenerationSizeMb: 32678 },
-          }),
-        );
-    this.embeddingsWorker = isDev
-      ? embeddingsDb
-      : await spawn<WorkerType<EmbeddingsDatabase>>(
-          new Worker(embeddingWorkerPath, {
-            resourceLimits: { maxOldGenerationSizeMb: 32678, maxYoungGenerationSizeMb: 32678 },
-          }),
-        );
+    const opts: ThreadsWorkerOptions = {
+      resourceLimits: {
+        maxOldGenerationSizeMb: 65356,
+        maxYoungGenerationSizeMb: 65356,
+      },
+    };
+    this.worker = await spawn<WorkerType<SQLDatabase>>(new Worker(path, opts));
+    this.embeddingsWorker = await spawn<WorkerType<EmbeddingsDatabase>>(new Worker(embeddingWorkerPath, opts));
   };
 
   setupHandlers() {
@@ -56,6 +54,7 @@ class DbWorker {
     }
 
     handleIpc("loadVectorsIntoMemory", this.embeddingsWorker.loadVectorsIntoMemory);
+    handleIpc("embeddingsCacheSize", this.embeddingsWorker.embeddingsCacheSize);
   }
   isCopying = false;
   doesLocalDbCopyExist = async () => {

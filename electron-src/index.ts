@@ -1,10 +1,12 @@
+import "./utils/dns-cache";
 import { app, Menu, nativeTheme, protocol, shell } from "electron";
+addFlags(app);
+
 // Global imports to monkeypatch/polyfill/register
 import "./semantic-search/semantic-search";
 import "./ipc/ipc";
 import "./options";
 import "./ipc/ipc-onboarding";
-import "./utils/dns-cache";
 // normal imports
 import type { CustomScheme } from "electron";
 import { addFlags } from "./utils/flags";
@@ -14,14 +16,14 @@ import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
 
 import "better-sqlite3";
-import { logPath, logStream, mainAppIconDevPng } from "./constants";
-import logger from "./utils/logger";
+import { mainAppIconDevPng } from "./constants";
+import logger, { fileLogFormat } from "./utils/logger";
 import { setupRouteHandlers } from "./utils/routes";
 import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./workers/database-worker";
 import winston from "winston";
-addFlags(app);
+import { logPath, logStream } from "./logs";
 
 registerContextMenu({
   showSaveImageAs: true,
@@ -40,10 +42,10 @@ let errorTries = 0;
 const MAX_ERROR_TRIES = 5;
 
 const amMainInstance = app.requestSingleInstanceLock();
-
-logger.transports.push(
+logger.add(
   new winston.transports.Stream({
     stream: logStream,
+    format: fileLogFormat,
   }),
 );
 logger.info(`Starting logging to ${logPath}`);

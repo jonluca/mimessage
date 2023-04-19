@@ -12,11 +12,11 @@ if (DEV_MODE || process.platform !== "darwin") {
   console.log("Skipping notarization - not building for Mac");
   process.exit(0);
 }
-//
-// if (!process.env.APPLE_ID) {
-//   console.log("Skipping notarization - no apple id");
-//   process.exit(0);
-// }
+
+if (!process.env.APPLE_ID) {
+  console.log("Skipping notarization - no apple id");
+  process.exit(0);
+}
 
 console.log("Notarizing...");
 

@@ -18,7 +18,6 @@ export const decodeMessageBuffer = async (buffer: Buffer | Uint8Array | undefine
       return unarchiver.decodeAll();
     }
   } catch (e) {
-    console.error(e);
     // ignore
   }
   return buffer;
