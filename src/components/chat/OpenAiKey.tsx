@@ -107,7 +107,7 @@ const SemanticSearchModal = ({
     setModalOpen(false);
   };
 
-  const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings && stats);
+  const hasProgressInEmbeddings = Boolean(isCreatingEmbeddings);
   const completed = numCompleted || 0;
   const totalMessages = stats?.totalMessages || count || 0;
   const completedThisSession = Math.max(completed - (stats?.completedAlready || 0), 0);
