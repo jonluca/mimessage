@@ -1,8 +1,8 @@
 import { spawn, Worker } from "threads";
-import type { SQLDatabase } from "./database";
-import { handleIpc } from "./ipc";
-import db from "./database";
-import { copyLatestDb, localDbExists } from "./db-file-utils";
+import type { SQLDatabase } from "../data/database";
+import { handleIpc } from "../ipc/ipc";
+import db from "../data/database";
+import { copyLatestDb, localDbExists } from "../data/db-file-utils";
 import isDev from "electron-is-dev";
 import { join } from "path";
 import logger from "../utils/logger";
@@ -14,7 +14,7 @@ class DbWorker {
   worker!: WorkerType<SQLDatabase> | SQLDatabase;
 
   startWorker = async () => {
-    const path = isDev ? "data/worker.js" : join("..", "..", "..", "app.asar.unpacked", "worker.js");
+    const path = isDev ? "workers/worker.js" : join("..", "..", "..", "app.asar.unpacked", "worker.js");
 
     this.worker = isDev
       ? db

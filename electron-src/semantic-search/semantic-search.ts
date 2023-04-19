@@ -1,12 +1,13 @@
 import { GPT4Tokenizer } from "gpt4-tokenizer";
 import { Configuration, OpenAIApi } from "openai";
-import dbWorker from "./database-worker";
-import { handleIpc } from "./ipc";
+import dbWorker from "../workers/database-worker";
+import { handleIpc } from "../ipc/ipc";
 import logger from "../utils/logger";
-import { chunk } from "lodash-es";
-import { BatchChroma, BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
-import { getCollection } from "./chroma";
+import { BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
 import pMap from "p-map";
+import embeddingsDb from "../data/embeddings-database";
+import cosineSimilarity from "./vector-comparison";
+import { uniqBy } from "lodash-es";
 
 export interface SemanticSearchMetadata {
   id: string;
@@ -81,31 +82,14 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   });
   const openai = new OpenAIApi(configuration);
 
-  const collection = await getCollection();
+  await embeddingsDb.initialize();
 
-  if (!collection) {
-    logger.error("Could not get collection");
-    return;
-  }
+  const existingText = await embeddingsDb.getAllText();
+  const set = new Set(existingText);
+  numCompleted = existingText.length;
+  const notParsed = messages.filter((m) => m.text && !set.has(m.text));
 
-  // remove already parsed messages
-  const chunked = chunk(messages, 5000);
-  const notParsed = [];
-  logger.info(`Checking if ${messages.length} messages have been parsed already`);
-
-  for (const chunk of chunked) {
-    const parsed = await collection.get(chunk.map((m) => `${m.guid}:0`));
-    const parsedIds = new Set<string>(parsed.ids.map((m: string) => m.split(":")[0]));
-    numCompleted += parsedIds.size;
-    for (const m of chunk) {
-      if (!parsedIds.has(m.guid)) {
-        notParsed.push(m);
-      }
-    }
-  }
-  logger.info(`Found ${notParsed.length} messages that need to be parsed`);
-
-  const batchChroma = new BatchChroma(collection);
+  const uniqueMessages = uniqBy(notParsed, "text");
   const batchOpenai = new BatchOpenAi(openai);
 
   const processMessage = async (message: (typeof messages)[number]) => {
@@ -117,9 +101,16 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
       const chunks = splitIntoChunks(message.text);
       const itemEmbeddings = await batchOpenai.addPendingVectors(chunks, message.guid);
 
-      if (itemEmbeddings && itemEmbeddings.length) {
-        await batchChroma.insert(itemEmbeddings);
-        numCompleted += itemEmbeddings.length;
+      if (itemEmbeddings.length) {
+        try {
+          logger.info(`Inserting ${itemEmbeddings.length} vectors`);
+          const embeddings = itemEmbeddings.map((l) => ({ embedding: l.values, text: l.metadata.text }));
+          await embeddingsDb.insertEmbeddings(embeddings);
+          logger.info(`Inserted ${itemEmbeddings.length} vectors`);
+          numCompleted += itemEmbeddings.length;
+        } catch (e) {
+          logger.error(e);
+        }
       }
 
       if (debugLoggingEnabled) {
@@ -133,8 +124,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
     return [];
   };
 
-  await pMap(notParsed, processMessage, { concurrency: 100 });
-  await batchChroma.flush();
+  await pMap(uniqueMessages, processMessage, { concurrency: 100 });
   logger.info("Done creating embeddings");
 };
 
@@ -144,27 +134,36 @@ interface SemanticQueryOpts {
 }
 
 export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts) {
-  const configuration = new Configuration({
-    apiKey: openAiKey,
-  });
-  const openai = new OpenAIApi(configuration);
-  const collection = await getCollection();
-  if (!collection) {
-    logger.error("Could not get collection");
-    return;
-  }
-  const embed = (
-    await openai.createEmbedding({
+  const existingEmbedding = await embeddingsDb.getEmbeddingByText(queryText);
+  let floatEmbedding = existingEmbedding?.embedding;
+
+  if (!existingEmbedding) {
+    const configuration = new Configuration({
+      apiKey: openAiKey,
+    });
+    // first look up embedding in db in case we've already done it
+    const openai = new OpenAIApi(configuration);
+    const openAiResponse = await openai.createEmbedding({
       input: queryText,
       model: OPENAI_EMBEDDING_MODEL,
-    })
-  ).data;
-  const embedding = embed.data?.[0]?.embedding;
-  if (!embedding) {
-    return [];
+    });
+    const embed = openAiResponse.data;
+    const embedding = embed.data?.[0]?.embedding;
+    if (!embedding) {
+      return [];
+    }
+    // save embedding
+    await embeddingsDb.insertEmbeddings([{ embedding, text: queryText }]);
+    floatEmbedding = new Float32Array(embedding);
   }
-  const results = await collection.query(embedding, 100, undefined, [queryText]);
-  return results.ids[0].map((id: string) => id.split(":")[0]);
+
+  const allEmbeddings = await embeddingsDb.getAllEmbeddings();
+  const similarities = allEmbeddings.map((e) => {
+    const similarity = cosineSimilarity(floatEmbedding!, e.embedding);
+    return { similarity, text: e.text };
+  });
+  similarities.sort((a, b) => b.similarity - a.similarity);
+  return similarities.slice(0, 100).map((l) => l.text!);
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -179,12 +178,15 @@ handleIpc("getEmbeddingsCompleted", async () => {
 
 handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
   const stats = await dbWorker.worker.calculateSemanticSearchStats();
-  const collection = await getCollection();
-  if (!collection) {
+  const localDb = embeddingsDb;
+  try {
+    await localDb.initialize();
+    const count = await localDb.countEmbeddings();
+    return { ...stats, completedAlready: count };
+  } catch (e) {
+    logger.error(e);
     return stats;
   }
-  const count = await collection.count();
-  return { ...stats, completedAlready: count };
 });
 handleIpc(
   "globalSearch",
@@ -202,14 +204,16 @@ handleIpc(
     }
     if (useSemanticSearch) {
       logger.info("Using semantic search");
-      const ids = await semanticQuery({
+      const messageTexts = await semanticQuery({
         openAiKey,
         queryText: searchTerm,
       });
-      logger.info(`Got ${ids.length} results`);
+      logger.info(`Got ${messageTexts.length} results`);
+
+      const guids = await dbWorker.worker.getMessageGuidsFromText(messageTexts);
 
       return await dbWorker.worker.fullTextMessageSearchWithGuids(
-        ids,
+        guids,
         searchTerm,
         chatIds,
         handleIds,

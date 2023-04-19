@@ -119,15 +119,6 @@ export const SemanticSearchInfo = () => {
             You can use AI to search through your messages. To enable this feature, please enter your OpenAI API key
             below. Note: this will take a <i>long</i> time and might cost you a bit. The estimates are below.
           </Typography>
-          <Typography variant="body1" sx={{ color: "white", fontWeight: "bold", mt: 2 }}>
-            Important! Chroma must be running locally for this to work, on port 8000!
-          </Typography>
-          <a
-            style={{ textDecoration: "underline", marginBottom: 8 }}
-            href={"https://docs.trychroma.com/usage-guide#running-chroma-in-clientserver-mode"}
-          >
-            Learn more
-          </a>
 
           {isLoading && <LinearProgress />}
           {hasProgressInEmbeddings && data ? (
@@ -151,7 +142,7 @@ export const SemanticSearchInfo = () => {
           {data && (
             <Box sx={{ display: "flex", my: 2 }}>
               <Box>
-                <Typography>Total Messages: {data.totalMessages.toLocaleString()}</Typography>
+                <Typography>Total Unique Messages: {data.totalMessages.toLocaleString()}</Typography>
                 <Typography>Total Tokens: {data.totalTokens.toLocaleString()}</Typography>
                 <Typography>Avg Tokens / msg: {data.averageTokensPerLine.toLocaleString()}</Typography>
               </Box>

@@ -1,9 +1,9 @@
 import { app, Menu, nativeTheme, protocol, shell } from "electron";
 // Global imports to monkeypatch/polyfill/register
-import "./data/semantic-search";
-import "./data/ipc";
-import "./data/options";
-import "./data/ipc-onboarding";
+import "./semantic-search/semantic-search";
+import "./ipc/ipc";
+import "./options";
+import "./ipc/ipc-onboarding";
 import "./utils/dns-cache";
 // normal imports
 import type { CustomScheme } from "electron";
@@ -16,10 +16,10 @@ import { getMenu } from "./window/menu";
 import "better-sqlite3";
 import { logPath, logStream, mainAppIconDevPng } from "./constants";
 import logger from "./utils/logger";
-import { setupRouteHandlers } from "./data/routes";
+import { setupRouteHandlers } from "./utils/routes";
 import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
-import dbWorker from "./data/database-worker";
+import dbWorker from "./workers/database-worker";
 import winston from "winston";
 addFlags(app);
 

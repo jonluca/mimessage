@@ -3,8 +3,8 @@ import type { MenuItemConstructorOptions } from "electron";
 import { app, dialog, Menu, shell } from "electron";
 import { windows } from "../index";
 import { showApp } from "../utils/util";
-import { requestContactsPerms, requestFullDiskAccess } from "../data/ipc-onboarding";
-import { clearSkipContactsPermsCheck } from "../data/options";
+import { requestContactsPerms, requestFullDiskAccess } from "../ipc/ipc-onboarding";
+import { clearSkipContactsPermsCheck } from "../options";
 import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
 import { logPath } from "../constants";
 

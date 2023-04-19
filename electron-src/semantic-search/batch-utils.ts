@@ -1,4 +1,3 @@
-import type { Collection } from "chromadb";
 import logger from "../utils/logger";
 import type { OpenAIApi } from "openai";
 import type { Chunk, SemanticSearchMetadata, SemanticSearchVector } from "./semantic-search";
@@ -8,7 +7,7 @@ import { pRateLimit } from "p-ratelimit";
 export class BatchOpenAi {
   private openai: OpenAIApi;
   private batch: PendingVector[] = [];
-  private batchSize = 250; // create 100 embeddings at a time with the openai api
+  private batchSize = 500; // create 500 embeddings at a time with the openai api
 
   constructor(openai: OpenAIApi) {
     this.openai = openai;
@@ -45,55 +44,6 @@ export class BatchOpenAi {
     return [];
   }
 }
-const chromaLimit = pRateLimit({
-  concurrency: 8, // no more than 60 running at once
-});
-export class BatchChroma {
-  private collection: Collection;
-  private batch: SemanticSearchVector[] = [];
-  private batchSize = 1000;
-
-  flushPromise: Promise<void> | null = null;
-  constructor(collection: Collection) {
-    this.collection = collection;
-    // @ts-ignore
-    this.collection.api.axios.defaults.maxContentLength = Infinity;
-    // @ts-ignore
-    this.collection.api.axios.defaults.maxBodyLength = Infinity;
-  }
-
-  public async insert(vector: SemanticSearchVector[]) {
-    const flushPromise = this.flushPromise;
-    if (flushPromise) {
-      await flushPromise;
-    }
-    this.batch.push(...vector);
-    if (this.batch.length >= this.batchSize) {
-      this.flushPromise = this.flush();
-      await this.flushPromise;
-    }
-  }
-
-  public async flush() {
-    if (this.batch.length === 0) {
-      return;
-    }
-    const batch = this.batch;
-    this.batch = [];
-    logger.info(`Inserting ${batch.length} vectors`);
-    const ids = batch.map((item) => item.id);
-    const embeddings = batch.map((item) => item.values);
-    const text = batch.map((item) => item.metadata.text);
-    const metadata = batch.map((item) => item.metadata);
-    try {
-      await chromaLimit(async () => {
-        await this.collection.add(ids, embeddings, metadata, text);
-      });
-    } catch (e) {
-      logger.error(e);
-    }
-  }
-}
 
 interface PendingVector {
   id: string;
@@ -110,12 +60,13 @@ const rateLimit = pRateLimit({
   rate: 3500, // 3500 calls per minute
   concurrency: 60, // no more than 60 running at once
 });
-
 const embeddingsFromPendingVectors = async (pendingVectors: PendingVector[], openai: OpenAIApi) => {
-  const input = pendingVectors.map((c) => c.input);
+  const vectors: SemanticSearchVector[] = [];
+
   let timeout = 10_000;
-  while (input.length) {
+  while (pendingVectors.length) {
     try {
+      const input = pendingVectors.map((l) => l.input);
       const { data: embed } = await rateLimit(() =>
         openai.createEmbedding({
           input,
@@ -123,7 +74,6 @@ const embeddingsFromPendingVectors = async (pendingVectors: PendingVector[], ope
         }),
       );
       const embeddings = embed.data;
-      const vectors: SemanticSearchVector[] = [];
       for (let i = 0; i < embeddings.length; i++) {
         const embedding = embeddings[i].embedding;
         if (embedding) {

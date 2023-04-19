@@ -4,16 +4,18 @@ const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
 
 export const getStatsForText = (text: { text: string | null }[]) => {
   let totalTokens = 0;
+  const uniqueText = new Set<string>();
   for (const line of text) {
-    if (line.text) {
+    if (line.text && !uniqueText.has(line.text)) {
+      uniqueText.add(line.text);
       const tokens = tokenizer.estimateTokenCount(line.text);
       totalTokens += tokens;
     }
   }
 
-  const totalMessages = text.length;
-  const estimatedTimeRpm = totalMessages / 3500 / 10; // we batch so divide it by 50
-  const estimatedTimeTpm = totalTokens / 350000 / 10; // we batch so divide it by 50
+  const totalMessages = uniqueText.size;
+  const estimatedTimeRpm = totalMessages / 3500 / 10; // we batch so divide it by a heuristic i eyeballed
+  const estimatedTimeTpm = totalTokens / 350000 / 10;
   const estimatedTime = Math.max(estimatedTimeRpm, estimatedTimeTpm);
   return {
     totalMessages,

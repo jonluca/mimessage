@@ -1,5 +1,5 @@
-import type { SQLDatabase } from "./database";
-import db from "./database";
+import type { SQLDatabase } from "../data/database";
+import db from "../data/database";
 import { expose } from "threads/worker";
 
 const exposed: Partial<Record<Partial<keyof SQLDatabase>, any>> = {};
