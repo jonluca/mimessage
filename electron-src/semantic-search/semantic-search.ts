@@ -5,8 +5,6 @@ import { handleIpc } from "../ipc/ipc";
 import logger from "../utils/logger";
 import { BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
 import pMap from "p-map";
-import embeddingsDb from "../data/embeddings-database";
-import cosineSimilarity from "./vector-comparison";
 import { uniqBy } from "lodash-es";
 
 export interface SemanticSearchMetadata {
@@ -82,9 +80,9 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   });
   const openai = new OpenAIApi(configuration);
 
-  await embeddingsDb.initialize();
+  await dbWorker.embeddingsWorker.initialize();
 
-  const existingText = await embeddingsDb.getAllText();
+  const existingText = await dbWorker.embeddingsWorker.getAllText();
   const set = new Set(existingText);
   numCompleted = existingText.length;
   const notParsed = messages.filter((m) => m.text && !set.has(m.text));
@@ -105,7 +103,7 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
         try {
           logger.info(`Inserting ${itemEmbeddings.length} vectors`);
           const embeddings = itemEmbeddings.map((l) => ({ embedding: l.values, text: l.metadata.text }));
-          await embeddingsDb.insertEmbeddings(embeddings);
+          await dbWorker.embeddingsWorker.insertEmbeddings(embeddings);
           logger.info(`Inserted ${itemEmbeddings.length} vectors`);
           numCompleted += itemEmbeddings.length;
         } catch (e) {
@@ -134,7 +132,7 @@ interface SemanticQueryOpts {
 }
 
 export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts) {
-  const existingEmbedding = await embeddingsDb.getEmbeddingByText(queryText);
+  const existingEmbedding = await dbWorker.embeddingsWorker.getEmbeddingByText(queryText);
   let floatEmbedding = existingEmbedding?.embedding;
 
   if (!existingEmbedding) {
@@ -153,17 +151,11 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
       return [];
     }
     // save embedding
-    await embeddingsDb.insertEmbeddings([{ embedding, text: queryText }]);
+    await dbWorker.embeddingsWorker.insertEmbeddings([{ embedding, text: queryText }]);
     floatEmbedding = new Float32Array(embedding);
   }
 
-  const allEmbeddings = await embeddingsDb.getAllEmbeddings();
-  const similarities = allEmbeddings.map((e) => {
-    const similarity = cosineSimilarity(floatEmbedding!, e.embedding);
-    return { similarity, text: e.text };
-  });
-  similarities.sort((a, b) => b.similarity - a.similarity);
-  return similarities.slice(0, 100).map((l) => l.text!);
+  return dbWorker.embeddingsWorker.calculateSimilarity(floatEmbedding!);
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -178,7 +170,7 @@ handleIpc("getEmbeddingsCompleted", async () => {
 
 handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
   const stats = await dbWorker.worker.calculateSemanticSearchStats();
-  const localDb = embeddingsDb;
+  const localDb = dbWorker.embeddingsWorker;
   try {
     await localDb.initialize();
     const count = await localDb.countEmbeddings();

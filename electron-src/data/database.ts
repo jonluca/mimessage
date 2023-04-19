@@ -114,8 +114,8 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       indexMap.set(texts[i], i);
     }
     results.sort((a, b) => {
-      const aIndex = indexMap.get(a.text);
-      const bIndex = indexMap.get(b.text);
+      const aIndex = indexMap.get(a.text!);
+      const bIndex = indexMap.get(b.text!);
       if (aIndex === undefined || bIndex === undefined) {
         return 0;
       }

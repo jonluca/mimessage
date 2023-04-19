@@ -2,6 +2,7 @@ import type { DB as EmbeddingsDb } from "../../_generated/embeddings-db";
 import logger from "../utils/logger";
 import { embeddingsDbPath } from "../utils/constants";
 import BaseDatabase from "./base-database";
+import cosineSimilarity from "../semantic-search/vector-comparison";
 
 export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
   embeddingsCache: { text: string; embedding: Float32Array }[] = [];
@@ -14,7 +15,16 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
     return result[0].count as number;
   };
 
-  getAllEmbeddings = async () => {
+  calculateSimilarity = async (embedding: Float32Array) => {
+    const allEmbeddings = await this.getAllEmbeddings();
+    const similarities = allEmbeddings.map((e) => {
+      const similarity = cosineSimilarity(embedding!, e.embedding);
+      return { similarity, text: e.text };
+    });
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    return similarities.slice(0, 100).map((l) => l.text!);
+  };
+  loadVectorsIntoMemory = async () => {
     if (this.embeddingsCache.length) {
       return this.embeddingsCache;
     }
@@ -32,6 +42,9 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
         ),
       };
     });
+  };
+  getAllEmbeddings = async () => {
+    await this.loadVectorsIntoMemory();
     return this.embeddingsCache;
   };
   getEmbeddingByText = async (text: string) => {

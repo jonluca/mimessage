@@ -6,20 +6,34 @@ import { copyLatestDb, localDbExists } from "../data/db-file-utils";
 import isDev from "electron-is-dev";
 import { join } from "path";
 import logger from "../utils/logger";
+import type { EmbeddingsDatabase } from "../data/embeddings-database";
+import embeddingsDb from "../data/embeddings-database";
+
 type WorkerType<T> = {
   [P in keyof T]: T[P] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never;
 };
 
 class DbWorker {
   worker!: WorkerType<SQLDatabase> | SQLDatabase;
+  embeddingsWorker!: WorkerType<EmbeddingsDatabase> | EmbeddingsDatabase;
 
   startWorker = async () => {
     const path = isDev ? "workers/worker.js" : join("..", "..", "..", "app.asar.unpacked", "worker.js");
+    const embeddingWorkerPath = isDev
+      ? "workers/embeddings-worker.js"
+      : join("..", "..", "..", "app.asar.unpacked", "embeddings-worker.js");
 
     this.worker = isDev
       ? db
       : await spawn<WorkerType<SQLDatabase>>(
           new Worker(path, {
+            resourceLimits: { maxOldGenerationSizeMb: 32678, maxYoungGenerationSizeMb: 32678 },
+          }),
+        );
+    this.embeddingsWorker = isDev
+      ? embeddingsDb
+      : await spawn<WorkerType<EmbeddingsDatabase>>(
+          new Worker(embeddingWorkerPath, {
             resourceLimits: { maxOldGenerationSizeMb: 32678, maxYoungGenerationSizeMb: 32678 },
           }),
         );
@@ -40,6 +54,8 @@ class DbWorker {
         handleIpc(prop, dbElement as any);
       }
     }
+
+    handleIpc("loadVectorsIntoMemory", this.embeddingsWorker.loadVectorsIntoMemory);
   }
   isCopying = false;
   doesLocalDbCopyExist = async () => {

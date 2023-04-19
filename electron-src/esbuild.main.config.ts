@@ -6,6 +6,7 @@ const config: BuildOptions = {
   entryPoints: [
     path.resolve("electron-src/index.ts"),
     path.resolve("electron-src/workers/worker.ts"),
+    path.resolve("electron-src/workers/embeddings-worker.ts"),
     path.resolve("electron-src/utils/preload.ts"),
   ],
   bundle: true,

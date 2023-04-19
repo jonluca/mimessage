@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "MiMessage",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
@@ -155,11 +155,16 @@
       {
         "from": "build/electron-src/workers/worker.js",
         "to": "app.asar.unpacked/worker.js"
+      },
+      {
+        "from": "build/electron-src/workers/embeddings-worker.js",
+        "to": "app.asar.unpacked/embeddings-worker.js"
       }
     ],
     "mac": {
       "binaries": [
-        "build/electron-src/workers/worker.js"
+        "build/electron-src/workers/worker.js",
+        "build/electron-src/workers/embeddings-worker.js"
       ],
       "target": {
         "target": "default",

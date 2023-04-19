@@ -35,11 +35,27 @@ function dot(x: ArrayLike, y: ArrayLike) {
   }
   return sum;
 }
-function cosineSimilarity(x: ArrayLike, y: ArrayLike): number {
-  const a = dot(x, y);
-  const b = l2norm(x);
-  const c = l2norm(y);
-  return a / (b * c);
-}
+// function cosineSimilarity(x: ArrayLike, y: ArrayLike): number {
+//   const a = dot(x, y);
+//   const b = l2norm(x);
+//   const c = l2norm(y);
+//   return a / (b * c);
+// }
+export default function cosineSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
+  const dimensionality = Math.min(vectorA.length, vectorB.length);
+  let dotAB = 0;
+  let dotA = 0;
+  let dotB = 0;
+  let dimension = 0;
+  while (dimension < dimensionality) {
+    const componentA = vectorA[dimension];
+    const componentB = vectorB[dimension];
+    dotAB += componentA * componentB;
+    dotA += componentA * componentA;
+    dotB += componentB * componentB;
+    dimension += 1;
+  }
 
-export default cosineSimilarity;
+  const magnitude = Math.sqrt(dotA * dotB);
+  return magnitude === 0 ? 0 : dotAB / magnitude;
+}
