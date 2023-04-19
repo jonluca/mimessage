@@ -1,7 +1,5 @@
 import type { LeveledLogMethod } from "winston";
 import winston from "winston";
-import type { TransformCallback } from "stream";
-import { Transform } from "stream";
 
 const { combine, timestamp, printf, colorize, errors, json, splat } = winston.format;
 const ts = timestamp({
@@ -44,59 +42,5 @@ logger.error = ((...args) => {
 
   return oldError.apply(logger, args as any);
 }) as LeveledLogMethod;
-
-export class LogStream extends Transform {
-  level: string;
-  constructor({ level } = { level: "info" }) {
-    super({
-      readableObjectMode: true,
-      writableObjectMode: true,
-    });
-    this.level = level;
-  }
-
-  _transform(chunk: any, encoding: BufferEncoding, callback: TransformCallback) {
-    const lines = chunk
-      .toString("utf8")
-      .split("\n")
-      .filter((l: string) => l.trim());
-    for (const line of lines) {
-      this.push({
-        level: this.level,
-        message: line,
-      });
-    }
-    callback();
-  }
-  end(cb?: () => void): this;
-  end(chunk: any, cb?: () => void): this;
-  end(chunk: any, encoding: BufferEncoding, cb?: () => void): this;
-  end(param?: any, encoding?: any, cb?: any): this {
-    // dont call super.end or it will close the stream
-    cb?.();
-    if (typeof param === "function") {
-      param();
-    }
-    if (param) {
-      const lines = param
-        .toString("utf8")
-        .split("\n")
-        .filter((l: string) => l.trim());
-      for (const line of lines) {
-        this.push({
-          level: this.level,
-          message: line,
-        });
-      }
-      if (typeof encoding === "function") {
-        encoding();
-      }
-      if (typeof cb === "function") {
-        cb();
-      }
-    }
-    return this;
-  }
-}
 
 export default logger;

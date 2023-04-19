@@ -39,11 +39,13 @@ jobs:
       - run: yarn package -p onTag
       - run: yarn check-signature
       - run: yarn notarize
+      - run: zip -r build.zip build src/out
 
       - uses: actions/upload-artifact@v3
         with:
-          name: distributables
+          name: artifacts
           path: |
+            build.zip
             dist/*.zip
             dist/*.dmg
             dist/*.yml
@@ -57,7 +59,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build
     steps:
-      - name: Get all distributables
+      - name: Get all artifacts
         uses: actions/download-artifact@v2
 
       - name: Create Release

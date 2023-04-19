@@ -215,7 +215,7 @@ const ToggleSemanticSearch = () => {
             <Typography variant="h1" sx={{ color: "white" }}>
               Loading Vectors into Memory
             </Typography>
-            <Typography variant="h6" sx={{ color: "white" }}>
+            <Typography variant="h6" sx={{ color: "white", mb: 2 }}>
               This takes ~2s per 100k messages
             </Typography>
             <CircularProgress />
