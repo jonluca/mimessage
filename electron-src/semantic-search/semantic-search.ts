@@ -154,7 +154,7 @@ handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
 });
 
 handleIpc("messageCount", async () => {
-  const stats = await dbWorker.worker.countAllMessageTexts(true);
+  const stats = await dbWorker.worker.countAllMessageTexts();
   return stats;
 });
 handleIpc(

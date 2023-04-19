@@ -310,12 +310,9 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     }
     return (await query.execute()).map((r) => r.text!);
   };
-  countAllMessageTexts = async (distinct = false): Promise<number> => {
+  countAllMessageTexts = async (): Promise<number> => {
     const query = this.baseAllMessageQuery().select((e) => {
-      if (distinct) {
-        return e.fn.count("text").distinct().as("count");
-      }
-      return e.fn.count("message.ROWID").as("count");
+      return e.fn.count("text").distinct().as("count");
     });
     const results = await query.executeTakeFirst();
     if (!results) {
