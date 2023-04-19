@@ -11,8 +11,12 @@ const config: BuildOptions = {
   ],
   bundle: true,
   external: ["next", "better-sqlite3", "electron-mac-contacts", "node-electron-permissions"],
+  minify: true,
+  minifyWhitespace: true,
+  minifyIdentifiers: true,
+  minifySyntax: true,
   treeShaking: true,
-  target: "node19.4.0", // electron version target
+  target: "node19.9.0",
 };
 
 export default config;

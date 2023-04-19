@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "MiMessage",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
@@ -16,7 +16,7 @@
     "notarize": "DEBUG=electron* node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only electron-src/hooks/notarize.ts",
     "start:app": "electron-esbuild dev",
     "clean": "rimraf dist build src/out .next src/.next",
-    "dev": "yarn start:app",
+    "dev": "DEBUG=* yarn start:app",
     "dev:debug": "DEBUG_LOGGING=true yarn start:app",
     "gen-types": "node --experimental-specifier-resolution=node --no-warnings --loader ts-node/esm/transpile-only scripts/gen-types.ts",
     "typecheck": "tsc -p src --noEmit && tsc --noEmit"
