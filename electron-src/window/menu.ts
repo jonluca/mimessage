@@ -6,8 +6,7 @@ import { showApp } from "../utils/util";
 import { requestContactsPerms, requestFullDiskAccess } from "../ipc/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../options";
 import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
-import logger from "../utils/logger";
-import { logPath } from "../logs";
+import logger, { logPath } from "../utils/logger";
 
 export const getMenu = () => {
   const menuTemplate: MenuItemConstructorOptions[] = [

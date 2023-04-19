@@ -2,7 +2,7 @@ import type { SelectQueryBuilder, Kysely } from "kysely";
 import { sql } from "kysely";
 import type { DB as MesssagesDatabase } from "../../_generated/types";
 import logger from "../utils/logger";
-import { countBy, groupBy, partition } from "lodash-es";
+import { countBy, groupBy, uniq } from "lodash-es";
 import type { Contact } from "electron-mac-contacts";
 import { decodeMessageBuffer, getTextFromBuffer } from "../utils/buffer";
 import { appMessagesDbCopy } from "../utils/constants";
@@ -107,7 +107,7 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
 
   getMessageGuidsFromText = async (texts: string[]) => {
     const db = this.db;
-    const query = db.selectFrom("message").select(["guid", "text"]).where("text", "in", texts);
+    const query = db.selectFrom("message").select(["guid", "text"]).where("text", "in", texts).limit(10000);
     const results = await query.execute();
     const indexMap = new Map<string, number>();
     for (let i = 0; i < texts.length; i++) {
@@ -132,8 +132,6 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     endDate?: Date | null,
   ) => {
     const db = this.db;
-    // SELECT * FROM message_fts WHERE text MATCH 'jonluca' ORDER BY rank;
-
     const cleanedQuery = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
     const textMatch = await db
       .selectFrom("message_fts")
@@ -143,27 +141,29 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       .limit(1000)
       .execute();
     const messageGuids = textMatch.map((m) => m.message_id as string);
-    return this.fullTextMessageSearchWithGuids(messageGuids, searchTerm, chatIds, handleIds, startDate, endDate);
+    const query = this.getFilteredSearchQuery({ chatIds, handleIds, startDate, endDate })
+      .where(({ or, cmpr }) => {
+        return or([cmpr("filename", "like", "%" + searchTerm + "%"), cmpr("text", "like", "%" + searchTerm + "%")]);
+      })
+      .limit(1000);
+    const alternateResults = await query.execute();
+    const alternateMessageGuids = alternateResults.map((m) => m.guid as string);
+    const allMessageGuids = uniq([...messageGuids, ...alternateMessageGuids]);
+    return this.fullTextMessageSearchWithGuids(allMessageGuids, searchTerm, chatIds, handleIds, startDate, endDate);
   };
-  fullTextMessageSearchWithGuids = async (
-    messageGuids: string[],
-    searchTerm: string,
-    chatIds?: number[],
-    handleIds?: number[],
-    startDate?: Date | null,
-    endDate?: Date | null,
-  ) => {
-    const messageGuidsSet = new Set(messageGuids);
-
+  private getFilteredSearchQuery = ({
+    chatIds,
+    handleIds,
+    startDate,
+    endDate,
+  }: {
+    chatIds?: number[];
+    handleIds?: number[];
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }) => {
     let query = this.getJoinedMessageQuery()
       .select("message.guid as guid")
-      .where(({ or, cmpr }) => {
-        return or([
-          cmpr("message.guid", "in", messageGuids),
-          cmpr("filename", "like", "%" + searchTerm + "%"),
-          cmpr("text", "like", "%" + searchTerm + "%"),
-        ]);
-      })
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0);
 
@@ -193,17 +193,36 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       query = query.where("date", "<", offset);
     }
 
+    return query;
+  };
+  fullTextMessageSearchWithGuids = async (
+    messageGuids: string[],
+    searchTerm: string,
+    chatIds?: number[],
+    handleIds?: number[],
+    startDate?: Date | null,
+    endDate?: Date | null,
+  ) => {
+    const query = this.getFilteredSearchQuery({ chatIds, handleIds, startDate, endDate }).where(
+      "message.guid",
+      "in",
+      messageGuids,
+    );
+
     const messages = await query.limit(10000).execute();
-    const [matchedMessages, unmatchedMessages] = partition(messages, (m) => messageGuidsSet.has(m.guid));
-    logger.info(`Matched ${matchedMessages.length} messages, unmatched ${unmatchedMessages.length} messages`);
-    matchedMessages.sort((a, b) => {
-      return messageGuids.indexOf(a.guid) - messageGuids.indexOf(b.guid);
+    const indexMap = new Map<string, number>();
+    for (let i = 0; i < messageGuids.length; i++) {
+      indexMap.set(messageGuids[i], i);
+    }
+    messages.sort((a, b) => {
+      const aIndex = indexMap.get(a.guid!);
+      const bIndex = indexMap.get(b.guid!);
+      if (aIndex === undefined || bIndex === undefined) {
+        return 0;
+      }
+      return aIndex - bIndex;
     });
-    unmatchedMessages.sort((a, b) => {
-      return (b.date || 0) - (a.date || 0);
-    });
-    const allMessages = [...matchedMessages, ...unmatchedMessages];
-    return this.enhanceMessageResponses<(typeof messages)[number]>(allMessages);
+    return this.enhanceMessageResponses<(typeof messages)[number]>(messages);
   };
   private convertDate = (date: number) => {
     return new Date(date / 1000000 + 978307200000);

@@ -136,6 +136,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
   let floatEmbedding = existingEmbedding?.embedding;
 
   if (!existingEmbedding) {
+    const now = performance.now();
     const configuration = new Configuration({
       apiKey: openAiKey,
     });
@@ -145,6 +146,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
       input: queryText,
       model: OPENAI_EMBEDDING_MODEL,
     });
+    logger.info(`Got embedding from OpenAI in ${performance.now() - now}ms`);
     const embed = openAiResponse.data;
     const embedding = embed.data?.[0]?.embedding;
     if (!embedding) {
@@ -155,7 +157,10 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
     floatEmbedding = new Float32Array(embedding);
   }
 
-  return dbWorker.embeddingsWorker.calculateSimilarity(floatEmbedding!);
+  const now = performance.now();
+  const calculateSimilarity = await dbWorker.embeddingsWorker.calculateSimilarity(floatEmbedding!);
+  logger.info(`Calculated similarity in ${performance.now() - now}ms`);
+  return calculateSimilarity;
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -196,14 +201,14 @@ handleIpc(
     }
     if (useSemanticSearch) {
       logger.info("Using semantic search");
+      const now = performance.now();
       const messageTexts = await semanticQuery({
         openAiKey,
         queryText: searchTerm,
       });
-      logger.info(`Got ${messageTexts.length} results`);
-
+      logger.info(`Got ${messageTexts.length} results in ${performance.now() - now}ms`);
       const guids = await dbWorker.worker.getMessageGuidsFromText(messageTexts);
-
+      logger.info(`Got ${guids.length} guids from text`);
       return await dbWorker.worker.fullTextMessageSearchWithGuids(
         guids,
         searchTerm,

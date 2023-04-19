@@ -17,13 +17,11 @@ import { getMenu } from "./window/menu";
 
 import "better-sqlite3";
 import { mainAppIconDevPng } from "./constants";
-import logger, { fileLogFormat } from "./utils/logger";
+import logger, { logPath, logStream } from "./utils/logger";
 import { setupRouteHandlers } from "./utils/routes";
 import { DESKTOP_VERSION } from "./versions";
 import { autoUpdater } from "electron-updater";
 import dbWorker from "./workers/database-worker";
-import winston from "winston";
-import { logPath, logStream } from "./logs";
 
 registerContextMenu({
   showSaveImageAs: true,
@@ -42,12 +40,6 @@ let errorTries = 0;
 const MAX_ERROR_TRIES = 5;
 
 const amMainInstance = app.requestSingleInstanceLock();
-logger.add(
-  new winston.transports.Stream({
-    stream: logStream,
-    format: fileLogFormat,
-  }),
-);
 logger.info(`Starting logging to ${logPath}`);
 if (!amMainInstance) {
   logStream.write("Not the main instance - quitting");

@@ -8,10 +8,9 @@ import isDev from "electron-is-dev";
 import { format } from "url";
 import { showErrorAlert, withRetries } from "../utils/util";
 import prepareNext from "../utils/next-helper";
-import logger from "../utils/logger";
+import logger, { logStream } from "../utils/logger";
 import { windows } from "../index";
 import { addWebRequestToSession } from "../utils/routes";
-import { logStream } from "../logs";
 
 const setupNext = async () => {
   try {

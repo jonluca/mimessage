@@ -17,6 +17,7 @@ const nextConfig = {
   },
   compiler: {
     styledComponents: true,
+    emotion: true,
   },
   transpilePackages: ["@mui/material", "lodash-es"],
   modularizeImports: {
@@ -34,6 +35,7 @@ const nextConfig = {
     },
   },
   output: "export",
+  productionBrowserSourceMaps: true,
 };
 
 export default nextConfig;

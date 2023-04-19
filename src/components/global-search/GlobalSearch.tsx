@@ -224,7 +224,7 @@ const ToggleSemanticSearch = () => {
                 Loading Vectors into Memory
               </Typography>
               <Typography variant="h6" sx={{ color: "white" }}>
-                This takes ~2s per 100k messages
+                This takes ~3s per 100k messages
               </Typography>
               <CircularProgress sx={{ my: 2 }} />
             </>
@@ -268,10 +268,10 @@ const ToggleSemanticSearch = () => {
                   checked={useSemanticSearch}
                   onChange={async () => {
                     const newUseSemanticSearch = !useSemanticSearch;
-                    setUseSemanticSearch(newUseSemanticSearch);
                     if (newUseSemanticSearch) {
                       await mutateAsync();
                     }
+                    setUseSemanticSearch(newUseSemanticSearch);
                     setIsOpen(false);
                   }}
                   disabled={disabled}

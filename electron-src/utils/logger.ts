@@ -1,5 +1,11 @@
 import type { LeveledLogMethod } from "winston";
+import fs from "fs";
 import winston from "winston";
+import { threadId } from "node:worker_threads";
+import path from "path";
+import os from "os";
+import { appPath } from "../versions";
+import { createWriteStream } from "fs";
 
 const { combine, timestamp, printf, colorize, errors, json, splat } = winston.format;
 const ts = timestamp({
@@ -19,12 +25,25 @@ export const print = printf((info) => {
 const localFormat = combine(ts, colorize(), splat(), errors({ stack: true }), print);
 export const fileLogFormat = combine(ts, splat(), errors({ stack: true }), print);
 
+const isDev = process.env.NODE_ENV !== "production";
+const logDir = path.join(os.homedir(), "Library", "Logs", appPath);
+// ensure directory exists recursively
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+
+const workerPrefix = threadId ? `worker-${threadId}-` : "";
+export const logPath = path.join(logDir, `${isDev ? "dev-" : ""}${workerPrefix}run-${new Date().toISOString()}.log`);
+export const logStream = createWriteStream(logPath);
 export const logger = winston.createLogger({
   level: "debug",
   transports: [
     new winston.transports.Console({
       format: localFormat,
-      level: "debug",
+    }),
+    new winston.transports.Stream({
+      stream: logStream,
+      format: fileLogFormat,
     }),
   ],
 });
