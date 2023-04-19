@@ -8,8 +8,9 @@ import {
   useGlobalSearch,
   useGroupChatList,
   useHandleMap,
+  useLoadSemanticResultsIntoMemory,
 } from "../../hooks/dataHooks";
-import { LinearProgress } from "@mui/material";
+import { CircularProgress, LinearProgress } from "@mui/material";
 import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
 
 import { Virtuoso } from "react-virtuoso";
@@ -29,6 +30,7 @@ import { DayPicker } from "react-day-picker";
 import Popover from "@mui/material/Popover";
 import { shallow } from "zustand/shallow";
 import { SemanticSearchInfo } from "../chat/OpenAiKey";
+import Backdrop from "@mui/material/Backdrop";
 
 const GloablSearchInput = () => {
   const globalSearch = useMimessage((state) => state.globalSearch);
@@ -190,28 +192,69 @@ const GroupChatFilter = () => {
   );
 };
 
+const ToggleSemanticSearch = () => {
+  const { mutateAsync, isLoading } = useLoadSemanticResultsIntoMemory();
+  const { openAiKey, setUseSemanticSearch, useSemanticSearch } = useMimessage(
+    (state) => ({
+      useSemanticSearch: state.useSemanticSearch,
+      setUseSemanticSearch: state.setUseSemanticSearch,
+      openAiKey: state.openAiKey,
+    }),
+    shallow,
+  );
+  return (
+    <>
+      {isLoading && (
+        <Backdrop open>
+          <Box
+            onClick={(e) => e.stopPropagation()}
+            sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
+            display={"flex"}
+            flexDirection={"column"}
+          >
+            <Typography variant="h1" sx={{ color: "white" }}>
+              Loading Vectors into Memory
+            </Typography>
+            <Typography variant="h6" sx={{ color: "white" }}>
+              This takes ~2s per 100k messages
+            </Typography>
+            <CircularProgress />
+          </Box>
+        </Backdrop>
+      )}
+      <FormGroup>
+        <FormControlLabel
+          control={
+            <Checkbox
+              style={{
+                color: "white",
+              }}
+              checked={useSemanticSearch}
+              onChange={() => {
+                setUseSemanticSearch(!useSemanticSearch);
+                mutateAsync();
+              }}
+              disabled={!openAiKey}
+              title={openAiKey ? "" : "OpenAI Key Required"}
+            />
+          }
+          label="Use Semantic Search"
+        />
+      </FormGroup>
+    </>
+  );
+};
+
 const GlobalSearchFilter = () => {
   const { data: results } = useGlobalSearch();
   const count = results?.length || 0;
-  const {
-    openAiKey,
-    setUseSemanticSearch,
-    useSemanticSearch,
-    startDate,
-    setStartDate,
-    setEndDate,
-    endDate,
-    globalSearch,
-  } = useMimessage(
+  const { startDate, setStartDate, setEndDate, endDate, globalSearch } = useMimessage(
     (state) => ({
       startDate: state.startDate,
       endDate: state.endDate,
       setStartDate: state.setStartDate,
       setEndDate: state.setEndDate,
       globalSearch: state.globalSearch,
-      useSemanticSearch: state.useSemanticSearch,
-      setUseSemanticSearch: state.setUseSemanticSearch,
-      openAiKey: state.openAiKey,
     }),
     shallow,
   );
@@ -237,22 +280,7 @@ const GlobalSearchFilter = () => {
       <GroupChatFilter />
       <DateFilter selection={startDate} setSelection={setStartDate} text={"Start Date"} />
       <DateFilter selection={endDate} setSelection={setEndDate} text={"End Date"} />
-      <FormGroup>
-        <FormControlLabel
-          control={
-            <Checkbox
-              style={{
-                color: "white",
-              }}
-              checked={useSemanticSearch}
-              onChange={() => setUseSemanticSearch(!useSemanticSearch)}
-              disabled={!openAiKey}
-              title={openAiKey ? "" : "OpenAI Key Required"}
-            />
-          }
-          label="Use Semantic Search"
-        />
-      </FormGroup>
+      <ToggleSemanticSearch />
     </Box>
   );
 };

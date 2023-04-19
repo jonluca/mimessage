@@ -4,3 +4,4 @@ import { appPath } from "../versions";
 
 export const messagesDb = os.homedir() + "/Library/Messages/chat.db";
 export const appMessagesDbCopy = path.join(os.homedir(), "Library", "Application Support", appPath, "db.sqlite");
+export const embeddingsDbPath = path.join(os.homedir(), "Library", "Application Support", appPath, "embeddings.sqlite");

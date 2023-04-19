@@ -21,8 +21,10 @@ const prettierOptions: prettier.Options = {
 
 const libDir = path.join(os.homedir(), "Library");
 const dbDir = path.join(libDir, "Application Support", appPath, "db.sqlite");
+const embeddingDbDir = path.join(libDir, "Application Support", appPath, "embeddings.sqlite");
 
 const filename = "types.d.ts";
+const filenameEmbedding = "embeddings-db.d.ts";
 
 if (!(await jetpack.existsAsync(dbDir))) {
   await jetpack.copy(path.join(libDir, "/Messages/chat.db"), dbDir, { overwrite: false });
@@ -30,7 +32,7 @@ if (!(await jetpack.existsAsync(dbDir))) {
 console.log(dbDir);
 const run = async () => {
   if (!(await fs.pathExists(dbDir))) {
-    console.log("Database does not exist - make sure you run the recorder at least once before running this script.");
+    console.log("Database does not exist - make sure you run the app at least once before running this script.");
     return;
   }
   const sqliteDb = new SqliteDb(dbDir);
@@ -46,12 +48,24 @@ const run = async () => {
   console.log(out.stderr);
   const typeStr = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");
   await fs.writeFile(path.join(dir, filename), prettier.format(typeStr, prettierOptions));
+
+  try {
+    const embeddins = await execa(`DATABASE_URL="${embeddingDbDir}" yarn kysely-codegen`, { shell: true });
+    console.log(embeddins.stdout);
+    console.log(embeddins.stderr);
+    const typeStrEmbedding = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");
+    await fs.writeFile(path.join(dir, filenameEmbedding), prettier.format(typeStrEmbedding, prettierOptions));
+  } catch (e) {
+    console.log(e);
+  }
 };
 
 try {
   await run();
 } catch (e) {
+  console.log("Rebuilding binaries for arch...");
   await execa(`npm rebuild better-sqlite3 --update-binary`, { shell: true });
+  console.log("Done rebuilding binaries");
   await run();
 }
 process.exit(0);

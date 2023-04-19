@@ -1712,13 +1712,6 @@ chownr@^2.0.0:
   resolved "https://registry.npmjs.org/chownr/-/chownr-2.0.0.tgz#15bfbe53d2eab4cf70f18a8cd68ebe5b3cb1dece"
   integrity sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==
 
-chromadb@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.npmjs.org/chromadb/-/chromadb-1.4.0.tgz#2cd3c9ca3f38327743b0b1046e86680f434f6b73"
-  integrity sha512-FeIidtLSXhjqapdPmY+46QlB0rzf4ZWNwIyp8ZAkGF7su//78yozafA3ayor7bs6CK3T27C0isNVxZaoq0uQOg==
-  dependencies:
-    axios "^0.26.0"
-
 chromium-pickle-js@^0.2.0:
   version "0.2.0"
   resolved "https://registry.npmjs.org/chromium-pickle-js/-/chromium-pickle-js-0.2.0.tgz#04a106672c18b085ab774d983dfa3ea138f22205"

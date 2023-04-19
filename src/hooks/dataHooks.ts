@@ -396,7 +396,6 @@ export const useGlobalSearch = () => {
     }),
     shallow,
   );
-
   const handleMap = useContactToHandleMap();
   return useQuery<GlobalSearchResponse>(
     [
@@ -609,6 +608,12 @@ export const useRequestAccessMutation = () => {
 export const useOpenFileAtLocation = () => {
   return useMutation(["fileAtLocation"], async (path: string) => {
     await ipcRenderer.invoke("openFileAtFolder", path);
+  });
+};
+
+export const useLoadSemanticResultsIntoMemory = () => {
+  return useMutation(["loadVectorsIntoMemory"], async () => {
+    await ipcRenderer.invoke("loadVectorsIntoMemory");
   });
 };
 

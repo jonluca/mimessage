@@ -10,7 +10,7 @@ import { showErrorAlert, withRetries } from "../utils/util";
 import prepareNext from "../utils/next-helper";
 import logger from "../utils/logger";
 import { windows } from "../index";
-import { addWebRequestToSession } from "../data/routes";
+import { addWebRequestToSession } from "../utils/routes";
 
 const setupNext = async () => {
   try {

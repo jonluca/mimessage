@@ -75,7 +75,7 @@ const Initializing = () => {
         }}
       >
         <Typography variant={"h1"}>{"Setup"}</Typography>
-        <Typography variant={"body1"}>Initializing database...</Typography>
+        <Typography variant={"h4"}>Initializing database...</Typography>
         <CircularProgress />
       </Box>
     </Backdrop>
