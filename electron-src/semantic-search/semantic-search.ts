@@ -5,35 +5,16 @@ import { handleIpc } from "../ipc/ipc";
 import logger from "../utils/logger";
 import { BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
 import pMap from "p-map";
-import { uniqBy } from "lodash-es";
-
-export interface SemanticSearchMetadata {
-  id: string;
-  text: string;
-  start: number;
-  end: number;
-  [key: string]: any;
-}
 
 export interface SemanticSearchVector {
-  id: string;
+  input: string;
   values: number[];
-  metadata: SemanticSearchMetadata;
 }
 
-export interface PostContent {
-  chunks: Chunk[];
-}
-
-export interface Chunk {
-  text: string;
-  start: number;
-  end: number;
-}
 const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
 const debugLoggingEnabled = process.env.DEBUG_LOGGING === "true";
 
-export const MAX_INPUT_TOKENS = 1000;
+export const MAX_INPUT_TOKENS = 7000;
 
 export function isRateLimitExceeded(err: unknown): boolean {
   return (
@@ -50,26 +31,20 @@ export function isRateLimitExceeded(err: unknown): boolean {
 let numCompleted = 0;
 
 const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => {
-  const chunks: Chunk[] = [];
-
-  let start = 0;
-
-  const chunked = tokenizer.chunkText(content, maxInputTokens);
-
-  for (const chunk of chunked) {
-    chunks.push({
-      start,
-      end: start + chunk.text.length,
-      text: chunk.text,
-    });
-
-    start += chunk.text.length + 1;
+  if (content.length < 2000) {
+    return [content];
   }
+  const chunks: string[] = [];
 
+  const encoded = tokenizer.encode(content);
+  for (let i = 0; i < encoded.length; i += maxInputTokens) {
+    const chunk = encoded.slice(i, i + maxInputTokens);
+    chunks.push(tokenizer.decode(chunk));
+  }
   return chunks;
 };
 
-const PAGE_SIZE = 100_000;
+const PAGE_SIZE = 30_000;
 
 export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
   logger.info("Creating embeddings");
@@ -78,8 +53,6 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   const messageCount = await dbWorker.worker.countAllMessageTexts();
 
   const pages = Math.ceil(messageCount / PAGE_SIZE);
-  const existingText = await dbWorker.embeddingsWorker.getAllText();
-  const set = new Set(existingText);
 
   const configuration = new Configuration({
     apiKey: openAiKey,
@@ -88,21 +61,17 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   const openai = new OpenAIApi(configuration);
 
   const batchOpenai = new BatchOpenAi(openai);
-  const processMessage = async (message: Awaited<ReturnType<typeof dbWorker.worker.getAllMessageTexts>>[number]) => {
+  const processMessage = async (message: string) => {
     try {
-      if (!message.text) {
+      if (!message) {
         return;
       }
 
-      const chunks = splitIntoChunks(message.text);
-      const itemEmbeddings = await batchOpenai.addPendingVectors(chunks, message.guid);
-
+      const chunks = splitIntoChunks(message);
+      const itemEmbeddings = await batchOpenai.addPendingVectors(chunks);
       if (itemEmbeddings.length) {
         try {
-          logger.info(`Inserting ${itemEmbeddings.length} vectors`);
-          const embeddings = itemEmbeddings.map((l) => ({ embedding: l.values, text: l.metadata.text }));
-          await dbWorker.embeddingsWorker.insertEmbeddings(embeddings);
-          logger.info(`Inserted ${itemEmbeddings.length} vectors`);
+          await dbWorker.embeddingsWorker.insertEmbeddings(itemEmbeddings);
           numCompleted += itemEmbeddings.length;
         } catch (e) {
           logger.error(e);
@@ -117,17 +86,14 @@ export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => 
   for (let i = 0; i < pages; i++) {
     const messages = await dbWorker.worker.getAllMessageTexts(PAGE_SIZE, i * PAGE_SIZE);
     logger.info(`Got ${messages.length} messages - ${i + 1} of ${pages}`);
-
-    numCompleted = existingText.length;
-    const notParsed = messages.filter((m) => m.text && !set.has(m.text));
-
-    const uniqueMessages = uniqBy(notParsed, "text");
-
-    await pMap(uniqueMessages, processMessage, { concurrency: 100 });
-
-    if (debugLoggingEnabled) {
-      logger.info(`Completed ${numCompleted} of ${messageCount} (${Math.round((numCompleted / messageCount) * 100)}%)`);
-    }
+    const now = performance.now();
+    const existingText = await dbWorker.embeddingsWorker.getExistingText(messages);
+    logger.info(`Got existing text in ${performance.now() - now}ms`);
+    const set = new Set(existingText);
+    numCompleted += existingText.length;
+    const notParsed = messages.filter((m) => !set.has(m));
+    await pMap(notParsed, processMessage, { concurrency: 50 });
+    logger.info(`Completed ${numCompleted} of ${messageCount} (${Math.round((numCompleted / messageCount) * 100)}%)`);
   }
   logger.info("Done creating embeddings");
 };
@@ -159,7 +125,7 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
       return [];
     }
     // save embedding
-    await dbWorker.embeddingsWorker.insertEmbeddings([{ embedding, text: queryText }]);
+    await dbWorker.embeddingsWorker.insertEmbeddings([{ values: embedding, input: queryText }]);
     floatEmbedding = new Float32Array(embedding);
   }
 

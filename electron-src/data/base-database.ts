@@ -73,25 +73,27 @@ export class BaseDatabase<T> {
       const dialect = new SqliteDialect({ database: sqliteDb });
       const options: KyselyConfig = {
         dialect,
-        log(event): void {
-          const isError = event.level === "error";
+        log: !debugLoggingEnabled
+          ? ["error"]
+          : (event) => {
+              const isError = event.level === "error";
 
-          if (isError || debugLoggingEnabled) {
-            const { sql, parameters } = event.query;
+              if (isError || debugLoggingEnabled) {
+                const { sql, parameters } = event.query;
 
-            const { queryDurationMillis } = event;
-            const duration = queryDurationMillis.toFixed(2);
-            const params = (parameters as string[]) || [];
-            const formattedSql = format(sql, { params: params.map((l) => String(l)), language: "sqlite" });
-            if (event.level === "query") {
-              logger.debug(`[Query - ${duration}ms]:\n${formattedSql}\n`);
-            }
+                const { queryDurationMillis } = event;
+                const duration = queryDurationMillis.toFixed(2);
+                const params = (parameters as string[]) || [];
+                const formattedSql = format(sql, { params: params.map((l) => String(l)), language: "sqlite" });
+                if (event.level === "query") {
+                  logger.debug(`[Query - ${duration}ms]:\n${formattedSql}\n`);
+                }
 
-            if (isError) {
-              logger.error(`[SQL Error - ${duration}ms]: ${event.error}\n\n${formattedSql}\n`);
-            }
-          }
-        },
+                if (isError) {
+                  logger.error(`[SQL Error - ${duration}ms]: ${event.error}\n\n${formattedSql}\n`);
+                }
+              }
+            },
       };
 
       const db = new Kysely<T>(options);

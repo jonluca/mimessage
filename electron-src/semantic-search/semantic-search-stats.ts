@@ -2,13 +2,13 @@ import { GPT4Tokenizer } from "gpt4-tokenizer";
 
 const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
 
-export const getStatsForText = (text: { text: string | null }[]) => {
+export const getStatsForText = (text: string[]) => {
   let totalTokens = 0;
   const uniqueText = new Set<string>();
   for (const line of text) {
-    if (line.text && !uniqueText.has(line.text)) {
-      uniqueText.add(line.text);
-      const tokens = tokenizer.estimateTokenCount(line.text);
+    if (line && !uniqueText.has(line)) {
+      uniqueText.add(line);
+      const tokens = tokenizer.estimateTokenCount(line);
       totalTokens += tokens;
     }
   }

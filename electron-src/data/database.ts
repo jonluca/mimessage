@@ -301,14 +301,14 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
   };
 
   getAllMessageTexts = async (limit?: number, offset?: number) => {
-    let query = this.baseAllMessageQuery().select(["text", "guid"]);
+    let query = this.baseAllMessageQuery().select("text").distinct();
     if (limit) {
       query = query.limit(limit);
     }
     if (offset) {
       query = query.offset(offset);
     }
-    return await query.execute();
+    return (await query.execute()).map((r) => r.text!);
   };
   countAllMessageTexts = async (distinct = false): Promise<number> => {
     const query = this.baseAllMessageQuery().select((e) => {

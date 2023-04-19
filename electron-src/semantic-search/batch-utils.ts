@@ -1,33 +1,20 @@
 import logger from "../utils/logger";
 import type { OpenAIApi } from "openai";
-import type { Chunk, SemanticSearchMetadata, SemanticSearchVector } from "./semantic-search";
+import type { SemanticSearchVector } from "./semantic-search";
 import { isRateLimitExceeded } from "./semantic-search";
 import { pRateLimit } from "p-ratelimit";
 
 export class BatchOpenAi {
   private openai: OpenAIApi;
-  private batch: PendingVector[] = [];
-  private batchSize = 500; // create 500 embeddings at a time with the openai api
+  private batch: string[] = [];
+  private batchSize = 500;
 
   constructor(openai: OpenAIApi) {
     this.openai = openai;
   }
 
-  async addPendingVectors(chunks: Chunk[], id: string) {
-    const pendingVectors = chunks.map(({ text, start, end }, index) => {
-      return {
-        id: `${id}:${index}`,
-        input: text,
-        metadata: {
-          index,
-          id,
-          text,
-          end,
-          start,
-        },
-      };
-    });
-    this.batch.push(...pendingVectors);
+  async addPendingVectors(chunks: string[]) {
+    this.batch.push(...chunks);
 
     if (this.batch.length >= this.batchSize) {
       return await this.flush();
@@ -48,7 +35,6 @@ export class BatchOpenAi {
 interface PendingVector {
   id: string;
   input: string;
-  metadata: SemanticSearchMetadata;
 }
 
 export const OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002";
@@ -60,16 +46,15 @@ const rateLimit = pRateLimit({
   rate: 3500, // 3500 calls per minute
   concurrency: 60, // no more than 60 running at once
 });
-const embeddingsFromPendingVectors = async (pendingVectors: PendingVector[], openai: OpenAIApi) => {
+const embeddingsFromPendingVectors = async (pendingVectors: string[], openai: OpenAIApi) => {
   const vectors: SemanticSearchVector[] = [];
 
   let timeout = 10_000;
   while (pendingVectors.length) {
     try {
-      const input = pendingVectors.map((l) => l.input);
       const { data: embed } = await rateLimit(() =>
         openai.createEmbedding({
-          input,
+          input: pendingVectors,
           model: OPENAI_EMBEDDING_MODEL,
         }),
       );
@@ -78,9 +63,8 @@ const embeddingsFromPendingVectors = async (pendingVectors: PendingVector[], ope
         const embedding = embeddings[i].embedding;
         if (embedding) {
           const vector: SemanticSearchVector = {
-            id: pendingVectors[i].id,
-            metadata: pendingVectors[i].metadata,
             values: embedding || [],
+            input: pendingVectors[i],
           };
           vectors.push(vector);
         }

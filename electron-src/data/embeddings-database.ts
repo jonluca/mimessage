@@ -73,14 +73,19 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
     const result = await this.db.selectFrom("embeddings").select("text").execute();
     return result.map((l) => l.text!);
   };
+  getExistingText = async (text: string[]): Promise<string[]> => {
+    await this.initialize();
+    const result = await this.db.selectFrom("embeddings").select("text").where("text", "in", text).execute();
+    return result.map((l) => l.text!);
+  };
 
-  insertEmbeddings = async (embeddings: { text: string; embedding: number[] }[]) => {
+  insertEmbeddings = async (embeddings: { input: string; values: number[] }[]) => {
     await this.initialize();
     const values = embeddings.map((e) => {
-      const typedBuffer = new Float32Array(e.embedding);
+      const typedBuffer = new Float32Array(e.values);
       const buffer = Buffer.from(typedBuffer.buffer);
       return {
-        text: e.text,
+        text: e.input,
         embedding: buffer,
       };
     });
