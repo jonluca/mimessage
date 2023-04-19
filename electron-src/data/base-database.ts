@@ -23,6 +23,14 @@ export class BaseDatabase<T> {
     this.postSetup = postSetup;
   }
 
+  terminate = () => {
+    const db = this.dbWriter;
+    this.dbWriter = undefined;
+    if (db) {
+      return db.destroy();
+    }
+  };
+
   isDbInitialized = () => {
     return !!this.dbWriter;
   };

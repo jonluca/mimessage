@@ -1,4 +1,5 @@
-import { spawn, Worker } from "threads";
+import type { ModuleThread } from "threads";
+import { spawn, Thread, Worker } from "threads";
 import type { SQLDatabase } from "../data/database";
 import { handleIpc } from "../ipc/ipc";
 import db from "../data/database";
@@ -37,6 +38,14 @@ class DbWorker {
     this.embeddingsWorker = await spawn<WorkerType<EmbeddingsDatabase>>(new Worker(embeddingWorkerPath, opts));
   };
 
+  stopWorker = () => {
+    this.worker.terminate();
+    this.embeddingsWorker.terminate();
+    if (!isDev) {
+      Thread.terminate(this.worker as ModuleThread<WorkerType<SQLDatabase>>);
+      Thread.terminate(this.embeddingsWorker as ModuleThread<WorkerType<EmbeddingsDatabase>>);
+    }
+  };
   setupHandlers() {
     for (const property in db) {
       const prop = property as keyof WorkerType<SQLDatabase>;

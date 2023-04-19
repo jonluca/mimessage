@@ -26,7 +26,7 @@ const setupNext = async () => {
   } catch (e) {
     logger.error(`Failed to prepare next: ${e}`);
     showErrorAlert("Error", "Failed to prepare next");
-    app.quit();
+    app.exit(-1);
     return;
   }
 };

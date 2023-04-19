@@ -105,7 +105,6 @@ if (!amMainInstance) {
       await installExtensions();
     }
     await dbWorker.startWorker();
-
     nativeTheme.themeSource = "dark";
     dbWorker.setupHandlers();
     appReady.resolve();
@@ -139,8 +138,10 @@ if (!amMainInstance) {
       appReady.promise.then(() => showApp());
     }
   });
-
-  app.on("window-all-closed", () => {
-    app.quit();
+  app.on("will-quit", () => {
+    logStream.write("Quitting");
+    dbWorker.stopWorker();
+    logStream.end();
+    process.exit(0);
   });
 }
