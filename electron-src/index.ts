@@ -15,7 +15,6 @@ import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils
 import registerContextMenu from "electron-context-menu";
 import { getMenu } from "./window/menu";
 
-import "better-sqlite3";
 import { mainAppIconDevPng } from "./constants";
 import logger, { logPath, logStream } from "./utils/logger";
 import { setupRouteHandlers } from "./utils/routes";

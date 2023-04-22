@@ -1,16 +1,16 @@
 import type { IpcMainInvokeEvent } from "electron";
-import { dialog, ipcMain, shell } from "electron"; // deconstructing assignment
+import { dialog, ipcMain, shell } from "electron";
 import type { SQLDatabase } from "../data/database";
 import fs from "fs-extra";
 import jsonexport from "jsonexport";
 import jetpack from "fs-jetpack";
 import path from "path";
 import * as os from "os";
-import { fileTypeFromFile } from "file-type";
 import { debugLoggingEnabled } from "../constants";
 import logger from "../utils/logger";
 import { decodeMessageBuffer } from "../utils/buffer";
 import dbWorker from "../workers/database-worker";
+import { fileTypeFromFile } from "file-type";
 export const handleIpc = (event: string, handler: (...args: any[]) => unknown) => {
   ipcMain.handle(event, async (e: IpcMainInvokeEvent, ...args) => {
     if (debugLoggingEnabled) {

@@ -1,47 +1,17 @@
-type ArrayLike = Float32Array;
-
-function l2norm(arr: ArrayLike) {
-  const len = arr.length;
-  let t = 0;
-  let s = 1;
-  let r;
-  let val;
-  let abs;
-  let i;
-
-  for (i = 0; i < len; i++) {
-    val = arr[i];
-    abs = val < 0 ? -val : val;
-    if (abs > 0) {
-      if (abs > t) {
-        r = t / val;
-        s = 1 + s * r * r;
-        t = abs;
-      } else {
-        r = val / t;
-        s = s + r * r;
-      }
-    }
-  }
-  return t * Math.sqrt(s);
-}
-function dot(x: ArrayLike, y: ArrayLike) {
-  const len = x.length;
+export function euclideanSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
   let sum = 0;
-  let i;
-
-  for (i = 0; i < len; i++) {
-    sum += x[i] * y[i];
+  const length = vectorA.length;
+  for (let i = 0; i < length; i++) {
+    const diff = vectorA[i] - vectorB[i];
+    sum += diff * diff;
   }
-  return sum;
+
+  return Math.sqrt(sum);
 }
-// function cosineSimilarity(x: ArrayLike, y: ArrayLike): number {
-//   const a = dot(x, y);
-//   const b = l2norm(x);
-//   const c = l2norm(y);
-//   return a / (b * c);
-// }
-export default function cosineSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
+export function dotSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
+  return 0;
+}
+export function cosineSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
   const dimensionality = Math.min(vectorA.length, vectorB.length);
   let dotAB = 0;
   let dotA = 0;
