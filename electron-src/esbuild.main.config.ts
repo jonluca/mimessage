@@ -10,7 +10,7 @@ const config: BuildOptions = {
     path.resolve("electron-src/utils/preload.ts"),
   ],
   bundle: true,
-  external: ["electron", "next", "better-sqlite3", "electron-mac-contacts", "node-electron-permissions"],
+  external: ["electron", "next", "horajs", "better-sqlite3", "electron-mac-contacts", "node-electron-permissions"],
   minify: true,
   minifyWhitespace: true,
   minifyIdentifiers: true,

@@ -618,8 +618,8 @@ export const useOpenFileAtLocation = () => {
 };
 
 export const useLoadSemanticResultsIntoMemory = () => {
-  return useMutation(["loadVectorsIntoMemory"], async () => {
-    await ipcRenderer.invoke("loadVectorsIntoMemory");
+  return useMutation(["initializeVectorDb"], async () => {
+    await ipcRenderer.invoke("initializeVectorDb");
   });
 };
 

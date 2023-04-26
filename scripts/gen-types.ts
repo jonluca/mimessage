@@ -43,14 +43,16 @@ const run = async () => {
   }
 
   const dir = path.join(__dirname, "../_generated");
-  const out = await execa(`DATABASE_URL="${dbDir}" yarn kysely-codegen`, { shell: true });
+  const out = await execa(`DATABASE_URL="${dbDir}" yarn kysely-codegen --log-level=debug`, { shell: true });
   console.log(out.stdout);
   console.log(out.stderr);
   const typeStr = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");
   await fs.writeFile(path.join(dir, filename), prettier.format(typeStr, prettierOptions));
 
   try {
-    const embeddins = await execa(`DATABASE_URL="${embeddingDbDir}" yarn kysely-codegen`, { shell: true });
+    const embeddins = await execa(`DATABASE_URL="${embeddingDbDir}" yarn kysely-codegen --log-level=debug`, {
+      shell: true,
+    });
     console.log(embeddins.stdout);
     console.log(embeddins.stderr);
     const typeStrEmbedding = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");

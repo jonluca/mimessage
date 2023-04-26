@@ -130,10 +130,27 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
   return calculateSimilarity;
 }
 
+const updateEmbeddingDb = async () => {
+  const localDb = dbWorker.embeddingsWorker;
+  const messageDb = dbWorker.worker;
+  const messageCount = await messageDb.countAllMessageTexts();
+  const count = await localDb.countMessages();
+  if (count === messageCount) {
+    return;
+  }
+
+  // otherwise, get all message ids and slowly search through them to see what we need to parse and create
+};
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
   return await createEmbeddings({
     openAiKey,
   });
+});
+
+handleIpc("initializeVectorDb", async () => {
+  const localDb = dbWorker.embeddingsWorker;
+  await updateEmbeddingDb();
+  return await localDb.loadVectorsIntoMemory();
 });
 
 handleIpc("getEmbeddingsCompleted", async () => {

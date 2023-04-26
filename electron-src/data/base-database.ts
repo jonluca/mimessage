@@ -98,7 +98,10 @@ export class BaseDatabase<T> {
 
       const db = new Kysely<T>(options);
       if (this.postSetup) {
+        logger.debug(`Running post setup for ${this.name}`);
+        const now = performance.now();
         await this.postSetup(sqliteDb, db);
+        logger.debug(`Post setup for ${this.name} took ${performance.now() - now}ms`);
       }
       this.dbWriter = db;
       return true;

@@ -24,6 +24,7 @@
     "typecheck": "tsc -p src --noEmit && tsc --noEmit"
   },
   "dependencies": {
+    "horajs": "^1.3.0",
     "better-sqlite3": "^8.3.0",
     "electron-mac-contacts": "^1.1.0",
     "node-electron-permissions": "^1.1.0"
@@ -32,23 +33,23 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.16",
-    "@mui/material": "^5.12.1",
+    "@mui/material": "^5.12.2",
     "@next/eslint-plugin-next": "^13.3.1",
-    "@tanstack/react-query": "^4.29.3",
-    "@tanstack/react-query-devtools": "^4.29.3",
+    "@tanstack/react-query": "^4.29.5",
+    "@tanstack/react-query-devtools": "^4.29.5",
     "@types/better-sqlite3": "^7.6.4",
     "@types/eslint": "8.37.0",
     "@types/jsonexport": "^3.0.2",
     "@types/lodash-es": "^4.17.7",
-    "@types/node": "^18.15.13",
+    "@types/node": "^18.16.1",
     "@types/prettier": "^2.7.2",
-    "@types/react": "^18.0.38",
-    "@types/react-dom": "^18.0.11",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.1",
     "@types/react-highlight-words": "^0.16.4",
     "@types/react-window": "^1.8.5",
     "@types/uuid": "^9.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.59.0",
-    "@typescript-eslint/parser": "^5.59.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
     "asar-node": "^3.1.1",
     "axios": "^1.3.6",
     "bplist-universal": "^1.1.0",
@@ -77,7 +78,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^2.0.0",
     "execa": "^7.1.1",
-    "file-type": "^18.2.1",
+    "file-type": "^18.3.0",
     "fs-extra": "^11.1.1",
     "fs-jetpack": "^5.1.0",
     "fuse.js": "^6.6.2",
@@ -155,7 +156,11 @@
       "src/out/**/*"
     ],
     "extraResources": [
-      "assets/**/*"
+      "assets/**/*",
+      {
+        "from": "node_modules/horajs/pkg/horajs_bg.wasm",
+        "to": "app.asar.unpacked/horajs_bg.wasm"
+      }
     ],
     "mac": {
       "target": {

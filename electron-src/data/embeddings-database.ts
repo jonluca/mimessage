@@ -2,72 +2,76 @@ import type { DB as EmbeddingsDb } from "../../_generated/embeddings-db";
 import logger from "../utils/logger";
 import { embeddingsDbPath } from "../utils/constants";
 import BaseDatabase from "./base-database";
-import { cosineSimilarity, dotSimilarity, euclideanSimilarity } from "../semantic-search/vector-comparison";
-
+import type { BruteForceIndexUsize } from "horajs/pkg/horajs";
+import fs from "fs/promises";
+import { join, dirname } from "path";
+const isDev = process.env.NODE_ENV !== "production";
+const getVectorIdx = async () => {
+  const { getHora } = await import("horajs");
+  const horaPackage = dirname(require.resolve!("horajs"));
+  const path = isDev ? join(horaPackage, "/pkg/horajs_bg.wasm") : "horajs_bg.wasm";
+  const wasmFile = fs.readFile(path);
+  const hora = await getHora(wasmFile);
+  await hora.init_env();
+  return hora;
+};
 export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
-  embeddingsCache: { text: string; embedding: Float32Array }[] = [];
+  index: BruteForceIndexUsize | null = null;
   countEmbeddings = async (): Promise<number> => {
     await this.initialize();
     const result = await this.db
-      .selectFrom("embeddings")
-      .select((e) => e.fn.count("embeddings.text").as("count"))
+      .selectFrom("text_embeddings")
+      .select((e) => e.fn.count("text_embeddings.text").as("count"))
+      .execute();
+    return result[0].count as number;
+  };
+  countMessages = async (): Promise<number> => {
+    await this.initialize();
+    const result = await this.db
+      .selectFrom("message_id_join")
+      .select((e) => e.fn.count("ROWID").as("count"))
       .execute();
     return result[0].count as number;
   };
 
-  calculateSimilarity = async (
-    embedding: Float32Array,
-    comparisonFunction: "cosine" | "euclidean" | "dot" = "cosine",
-  ) => {
-    const allEmbeddings = await this.getAllEmbeddings();
-    const func =
-      comparisonFunction === "cosine"
-        ? cosineSimilarity
-        : comparisonFunction === "euclidean"
-        ? euclideanSimilarity
-        : dotSimilarity;
-    const similarities = allEmbeddings.map((e) => {
-      const similarity = func(embedding!, e.embedding);
-      return { similarity, text: e.text };
-    });
-    // cosine should be sorted biggest to smallest, euclidean and dot smallest to biggest
-    if (comparisonFunction === "cosine") {
-      similarities.sort((a, b) => b.similarity - a.similarity);
-    } else {
-      similarities.sort((a, b) => a.similarity - b.similarity);
-    }
-    return similarities.slice(0, 100).map((l) => l.text!);
+  calculateSimilarity = async (embedding: Float32Array): Promise<string[]> => {
+    await this.loadVectorsIntoMemory();
+
+    const indexes = this.index!.search(embedding, 100);
+
+    return [""];
   };
   loadVectorsIntoMemory = async () => {
-    if (this.embeddingsCache.length) {
+    if (this.index) {
       return;
     }
     await this.initialize();
-    const result = await this.db.selectFrom("embeddings").selectAll().execute();
 
-    this.embeddingsCache = result.map((r) => {
+    const horaPromise = getVectorIdx();
+    const resultPromise = this.db.selectFrom("text_embeddings").selectAll().execute();
+    const [hora, result] = await Promise.all([horaPromise, resultPromise]);
+    const index = hora.BruteForceIndexUsize.new(result[0].embedding?.length || 0);
+
+    for (let i = 0; i < result.length; i++) {
+      const r = result[i];
       const embedding = r.embedding!;
-      return {
-        text: r.text,
-        embedding: new Float32Array(
-          embedding.buffer,
-          embedding.byteOffset,
-          embedding.byteLength / Float32Array.BYTES_PER_ELEMENT,
-        ),
-      };
-    });
-  };
-  getAllEmbeddings = async () => {
-    await this.loadVectorsIntoMemory();
-    return this.embeddingsCache;
+      const float32Array = new Float32Array(
+        embedding.buffer,
+        embedding.byteOffset,
+        embedding.byteLength / Float32Array.BYTES_PER_ELEMENT,
+      );
+      index.add(float32Array, i);
+    }
+    index.build("cosine_similarity");
+    this.index = index;
   };
 
   embeddingsCacheSize = () => {
-    return this.embeddingsCache.length;
+    return this.index?.size() || 0;
   };
   getEmbeddingByText = async (text: string) => {
     await this.initialize();
-    const result = await this.db.selectFrom("embeddings").where("text", "=", text).selectAll().executeTakeFirst();
+    const result = await this.db.selectFrom("text_embeddings").where("text", "=", text).selectAll().executeTakeFirst();
     if (!result) {
       return null;
     }
@@ -84,12 +88,12 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
 
   getAllText = async (): Promise<string[]> => {
     await this.initialize();
-    const result = await this.db.selectFrom("embeddings").select("text").execute();
+    const result = await this.db.selectFrom("text_embeddings").select("text").execute();
     return result.map((l) => l.text!);
   };
   getExistingText = async (text: string[]): Promise<string[]> => {
     await this.initialize();
-    const result = await this.db.selectFrom("embeddings").select("text").where("text", "in", text).execute();
+    const result = await this.db.selectFrom("text_embeddings").select("text").where("text", "in", text).execute();
     return result.map((l) => l.text!);
   };
 
@@ -104,24 +108,44 @@ export class EmbeddingsDatabase extends BaseDatabase<EmbeddingsDb> {
       };
     });
     const insert = this.db
-      .insertInto("embeddings")
+      .insertInto("text_embeddings")
       .values(values)
       .onConflict((oc) => oc.column("text").doNothing());
     await insert.execute();
   };
 }
 
-const embeddingsDb = new EmbeddingsDatabase("Embeddings DB", embeddingsDbPath, async (db) => {
+const embeddingsDb = new EmbeddingsDatabase("Embeddings DB", embeddingsDbPath, async (db, ks) => {
   // create virtual table if not exists
   logger.info("Creating index table");
-  await db.exec(`
-CREATE TABLE if not exists embeddings (
-   text TEXT PRIMARY KEY NOT NULL,
+  db.exec(`
+CREATE TABLE if not exists text_embeddings (
+   ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,
+   text TEXT NOT NULL,
    embedding BLOB NOT NULL
 );
-CREATE UNIQUE INDEX if not exists idx_embeddings
-ON embeddings (text);
+
+CREATE TABLE if not exists message_id_join (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, embedding_id INTEGER REFERENCES text_embeddings (ROWID), message_id INTEGER, chat_id INTEGER, handle_id INTEGER, message_date INTEGER DEFAULT 0);
+
+CREATE UNIQUE INDEX if not exists idx_embeddings ON text_embeddings (text);
+
+CREATE INDEX handle_idx ON message_id_join(handle_id);
+CREATE INDEX chat_idx ON message_id_join(chat_id);
+CREATE INDEX date_idx ON message_id_join(message_date);
+CREATE UNIQUE INDEX message_id_idx ON message_id_join(message_id);
       `);
+
+  // this is part of the migration in case you have old versions of the db;
+  const count = db
+    .prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='embeddings';")
+    .get() as { count: number };
+  if (count["count"] === 1) {
+    db.exec(`
+    INSERT INTO text_embeddings(text, embedding) SELECT text, embedding FROM embeddings;
+    DROP TABLE embeddings;
+    `);
+  }
+
   logger.info("Creating index table done");
 });
 

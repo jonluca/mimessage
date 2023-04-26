@@ -6,17 +6,18 @@ import path from "path";
 import os from "os";
 import { appPath } from "../versions";
 import { createWriteStream } from "fs";
-
-const { combine, timestamp, printf, colorize, errors, json, splat } = winston.format;
+import { MESSAGE } from "triple-beam";
+const { combine, timestamp, printf, colorize, errors, splat } = winston.format;
 const ts = timestamp({
   format: "YYYY-MM-DD HH:mm:ss",
 });
 export const print = printf((info) => {
-  if (typeof info.message === "object") {
-    info.message = JSON.stringify(info.message);
+  let message = info.message || info[MESSAGE] || info.code;
+  if (typeof message === "object") {
+    message = JSON.stringify(message);
   }
   return (
-    `[${info.timestamp}] [${info.level}] - ${info.message}` +
+    `[${info.timestamp}] [${info.level}] - ${message}` +
     (info.splat !== undefined ? `${info.splat}` : " ") +
     (info.stack !== undefined ? `${info.stack}` : " ")
   );
@@ -50,16 +51,22 @@ export const logger = winston.createLogger({
 
 const oldError = logger.error;
 logger.error = ((...args) => {
-  if (!(args[0] instanceof Error)) {
+  const err = args[0] || {};
+  if (!(err instanceof Error)) {
     const stack = new Error().stack;
-    if (typeof args[0] === "string") {
-      args[0] = { message: args[0], stack };
+    if (typeof err === "string") {
+      args[0] = { message: err, stack };
     } else {
-      args[0].stack = stack;
+      err.stack = stack;
     }
   }
 
-  return oldError.apply(logger, args as any);
+  if (!err.message) {
+    err.message = "Unknown error";
+  }
+  args[0] = err;
+
+  return oldError(...args);
 }) as LeveledLogMethod;
 
 export default logger;
