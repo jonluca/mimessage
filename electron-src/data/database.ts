@@ -105,17 +105,17 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       .select(sql<number>`message.ROWID`.as("message_id"));
   };
 
-  getMessageGuidsFromText = async (texts: string[]) => {
+  getMessageGuidsFromRowIds = async (messageIds: number[]) => {
     const db = this.db;
-    const query = db.selectFrom("message").select(["guid", "text"]).where("text", "in", texts).limit(10000);
+    const query = db.selectFrom("message").select(["guid", "ROWID"]).where("ROWID", "in", messageIds).limit(10000);
     const results = await query.execute();
-    const indexMap = new Map<string, number>();
-    for (let i = 0; i < texts.length; i++) {
-      indexMap.set(texts[i], i);
+    const indexMap = new Map<number, number>();
+    for (let i = 0; i < messageIds.length; i++) {
+      indexMap.set(messageIds[i], i);
     }
     results.sort((a, b) => {
-      const aIndex = indexMap.get(a.text!);
-      const bIndex = indexMap.get(b.text!);
+      const aIndex = indexMap.get(a.ROWID!);
+      const bIndex = indexMap.get(b.ROWID!);
       if (aIndex === undefined || bIndex === undefined) {
         return 0;
       }
@@ -293,13 +293,31 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
   private baseAllMessageQuery = () => {
     return this.db
       .selectFrom("message")
-      .where("text", "not like", "")
+      .where("text", "is not", "")
       .where("text", "is not", null)
       .where("item_type", "not in", [1, 3, 4, 5, 6])
       .where("associated_message_type", "=", 0)
       .orderBy("ROWID", "desc");
   };
 
+  getMessageIds = async (limit?: number, offset?: number) => {
+    let query = this.baseAllMessageQuery().select("ROWID").distinct();
+    if (limit) {
+      query = query.limit(limit);
+    }
+    if (offset) {
+      query = query.offset(offset);
+    }
+    return (await query.execute()).map((r) => r.ROWID!);
+  };
+
+  getMessageInfoForEmbeddingDb = async (ids: number[]) => {
+    const query = this.baseAllMessageQuery()
+      .innerJoin("chat_message_join", "chat_message_join.message_id", "message.ROWID")
+      .select(["message.ROWID as message_id", "date", "handle_id", "chat_id", "text"])
+      .where("message_id", "in", ids);
+    return await query.execute();
+  };
   getAllMessageTexts = async (limit?: number, offset?: number) => {
     let query = this.baseAllMessageQuery().select("text").distinct();
     if (limit) {
@@ -310,9 +328,12 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     }
     return (await query.execute()).map((r) => r.text!);
   };
-  countAllMessageTexts = async (): Promise<number> => {
+  countAllMessageTexts = async (distinctText = true): Promise<number> => {
     const query = this.baseAllMessageQuery().select((e) => {
-      return e.fn.count("text").distinct().as("count");
+      if (distinctText) {
+        return e.fn.count("text").distinct().as("count");
+      }
+      return e.fn.count("ROWID").as("count");
     });
     const results = await query.executeTakeFirst();
     if (!results) {

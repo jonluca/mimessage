@@ -98,7 +98,7 @@ interface SemanticQueryOpts {
   queryText: string;
 }
 
-export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts) {
+export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts): Promise<number[]> {
   const existingEmbedding = await dbWorker.embeddingsWorker.getEmbeddingByText(queryText);
   let floatEmbedding = existingEmbedding?.embedding;
 
@@ -133,12 +133,24 @@ export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts)
 const updateEmbeddingDb = async () => {
   const localDb = dbWorker.embeddingsWorker;
   const messageDb = dbWorker.worker;
-  const messageCount = await messageDb.countAllMessageTexts();
+  const messageCount = await messageDb.countAllMessageTexts(false);
   const count = await localDb.countMessages();
   if (count === messageCount) {
     return;
   }
 
+  const pages = Math.ceil(messageCount / PAGE_SIZE);
+
+  for (let i = 0; i < pages; i++) {
+    const ids = await dbWorker.worker.getMessageIds(PAGE_SIZE, i * PAGE_SIZE);
+    logger.info(`Got ${ids.length} messages - ${i + 1} of ${pages}`);
+    const missingIds = await dbWorker.embeddingsWorker.getMissingMessageIds(ids);
+    if (!missingIds.length) {
+      continue;
+    }
+    const messageInfo = await messageDb.getMessageInfoForEmbeddingDb(missingIds);
+    await dbWorker.embeddingsWorker.addMessageMetadata(messageInfo);
+  }
   // otherwise, get all message ids and slowly search through them to see what we need to parse and create
 };
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
@@ -191,12 +203,12 @@ handleIpc(
     if (useSemanticSearch) {
       logger.info("Using semantic search");
       const now = performance.now();
-      const messageTexts = await semanticQuery({
+      const messageIds = await semanticQuery({
         openAiKey,
         queryText: searchTerm,
       });
-      logger.info(`Got ${messageTexts.length} results in ${performance.now() - now}ms`);
-      const guids = await dbWorker.worker.getMessageGuidsFromText(messageTexts);
+      logger.info(`Got ${messageIds.length} results in ${performance.now() - now}ms`);
+      const guids = await dbWorker.worker.getMessageGuidsFromRowIds(messageIds);
       logger.info(`Got ${guids.length} guids from text`);
       return await dbWorker.worker.fullTextMessageSearchWithGuids(
         guids,

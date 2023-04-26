@@ -1,6 +1,7 @@
 import type { BuildOptions } from "esbuild";
 import * as path from "path";
 
+const isProduction = process.env.NODE_ENV === "production";
 const config: BuildOptions = {
   platform: "node",
   entryPoints: [
@@ -11,11 +12,12 @@ const config: BuildOptions = {
   ],
   bundle: true,
   external: ["electron", "next", "horajs", "better-sqlite3", "electron-mac-contacts", "node-electron-permissions"],
-  minify: true,
-  minifyWhitespace: true,
-  minifyIdentifiers: true,
-  minifySyntax: true,
-  treeShaking: true,
+  minify: isProduction,
+  minifyWhitespace: isProduction,
+  minifyIdentifiers: isProduction,
+  minifySyntax: isProduction,
+  keepNames: !isProduction,
+  treeShaking: isProduction,
   target: "node19.9.0",
 };
 
