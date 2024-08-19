@@ -1,6 +1,8 @@
 # MiMessage
 
-MiMessage is a free, open source, privacy preserving UI to help search, export and visualize your iMessage conversations. It helps export conversations, search conversations, and visualize stats about your conversations.
+MiMessage is a free and privacy preserving UI to help search, export and visualize your iMessage conversations. It helps export conversations, search conversations, and visualize stats about your conversations.
+
+![App screenshot](readme-assets/img.png?raw=true "Mimessage App")
 
 ## Installation
 
@@ -20,8 +22,6 @@ This alternative UI provides several advanced features, including:
 - **AI Conversation**: Have a conversation with anyone you've talked to before, in their voice
 
 Please note that this application is for viewing and managing iMessage conversations only. It does **NOT** allow you to send messages.
-
-![App screenshot](readme-assets/img.png?raw=true "Mimessage App")
 
 ### Wrapped
 
