@@ -93,7 +93,7 @@ export const AttachmentView = ({ message, recalcSize }: { recalcSize?: () => voi
   const renderText = () => {
     if (message.text) {
       try {
-        new URL(filename);
+        new URL(message.text);
         return null;
       } catch {
         // skip

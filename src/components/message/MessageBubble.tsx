@@ -87,7 +87,10 @@ export const MessageBubble = ({
 
   const isIMessage = message.service === "iMessage";
   const isAnnouncement = message.item_type !== 0;
-  const isMedia = message.attachment_id !== null && (message.filename || message.mime_type);
+  const attachments = [message, ...(message.attachmentMessages || [])];
+  const isMedia = attachments.some(
+    (attachment) => attachment.attachment_id !== null && (attachment.filename || attachment.mime_type),
+  );
   if (isAnnouncement) {
     return <AnnouncementBubble message={message} />;
   }
@@ -139,7 +142,13 @@ export const MessageBubble = ({
           >
             {isMedia ? (
               <Box sx={{ overflow: "hidden", maxWidth: 500 }}>
-                <AttachmentView recalcSize={recalcSize} message={message} />
+                {attachments.map((attachment, index) => (
+                  <AttachmentView
+                    key={attachment.attachment_id ?? `${attachment.guid}-message`}
+                    recalcSize={recalcSize}
+                    message={index === 0 ? attachment : { ...attachment, text: null }}
+                  />
+                ))}
               </Box>
             ) : (
               <MessageBubbleText text={message.text} />

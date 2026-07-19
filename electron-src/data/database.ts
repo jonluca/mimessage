@@ -133,13 +133,15 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
   ) => {
     const db = this.db;
     const cleanedQuery = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
-    const textMatch = await db
-      .selectFrom("message_fts")
-      .select(["message_id"])
-      .where("text", "match", cleanedQuery)
-      .orderBy(sql`rank`, "asc")
-      .limit(1000)
-      .execute();
+    const textMatch = cleanedQuery.trim()
+      ? await db
+          .selectFrom("message_fts")
+          .select(["message_id"])
+          .where("text", "match", cleanedQuery)
+          .orderBy(sql`rank`, "asc")
+          .limit(1000)
+          .execute()
+      : [];
     const messageGuids = textMatch.map((m) => m.message_id as string);
     const query = this.getFilteredSearchQuery({ chatIds, handleIds, startDate, endDate })
       .where(({ or, cmpr }) => {
@@ -189,7 +191,9 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     }
 
     if (endDate) {
-      const offset = (endDate.getTime() - 978307200000) * 1000000;
+      const endDateExclusive = new Date(endDate);
+      endDateExclusive.setDate(endDateExclusive.getDate() + 1);
+      const offset = (endDateExclusive.getTime() - 978307200000) * 1000000;
       query = query.where("date", "<", offset);
     }
 
@@ -473,7 +477,7 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
           ),
         )
         // @ts-ignore
-        .where(({ or, cmpr }) => or([cmpr("hour", ">", 22), cmpr("hour", "<", 5)]))
+        .where("hour", "<", 5)
         .where("is_from_me", "=", Number(fromMe))
         .groupBy("chat_id")
         .orderBy("message_count", "desc");

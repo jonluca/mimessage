@@ -168,10 +168,13 @@ handleIpc(
     openAiKey?: string,
     useSemanticSearch?: boolean,
   ) => {
-    if (!openAiKey || !searchTerm) {
+    if (!searchTerm) {
       return [];
     }
     if (useSemanticSearch) {
+      if (!openAiKey) {
+        return [];
+      }
       logger.info("Using semantic search");
       const now = performance.now();
       const messageTexts = await semanticQuery({

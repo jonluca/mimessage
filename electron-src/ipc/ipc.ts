@@ -68,6 +68,7 @@ handleIpc(
       return;
     }
     const messages = await dbWorker.worker.getMessagesForChatId(chat.chat_id!);
+    const getAttachments = (message: (typeof messages)[number]) => [message, ...(message.attachmentMessages || [])];
 
     type HandleType = (typeof handles)[number];
     const handleMap: Record<number, HandleType> = {};
@@ -145,7 +146,7 @@ handleIpc(
       const rootDir = path.dirname(filePath);
       const filename = path.basename(filePath).split(".").slice(0, -1).join(".");
       const attachmentsDir = await jetpack.dirAsync(path.join(rootDir, `${filename}-attachments`));
-      for (const message of messages) {
+      for (const message of messages.flatMap(getAttachments)) {
         const attachmentFilePath = message.filename;
         if (attachmentFilePath) {
           const cleanedPath = attachmentFilePath.replace("~", os.homedir());
