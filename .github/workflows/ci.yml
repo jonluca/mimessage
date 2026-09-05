@@ -171,7 +171,9 @@ jobs:
           });
           NODE
 
-          openssl pkcs12 \
+          # Older Keychain exports use RC2-40-CBC, which OpenSSL 3 loads only
+          # through its legacy provider. Password and certificate checks remain enabled.
+          openssl pkcs12 -legacy \
             -in "$certificate_archive" \
             -passin env:CSC_KEY_PASSWORD \
             -clcerts \
@@ -179,7 +181,7 @@ jobs:
             -out "$certificate_pem"
           test "$(grep -c 'BEGIN CERTIFICATE' "$certificate_pem")" -eq 1
 
-          openssl pkcs12 \
+          openssl pkcs12 -legacy \
             -in "$certificate_archive" \
             -passin env:CSC_KEY_PASSWORD \
             -nocerts \
