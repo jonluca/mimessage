@@ -276,13 +276,14 @@ jobs:
               test -f "$app/$module"
               assert_exact_arch "$app/$module" "$expected_arch"
               codesign --verify --strict --verbose=2 "$app/$module"
-              codesign -dvv "$app/$module" 2>&1 | grep -q "TeamIdentifier=F35YQQ5672"
+              signature="$(codesign -dvv "$app/$module" 2>&1)"
+              grep -q "TeamIdentifier=F35YQQ5672" <<<"$signature"
             done
 
             test "$(xcrun vtool -show-build "$app/Contents/Resources/native/mimessage_liquid_glass.node" | awk '$1 == "minos" { print $2 }')" = "13.0"
 
             strings "$app/Contents/Resources/app.asar.unpacked/node_modules/electron-mac-contacts/build/Release/contacts.node" |
-              grep -Fxq "Limited"
+              grep -Fx "Limited" >/dev/null
           }
 
           verify_app "dist/mac/Mimessage.app" "x86_64"
