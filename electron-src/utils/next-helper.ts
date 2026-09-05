@@ -1,6 +1,6 @@
 import type { Server } from "http";
-import path, { isAbsolute, join } from "path";
-import { app, protocol } from "electron";
+import path, { isAbsolute } from "path";
+import { app } from "electron";
 import isDev from "electron-is-dev";
 import * as fs from "fs";
 
@@ -32,35 +32,6 @@ const devServer = async (dir: string, port: number) => {
   });
 };
 
-const adjustRenderer = (directory: string) => {
-  const paths = ["/_next", "/static"];
-
-  protocol.interceptFileProtocol("file", (request, callback) => {
-    let path = request.url.substring(7);
-
-    for (const prefix of paths) {
-      let newPath = path;
-
-      // On windows the request looks like: file:///C:/static/bar
-      // On other systems it's file:///static/bar
-      if (!newPath.startsWith(prefix)) {
-        continue;
-      }
-
-      // Strip volume name from path on Windows
-      newPath = join(directory, "out", newPath);
-      path = newPath;
-    }
-
-    // Electron doesn't like anything in the path to be encoded,
-    // so we need to undo that. This specifically allows for
-    // Electron apps with spaces in their app names.
-    path = decodeURIComponent(path);
-
-    callback({ path });
-  });
-};
-
 export default async (directories: string | { production: string; development: string }, port = 8000) => {
   if (!directories) {
     throw new Error("Renderer location not defined");
@@ -71,6 +42,10 @@ export default async (directories: string | { production: string; development: s
       production: directories,
       development: directories,
     };
+  }
+
+  if (!isDev) {
+    return;
   }
 
   for (const directory in directories) {
@@ -89,18 +64,13 @@ export default async (directories: string | { production: string; development: s
         try {
           await fs.promises.access(absDir, fs.constants.F_OK);
           break;
-        } catch (err: any) {
+        } catch {
           absDir = path.join(absDir, "..", definedDirectory);
           dirUp++;
         }
       }
       directories[dir] = absDir;
     }
-  }
-
-  if (!isDev) {
-    adjustRenderer(directories.production);
-    return;
   }
 
   await devServer(directories.development, port);

@@ -1,7 +1,6 @@
 import type { WriteStream } from "fs";
 import { app, dialog } from "electron";
-import { windows } from "../index";
-import { createMainWindow } from "../window/main-window";
+import { createMainWindow, getMainWindow } from "../window/main-window";
 import { installExtension, REACT_DEVELOPER_TOOLS } from "electron-extension-installer";
 import logger from "./logger";
 
@@ -32,13 +31,20 @@ export function showErrorAlert(title: string, body: string, logStream?: WriteStr
   logger.warn(`${title}: ${body}`);
   dialog.showErrorBox(title, body);
 }
-export const showApp = () => {
-  app.dock.show();
-  if (windows.length > 0) {
-    windows[0].show();
-  } else {
-    createMainWindow();
+export const showApp = async () => {
+  if (process.platform === "darwin") {
+    await app.dock?.show();
   }
+  const existingWindow = getMainWindow();
+  if (!existingWindow) {
+    await createMainWindow();
+    return;
+  }
+  if (existingWindow.isMinimized()) {
+    existingWindow.restore();
+  }
+  existingWindow.show();
+  existingWindow.focus();
 };
 
 export const withRetries = async (fn: () => Promise<void>, MAX_ERROR_TRIES = 5) => {

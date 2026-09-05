@@ -1,162 +1,232 @@
-import { GPT4Tokenizer } from "gpt4-tokenizer";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import dbWorker from "../workers/database-worker";
 import { handleIpc } from "../ipc/ipc";
 import logger from "../utils/logger";
 import { BatchOpenAi, OPENAI_EMBEDDING_MODEL } from "./batch-utils";
-import pMap from "p-map";
+import { getEmbeddingInputs } from "./embedding-inputs";
+import { getSemanticTokenizer } from "./tokenizer";
 
-export interface SemanticSearchVector {
-  input: string;
-  values: number[];
+export { MAX_INPUT_TOKENS } from "./embedding-inputs";
+const PAGE_SIZE = 5_000;
+const MAX_SEMANTIC_GUIDS = 10_000;
+
+export interface EmbeddingsCreationProgress {
+  completedRecords: number;
+  status: "idle" | "running" | "complete" | "error";
+  totalRecords: number;
 }
 
-const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
-const debugLoggingEnabled = process.env.DEBUG_LOGGING === "true";
+let embeddingsProgress: EmbeddingsCreationProgress = {
+  completedRecords: 0,
+  status: "idle",
+  totalRecords: 0,
+};
+let embeddingsJob: Promise<void> | null = null;
 
-export const MAX_INPUT_TOKENS = 7000;
-
-export function isRateLimitExceeded(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "response" in err &&
-    typeof err["response"] === "object" &&
-    err["response"] !== null &&
-    "status" in err.response &&
-    err.response.status === 429
-  );
+class SemanticSnapshotChangedError extends Error {
+  constructor() {
+    super("The Messages database changed while semantic embeddings were being created; please retry");
+  }
 }
 
-let numCompleted = 0;
-
-const splitIntoChunks = (content: string, maxInputTokens = MAX_INPUT_TOKENS) => {
-  if (content.length < 2000) {
-    return [content];
+const assertTextIndexSnapshot = async (expectedSnapshotId: string) => {
+  const currentSnapshotId = await dbWorker.worker.getTextIndexSnapshotId();
+  if (currentSnapshotId !== expectedSnapshotId) {
+    throw new SemanticSnapshotChangedError();
   }
-  const chunks: string[] = [];
-
-  const encoded = tokenizer.encode(content);
-  for (let i = 0; i < encoded.length; i += maxInputTokens) {
-    const chunk = encoded.slice(i, i + maxInputTokens);
-    chunks.push(tokenizer.decode(chunk));
-  }
-  return chunks;
 };
 
-const PAGE_SIZE = 30_000;
-
 export const createEmbeddings = async ({ openAiKey }: { openAiKey: string }) => {
+  if (embeddingsJob) {
+    return embeddingsJob;
+  }
+  const key = openAiKey.trim();
+  if (!key) {
+    throw new Error("An OpenAI API key is required to create semantic-search embeddings");
+  }
+  embeddingsJob = createEmbeddingsInternal(key)
+    .catch((error) => {
+      embeddingsProgress = { ...embeddingsProgress, status: "error" };
+      throw error;
+    })
+    .finally(() => {
+      embeddingsJob = null;
+    });
+  return embeddingsJob;
+};
+
+const createEmbeddingsInternal = async (openAiKey: string) => {
   logger.info("Creating embeddings");
-  numCompleted = 0;
   await dbWorker.embeddingsWorker.initialize();
-  const messageCount = await dbWorker.worker.countAllMessageTexts();
+  const [snapshotId, messageCount] = await Promise.all([
+    dbWorker.worker.getTextIndexSnapshotId(),
+    dbWorker.worker.countAllMessageTextRecords(),
+  ]);
+  await assertTextIndexSnapshot(snapshotId);
 
-  const pages = Math.ceil(messageCount / PAGE_SIZE);
+  const [completedAlready, indexIsCurrent] = await Promise.all([
+    dbWorker.embeddingsWorker.countCompletedMessages(snapshotId, OPENAI_EMBEDDING_MODEL),
+    dbWorker.embeddingsWorker.isSemanticIndexCurrent(snapshotId, OPENAI_EMBEDDING_MODEL),
+  ]);
+  if (indexIsCurrent && completedAlready === messageCount) {
+    embeddingsProgress = {
+      completedRecords: messageCount,
+      status: "complete",
+      totalRecords: messageCount,
+    };
+    return;
+  }
 
-  const configuration = new Configuration({
-    apiKey: openAiKey,
-  });
-
-  const openai = new OpenAIApi(configuration);
-
-  const batchOpenai = new BatchOpenAi(openai);
-  const processMessage = async (message: string) => {
-    try {
-      if (!message) {
-        return;
-      }
-
-      const chunks = splitIntoChunks(message);
-      const itemEmbeddings = await batchOpenai.addPendingVectors(chunks);
-      numCompleted += itemEmbeddings;
-    } catch (e) {
-      logger.error(e);
-    }
-    return [];
+  embeddingsProgress = {
+    completedRecords: 0,
+    status: "running",
+    totalRecords: messageCount,
   };
 
-  for (let i = 0; i < pages; i++) {
-    const messages = await dbWorker.worker.getAllMessageTexts(PAGE_SIZE, i * PAGE_SIZE);
-    logger.info(`Got ${messages.length} messages - ${i + 1} of ${pages}`);
-    const now = performance.now();
-    const existingText = await dbWorker.embeddingsWorker.getExistingText(messages);
-    logger.info(`Got existing text in ${performance.now() - now}ms`);
-    const set = new Set(existingText);
-    numCompleted += existingText.length;
-    const notParsed = messages.filter((m) => !set.has(m));
-    await pMap(notParsed, processMessage, { concurrency: 100 });
-    logger.info(`Completed ${numCompleted} of ${messageCount} (${Math.round((numCompleted / messageCount) * 100)}%)`);
+  const openai = new OpenAI({ apiKey: openAiKey });
+  const batchOpenai = new BatchOpenAi(openai);
+  const generationId = await dbWorker.embeddingsWorker.beginSourceGeneration(snapshotId, OPENAI_EMBEDDING_MODEL);
+
+  try {
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      await assertTextIndexSnapshot(snapshotId);
+      const records = await dbWorker.worker.getAllMessageTextRecords(PAGE_SIZE, offset);
+      await assertTextIndexSnapshot(snapshotId);
+      if (!records.length) {
+        break;
+      }
+
+      const chunks = getEmbeddingInputs(records, await getSemanticTokenizer());
+      await dbWorker.embeddingsWorker.insertEmbeddingSources(
+        generationId,
+        OPENAI_EMBEDDING_MODEL,
+        chunks.map((chunk) => ({
+          chunkIndex: chunk.chunkIndex,
+          messageGuid: chunk.messageGuid,
+          messageText: chunk.messageText,
+          text: chunk.input,
+        })),
+      );
+
+      const uniqueChunks = [...new Map(chunks.map((chunk) => [chunk.input, chunk])).values()];
+      const lookupStartedAt = performance.now();
+      const existingText = await dbWorker.embeddingsWorker.getExistingText(
+        uniqueChunks.map((chunk) => chunk.input),
+        OPENAI_EMBEDDING_MODEL,
+      );
+      logger.info(`Got existing text in ${performance.now() - lookupStartedAt}ms`);
+      const existing = new Set(existingText);
+      await batchOpenai.addPendingVectors(uniqueChunks.filter((chunk) => !existing.has(chunk.input)));
+      // Flush each source page before advancing record-based progress. Staged
+      // mappings stay invisible until final promotion, but reported progress is
+      // always backed by durable vectors.
+      await batchOpenai.flush();
+      await assertTextIndexSnapshot(snapshotId);
+
+      embeddingsProgress = {
+        completedRecords: Math.min(embeddingsProgress.completedRecords + records.length, messageCount),
+        status: "running",
+        totalRecords: messageCount,
+      };
+      logger.info(
+        `Completed ${embeddingsProgress.completedRecords} of ${messageCount} (${Math.round(
+          (embeddingsProgress.completedRecords / Math.max(messageCount, 1)) * 100,
+        )}%)`,
+      );
+    }
+
+    await batchOpenai.flush();
+    await assertTextIndexSnapshot(snapshotId);
+    await dbWorker.embeddingsWorker.promoteSourceGeneration(
+      generationId,
+      snapshotId,
+      OPENAI_EMBEDDING_MODEL,
+      messageCount,
+    );
+    await assertTextIndexSnapshot(snapshotId);
+    embeddingsProgress = {
+      completedRecords: messageCount,
+      status: "complete",
+      totalRecords: messageCount,
+    };
+    logger.info("Done creating embeddings");
+  } catch (error) {
+    try {
+      await dbWorker.embeddingsWorker.discardSourceGeneration(generationId);
+    } catch (discardError) {
+      logger.error("Failed to discard an incomplete semantic-search generation");
+      logger.error(discardError);
+    }
+    throw error;
   }
-  const flushRemainingCount = await batchOpenai.flush();
-  numCompleted += flushRemainingCount;
-  logger.info("Done creating embeddings");
 };
 
 interface SemanticQueryOpts {
+  allowedTexts?: string[];
   openAiKey: string;
   queryText: string;
+  snapshotId: string;
 }
 
-export async function semanticQuery({ queryText, openAiKey }: SemanticQueryOpts) {
-  const existingEmbedding = await dbWorker.embeddingsWorker.getEmbeddingByText(queryText);
-  let floatEmbedding = existingEmbedding?.embedding;
+export async function semanticQuery({ queryText, openAiKey, snapshotId, allowedTexts }: SemanticQueryOpts) {
+  const cachedQuery = await dbWorker.embeddingsWorker.getQueryEmbedding(queryText, OPENAI_EMBEDDING_MODEL);
+  const existingCorpusEmbedding = cachedQuery
+    ? null
+    : await dbWorker.embeddingsWorker.getEmbeddingByText(queryText, OPENAI_EMBEDDING_MODEL, snapshotId);
+  let floatEmbedding = cachedQuery?.embedding || existingCorpusEmbedding?.embedding;
 
-  if (!existingEmbedding) {
-    const now = performance.now();
-    const configuration = new Configuration({
-      apiKey: openAiKey,
-    });
-    // first look up embedding in db in case we've already done it
-    const openai = new OpenAIApi(configuration);
-    const openAiResponse = await openai.createEmbedding({
+  if (!floatEmbedding) {
+    const startedAt = performance.now();
+    const openai = new OpenAI({ apiKey: openAiKey });
+    const openAiResponse = await openai.embeddings.create({
       input: queryText,
       model: OPENAI_EMBEDDING_MODEL,
     });
-    logger.info(`Got embedding from OpenAI in ${performance.now() - now}ms`);
-    const embed = openAiResponse.data;
-    const embedding = embed.data?.[0]?.embedding;
+    logger.info(`Got embedding from OpenAI in ${performance.now() - startedAt}ms`);
+    const embedding = openAiResponse.data[0]?.embedding;
     if (!embedding) {
       return [];
     }
-    // save embedding
-    await dbWorker.embeddingsWorker.insertEmbeddings([{ values: embedding, input: queryText }]);
+    await dbWorker.embeddingsWorker.putQueryEmbedding(queryText, OPENAI_EMBEDDING_MODEL, embedding);
     floatEmbedding = new Float32Array(embedding);
   }
 
-  const now = performance.now();
-  const calculateSimilarity = await dbWorker.embeddingsWorker.calculateSimilarity(floatEmbedding!);
-  logger.info(`Calculated similarity in ${performance.now() - now}ms`);
-  return calculateSimilarity;
+  const startedAt = performance.now();
+  const results = await dbWorker.embeddingsWorker.calculateSimilarity(floatEmbedding, "cosine", {
+    allowedTexts,
+    model: OPENAI_EMBEDDING_MODEL,
+    snapshotId,
+  });
+  logger.info(`Calculated similarity in ${performance.now() - startedAt}ms`);
+  return results;
 }
 
 handleIpc("createEmbeddings", async ({ openAiKey: openAiKey }) => {
-  return await createEmbeddings({
-    openAiKey,
-  });
+  return await createEmbeddings({ openAiKey });
 });
 
 handleIpc("getEmbeddingsCompleted", async () => {
-  return numCompleted;
+  return { ...embeddingsProgress };
 });
 
 handleIpc("calculateSemanticSearchStatsEnhanced", async () => {
   const stats = await dbWorker.worker.calculateSemanticSearchStats();
   const localDb = dbWorker.embeddingsWorker;
   try {
+    const snapshotId = await dbWorker.worker.getTextIndexSnapshotId();
     await localDb.initialize();
-    const count = await localDb.countEmbeddings();
+    const count = await localDb.countCompletedMessages(snapshotId, OPENAI_EMBEDDING_MODEL);
     return { ...stats, completedAlready: count };
-  } catch (e) {
-    logger.error(e);
+  } catch (error) {
+    logger.error(error);
     return stats;
   }
 });
 
 handleIpc("messageCount", async () => {
-  const stats = await dbWorker.worker.countAllMessageTexts();
-  return stats;
+  return await dbWorker.worker.countAllMessageTextRecords();
 });
+
 handleIpc(
   "globalSearch",
   async (
@@ -171,29 +241,50 @@ handleIpc(
     if (!searchTerm) {
       return [];
     }
-    if (useSemanticSearch) {
-      if (!openAiKey) {
-        return [];
-      }
-      logger.info("Using semantic search");
-      const now = performance.now();
-      const messageTexts = await semanticQuery({
-        openAiKey,
-        queryText: searchTerm,
-      });
-      logger.info(`Got ${messageTexts.length} results in ${performance.now() - now}ms`);
-      const guids = await dbWorker.worker.getMessageGuidsFromText(messageTexts);
-      logger.info(`Got ${guids.length} guids from text`);
-      return await dbWorker.worker.fullTextMessageSearchWithGuids(
-        guids,
-        searchTerm,
-        chatIds,
-        handleIds,
-        startDate,
-        endDate,
-      );
-    } else {
+    if (!useSemanticSearch) {
       return await dbWorker.worker.globalSearchTextBased(searchTerm, chatIds, handleIds, startDate, endDate);
     }
+    if (!openAiKey) {
+      return [];
+    }
+
+    logger.info("Using semantic search");
+    const snapshotId = await dbWorker.worker.getTextIndexSnapshotId();
+    const hasFilters = Boolean(chatIds?.length || handleIds?.length || startDate || endDate);
+    const allowedScope = hasFilters
+      ? await dbWorker.worker.getMessageTextScopeForFilters(chatIds, handleIds, startDate, endDate)
+      : undefined;
+    await assertTextIndexSnapshot(snapshotId);
+    if (!(await dbWorker.embeddingsWorker.isSemanticIndexCurrent(snapshotId, OPENAI_EMBEDDING_MODEL))) {
+      logger.info("Semantic index is not current for this Messages snapshot");
+      return [];
+    }
+
+    const startedAt = performance.now();
+    const messageTexts = await semanticQuery({
+      allowedTexts: allowedScope?.texts,
+      openAiKey,
+      queryText: searchTerm,
+      snapshotId,
+    });
+    await assertTextIndexSnapshot(snapshotId);
+    logger.info(`Got ${messageTexts.length} results in ${performance.now() - startedAt}ms`);
+
+    const guids = await dbWorker.embeddingsWorker.getMessageGuidsForText(
+      messageTexts,
+      snapshotId,
+      MAX_SEMANTIC_GUIDS,
+      allowedScope?.messageGuids,
+    );
+    await assertTextIndexSnapshot(snapshotId);
+    logger.info(`Got ${guids.length} guids from text`);
+    return await dbWorker.worker.fullTextMessageSearchWithGuids(
+      guids,
+      searchTerm,
+      chatIds,
+      handleIds,
+      startDate,
+      endDate,
+    );
   },
 );

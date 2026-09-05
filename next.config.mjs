@@ -1,41 +1,16 @@
-/** @type {import('next').NextConfig} */
-const env = {};
-const disallowedPrefixes = ["NODE_", "__", "NEXT"];
-for (const [key, value] of Object.entries(process.env)) {
-  if (!disallowedPrefixes.some((k) => key.startsWith(k))) {
-    env[key] = value;
-  }
-}
-
 /**
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
-  env,
-  experimental: {
-    legacyBrowsers: false,
+  // Next replaces values in `env` directly in renderer bundles. Keep this an
+  // explicit allowlist so credentials from the build machine can never ship
+  // inside the desktop app.
+  env: {
+    APP_ENV: process.env.APP_ENV ?? "local",
   },
-  compiler: {
-    styledComponents: true,
-    emotion: true,
-  },
-  transpilePackages: ["@mui/material", "lodash-es"],
-  modularizeImports: {
-    lodash: {
-      transform: "lodash/{{member}}",
-      preventFullImport: true,
-    },
-    "@mui/material": {
-      transform: "@mui/material/{{member}}",
-      preventFullImport: true,
-    },
-    "@mui/icons-material": {
-      transform: "@mui/icons-material/{{member}}",
-      preventFullImport: true,
-    },
-  },
+  transpilePackages: ["lodash-es"],
   output: "export",
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
 };
 
 export default nextConfig;

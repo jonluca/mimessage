@@ -2,12 +2,15 @@ import { create } from "zustand";
 import type { Chat, ChatList } from "./interfaces";
 import { useChatById } from "./hooks/dataHooks";
 import type { Message } from "./interfaces";
-import type { ChatCompletionRequestMessage } from "openai/api";
 import type { Contact } from "electron-mac-contacts";
 
-export interface AiMessage extends ChatCompletionRequestMessage {
+export interface AiMessage {
+  content: string;
   date: Date;
   errored?: true;
+  pending?: boolean;
+  requestId?: string;
+  role: "assistant" | "user";
 }
 
 type ExtendedConversations = Record<number, AiMessage[]>;
@@ -18,15 +21,22 @@ export interface AppContext {
   // general state
   chatId: number | null;
   setChatId: (updated: number | null) => void;
+  isComposingNewMessage: boolean;
+  setIsComposingNewMessage: (updated: boolean) => void;
   highlightedMessage: Message | null;
   setHighlightedMessage: (updated: Message | null) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (updated: boolean) => void;
   // open ai
   relation: string;
   setRelation: (updated: string) => void;
+  aiPersonaInstructions: string;
+  setAiPersonaInstructions: (updated: string) => void;
   openAiKey: string | null;
+  openAiKeyRevision: number;
   setOpenAiKey: (key: string | null) => void;
   extendedConversations: ExtendedConversations;
-  setExtendedConversations: (updated: ExtendedConversations) => void;
+  updateConversation: (chatId: number, updater: (current: AiMessage[]) => AiMessage[]) => void;
   // wrapped
   isInWrapped: boolean;
   setIsInWrapped: (entry: boolean) => void;
@@ -37,6 +47,8 @@ export interface AppContext {
   setGlobalSearch: (updated: string | null) => void;
   messageIdToBringToFocus: number | null;
   setMessageIdToBringToFocus: (updated: number | null) => void;
+  selectedSearchMessageId: number | null;
+  setSelectedSearchMessageId: (updated: number | null) => void;
   startDate: MaybeDate;
   setStartDate: (updated: MaybeDate) => void;
   endDate: MaybeDate;
@@ -57,7 +69,13 @@ export interface AppContext {
   setSearch: (updated: string | null) => void;
 }
 export const openAiLocalStorageKey = "openai-key";
+export const semanticSearchStorageKey = "semanticSearch";
+export const relationStorageKey = "ai-relation";
+export const aiPersonaStorageKey = "ai-persona-instructions";
+let aiPersonaPersistenceTimer: ReturnType<typeof setTimeout> | undefined;
 const useMimessage = create<AppContext>((set) => ({
+  settingsOpen: false,
+  setSettingsOpen: (settingsOpen: boolean) => set({ settingsOpen }),
   search: null,
   contactFilter: [],
   chatFilter: [],
@@ -65,8 +83,14 @@ const useMimessage = create<AppContext>((set) => ({
   setChatFilter: (chatFilter: ChatList) => set({ chatFilter }),
   filter: null,
   messageIdToBringToFocus: null,
+  selectedSearchMessageId: null,
   useSemanticSearch: false,
-  setUseSemanticSearch: (useSemanticSearch: boolean) => set({ useSemanticSearch }),
+  setUseSemanticSearch: (useSemanticSearch: boolean) => {
+    void global.store
+      .set(semanticSearchStorageKey, useSemanticSearch)
+      .catch((error) => console.error("Unable to persist the semantic-search setting", error));
+    return set({ useSemanticSearch });
+  },
   globalSearch: null,
   regexSearch: false,
   isInWrapped: false,
@@ -75,28 +99,55 @@ const useMimessage = create<AppContext>((set) => ({
   setSearch: (search: string | null) => set({ search }),
   setFilter: (filter: string | null) => set({ filter }),
   setGlobalSearch: (globalSearch: string | null) => set({ globalSearch }),
-  setRelation: (relation: string) => set({ relation }),
+  aiPersonaInstructions: "",
+  setAiPersonaInstructions: (aiPersonaInstructions: string) => {
+    clearTimeout(aiPersonaPersistenceTimer);
+    aiPersonaPersistenceTimer = setTimeout(() => {
+      void global.store
+        .set(aiPersonaStorageKey, aiPersonaInstructions)
+        .catch((error) => console.error("Unable to persist AI message instructions", error));
+    }, 250);
+    return set({ aiPersonaInstructions });
+  },
+  setRelation: (relation: string) => {
+    void global.store
+      .set(relationStorageKey, relation)
+      .catch((error) => console.error("Unable to persist the AI relationship", error));
+    return set({ relation });
+  },
   startDate: null,
-  relation: "friend",
+  relation: "Friend",
   setStartDate: (startDate: MaybeDate) => set({ startDate }),
   endDate: null,
-  openAiKey: typeof localStorage === "undefined" ? null : localStorage.getItem(openAiLocalStorageKey) ?? null,
+  openAiKey: null,
+  openAiKeyRevision: 0,
   setEndDate: (endDate: MaybeDate) => set({ endDate }),
   setOpenAiKey: (openAiKey: string | null) => {
-    if (openAiKey) {
-      global.store.set(openAiLocalStorageKey, openAiKey);
-    } else {
-      global.store.delete(openAiLocalStorageKey);
-    }
-    return set({ openAiKey });
+    const persistence = openAiKey
+      ? global.store.set(openAiLocalStorageKey, openAiKey)
+      : Promise.all([global.store.delete(openAiLocalStorageKey), global.store.set(semanticSearchStorageKey, false)]);
+    void persistence.catch((error) => console.error("Unable to persist the OpenAI key", error));
+    return set((state) => ({
+      openAiKey,
+      openAiKeyRevision: state.openAiKeyRevision + 1,
+      ...(openAiKey ? {} : { useSemanticSearch: false }),
+    }));
   },
   chatId: null,
   setChatId: (chatId: number | null) => set({ chatId }),
+  isComposingNewMessage: false,
+  setIsComposingNewMessage: (isComposingNewMessage: boolean) => set({ isComposingNewMessage }),
   setMessageIdToBringToFocus: (messageIdToBringToFocus: number | null) => set({ messageIdToBringToFocus }),
+  setSelectedSearchMessageId: (selectedSearchMessageId: number | null) => set({ selectedSearchMessageId }),
   highlightedMessage: null,
   setHighlightedMessage: (highlightedMessage: Message | null) => set({ highlightedMessage }),
-  setExtendedConversations: (extendedConversations: ExtendedConversations) =>
-    set({ extendedConversations: { ...extendedConversations } }),
+  updateConversation: (chatId: number, updater: (current: AiMessage[]) => AiMessage[]) =>
+    set((state) => ({
+      extendedConversations: {
+        ...state.extendedConversations,
+        [chatId]: updater(state.extendedConversations[chatId] || []),
+      },
+    })),
   extendedConversations: {},
   // wrapped
   wrappedYear: WRAPPED_ALL_TIME_YEAR,

@@ -5,12 +5,9 @@ import createWindow from "./create-window";
 import { join } from "path";
 import { mainAppIconDevPng } from "../constants";
 import isDev from "electron-is-dev";
-import { format } from "url";
 import { showErrorAlert, withRetries } from "../utils/util";
 import prepareNext from "../utils/next-helper";
 import logger, { logStream } from "../utils/logger";
-import { windows } from "../index";
-import { addWebRequestToSession } from "../utils/routes";
 
 const setupNext = async () => {
   try {
@@ -32,22 +29,17 @@ const setupNext = async () => {
 };
 
 let setupNextPromise: Promise<void> | null = null;
+let mainWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
+let mainWindowBoundsBeforeSetup: Electron.Rectangle | null = null;
 const setupBaseWindowEventHandlers = (window: BrowserWindow) => {
-  window.webContents.on("console-message", (_event: any, level: any, message: string) => {
-    const levelName = ["VERBOSE", "INFO", "WARN", "ERROR"][level];
-    logStream.write(`${levelName}: ${message}\n`);
+  window.webContents.on("console-message", (details) => {
+    logStream.write(`${details.level.toUpperCase()}: ${details.message}\n`);
   });
 
   window.on("ready-to-show", function () {
     window!.show();
     window!.focus();
-  });
-
-  window.on("closed", () => {
-    const index = windows.indexOf(window);
-    if (index > -1) {
-      windows.splice(index, 1);
-    }
   });
 };
 
@@ -55,15 +47,16 @@ export const createMainWindow = async () => {
   setupNextPromise ??= setupNext();
 
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const nativeDefaultWidth = Math.max(930, Math.min(width, Math.round(width / 2)));
 
   const windowState = windowStateKeeper({
-    defaultWidth: width,
+    defaultWidth: nativeDefaultWidth,
     defaultHeight: height,
   });
 
-  const mainWindow = createWindow("main", {
+  mainWindow = createWindow("main", {
     title: "Mimessage",
-    minWidth: 930,
+    minWidth: 660,
     minHeight: 640,
     x: windowState.x,
     y: windowState.y,
@@ -71,8 +64,12 @@ export const createMainWindow = async () => {
     height: windowState.height,
     icon: mainAppIconDevPng,
   });
-
-  addWebRequestToSession(mainWindow.webContents.session);
+  const window = mainWindow;
+  window.once("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
 
   // mainWindow.once("ready-to-show", () => {
   //   if (!isDev) {
@@ -81,27 +78,85 @@ export const createMainWindow = async () => {
   //   }
   // });
 
-  windowState.manage(mainWindow);
+  windowState.manage(window);
 
-  const url = isDev
-    ? "http://localhost:3020/"
-    : format({
-        pathname: join(__dirname, "../../src/out/index.html"),
-        protocol: "file:",
-        slashes: true,
-      });
+  const url = isDev ? "http://localhost:3020/" : "mimessage-app://app/index.html";
 
-  setupBaseWindowEventHandlers(mainWindow);
+  setupBaseWindowEventHandlers(window);
   await setupNextPromise;
 
-  await mainWindow.loadURL(url);
+  await window.loadURL(url);
   try {
     if (isDev || process.argv.includes("--devTools")) {
-      mainWindow.webContents.openDevTools({ mode: "undocked" });
+      window.webContents.openDevTools({ mode: "undocked" });
     }
   } catch (e) {
     logStream.write(`Error opening devtools: ${e}\n`);
   }
-  mainWindow.show();
-  return mainWindow;
+  window.show();
+  return window;
+};
+
+export const getMainWindow = () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
+
+export const setMainWindowSetupMode = (active: boolean) => {
+  const window = getMainWindow();
+  if (!window) {
+    return;
+  }
+  if (active) {
+    mainWindowBoundsBeforeSetup ??= window.getBounds();
+    window.setResizable(false);
+    window.setMinimumSize(600, 400);
+    window.setSize(600, 400, true);
+    window.center();
+    return;
+  }
+
+  const previousBounds = mainWindowBoundsBeforeSetup;
+  mainWindowBoundsBeforeSetup = null;
+  window.setResizable(true);
+  window.setMinimumSize(660, 640);
+  if (previousBounds) {
+    window.setBounds(previousBounds, true);
+  }
+};
+
+export const showSettingsWindow = async () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) {
+      settingsWindow.restore();
+    }
+    settingsWindow.show();
+    settingsWindow.focus();
+    return settingsWindow;
+  }
+
+  setupNextPromise ??= setupNext();
+  settingsWindow = createWindow("settings", {
+    title: "General",
+    width: 600,
+    height: 699,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    vibrancy: "under-window",
+    trafficLightPosition: { x: 10, y: 9 },
+    icon: mainAppIconDevPng,
+  });
+  settingsWindow.setSize(600, 699, false);
+  const window = settingsWindow;
+  window.once("closed", () => {
+    if (settingsWindow === window) {
+      settingsWindow = null;
+    }
+  });
+  setupBaseWindowEventHandlers(window);
+  await setupNextPromise;
+  const url = isDev ? "http://localhost:3020/settings" : "mimessage-app://app/settings.html";
+  await window.loadURL(url);
+  window.show();
+  return window;
 };

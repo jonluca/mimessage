@@ -1,157 +1,92 @@
-import type { Dispatch, SetStateAction } from "react";
-import React, { useState } from "react";
+import React from "react";
 import { useMimessage } from "../../context";
-import Box from "@mui/material/Box";
-import { ExportChat } from "./ExportChat";
+import { useChatById } from "../../hooks/dataHooks";
+import { MessageAvatar } from "../message/Avatar";
 import { Filter } from "../chat-list/SearchBox";
-import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
-import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
-import BrowserUpdatedIcon from "@mui/icons-material/BrowserUpdated";
-import Popover from "@mui/material/Popover";
-import type { VirtuosoHandle } from "react-virtuoso";
-import { shallow } from "zustand/shallow";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import Close from "@mui/icons-material/Close";
-const BUTTON_HEIGHT = 30;
+import { SystemSymbol } from "../SystemSymbol";
+import type { Contact } from "electron-mac-contacts";
+import { ComposeButton } from "./ComposeButton";
+
+const VideoIcon = () => <SystemSymbol name="video" />;
+
+const TinyChevronIcon = () => <SystemSymbol className="thread-toolbar-chevron" name="chevron-down" />;
+
+const getContactLocality = (contact: Contact | null | undefined) => {
+  const postalAddresses = (contact as (Contact & { postalAddresses?: string[] }) | null | undefined)?.postalAddresses;
+  const address = postalAddresses?.find((candidate) => candidate.trim());
+  if (!address) {
+    return null;
+  }
+  const lines = address
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const localityLine = lines.find((line) => /,\s*[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/u.test(line));
+  return localityLine?.replace(/\s+\d{5}(?:-\d{4})?$/u, "") || null;
+};
+
 export const SelectedChatFilterBar = ({
-  showTimes,
-  setShowTimes,
-  virtuoso,
+  detailsOpen,
+  onToggleDetails,
+  searchOpen,
 }: {
-  showTimes: boolean;
-  setShowTimes: Dispatch<SetStateAction<boolean>>;
-  virtuoso?: React.RefObject<VirtuosoHandle> | null;
+  detailsOpen: boolean;
+  onToggleDetails: () => void;
+  searchOpen: boolean;
 }) => {
-  const [exportOpen, setExportOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-  const { setChatId, regexSearch, setRegexSearch, globalSearch } = useMimessage(
-    (state) => ({
-      regexSearch: state.regexSearch,
-      globalSearch: state.globalSearch,
-      setRegexSearch: state.setRegexSearch,
-      setChatId: state.setChatId,
-    }),
-    shallow,
-  );
+  const chatId = useMimessage((state) => state.chatId);
+  const chat = useChatById(chatId);
+  const handles = chat?.handles || [];
+  const isSingleConversation = handles.length === 1;
+  const contact = isSingleConversation ? handles[0]?.contact : null;
+  const subtitle = isSingleConversation
+    ? getContactLocality(contact) || contact?.organizationName || "iMessage"
+    : `${handles.length} people`;
 
-  const handleSettingsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-  const id = open ? "simple-popover" : undefined;
-
-  const LeftIcon = globalSearch ? ArrowBackIcon : Close;
   return (
-    <Box
-      sx={{ display: "flex", flexDirection: "row", py: 2, background: "#383938", alignItems: "center" }}
-      className={"draggable"}
-    >
-      {exportOpen && <ExportChat onClose={() => setExportOpen(false)} />}
-      <Button
-        sx={{ ml: 1.5, height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
-        aria-describedby={id}
-        variant="outlined"
-        color={"primary"}
-        title={"Back"}
-        onClick={() => {
-          setChatId(null);
-        }}
-      >
-        <LeftIcon />
-      </Button>
-      <Filter />
-      <Button
-        sx={{ height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
-        aria-describedby={id}
-        variant="contained"
-        title={"Settings"}
-        onClick={handleSettingsClick}
-      >
-        <SettingsSuggestIcon />
-      </Button>
-      <Button
-        variant="contained"
-        sx={{ mx: 1.5, height: BUTTON_HEIGHT, py: 1, px: 1, minWidth: 20 }}
-        title={"Export chat"}
-        onClick={() => {
-          setExportOpen(true);
-        }}
-      >
-        <BrowserUpdatedIcon />
-      </Button>
-      <Popover
-        id={id}
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-        PaperProps={{
-          sx: { p: 2, backgroundColor: "#2c2c2c" },
-        }}
-      >
-        <Box>
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  style={{
-                    color: "white",
-                  }}
-                  checked={showTimes}
-                  onChange={() => setShowTimes((v) => !v)}
-                />
-              }
-              label="Show timestamps"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  style={{
-                    color: "white",
-                  }}
-                  checked={regexSearch}
-                  onChange={() => setRegexSearch(!regexSearch)}
-                />
-              }
-              label="Use Regex Search"
-            />
-          </FormGroup>
-          <Button
-            onClick={() => {
-              virtuoso?.current?.scrollToIndex({
-                index: 0,
-                align: "start",
-                behavior: "auto",
-              });
-            }}
+    <header className="thread-header draggable">
+      <div className="thread-header-main" aria-label="Conversation toolbar">
+        <div className="thread-header-left">
+          <ComposeButton />
+        </div>
+
+        <button
+          type="button"
+          className="thread-contact"
+          title={detailsOpen ? "Hide conversation details" : "Show conversation details"}
+          aria-expanded={detailsOpen}
+          onClick={onToggleDetails}
+        >
+          <div className="thread-contact-capsule">
+            <span className="thread-contact-avatar">
+              <MessageAvatar contact={contact} fallback={chat?.name || "?"} size={44} />
+            </span>
+            <span className="thread-contact-copy">
+              <span className="thread-contact-name">{chat?.name || "Unknown"}</span>
+              <span className="thread-contact-subtitle">{subtitle}</span>
+            </span>
+            <TinyChevronIcon />
+          </div>
+        </button>
+
+        <div className="thread-header-actions">
+          <button
+            type="button"
+            className="thread-toolbar-button thread-facetime-control"
+            aria-label="Start FaceTime"
+            disabled
+            title="Unavailable in Mimessage"
           >
-            scroll to the top
-          </Button>
-          <Button
-            onClick={() => {
-              virtuoso?.current?.scrollToIndex({
-                index: "LAST",
-                align: "start",
-                behavior: "auto",
-              });
-            }}
-          >
-            scroll to the end
-          </Button>
-        </Box>
-      </Popover>
-    </Box>
+            <VideoIcon />
+          </button>
+        </div>
+      </div>
+
+      {searchOpen && (
+        <div className="thread-inline-search">
+          <Filter />
+        </div>
+      )}
+    </header>
   );
 };

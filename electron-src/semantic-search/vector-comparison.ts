@@ -9,7 +9,12 @@ export function euclideanSimilarity(vectorA: Float32Array, vectorB: Float32Array
   return Math.sqrt(sum);
 }
 export function dotSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
-  return 0;
+  const dimensionality = Math.min(vectorA.length, vectorB.length);
+  let dot = 0;
+  for (let i = 0; i < dimensionality; i++) {
+    dot += vectorA[i] * vectorB[i];
+  }
+  return dot;
 }
 export function cosineSimilarity(vectorA: Float32Array, vectorB: Float32Array) {
   const dimensionality = Math.min(vectorA.length, vectorB.length);

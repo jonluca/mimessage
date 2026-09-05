@@ -12,5 +12,12 @@ export const MessageAvatar = ({
   contact: null | undefined | Contact;
 }) => {
   const src = contact?.pngBase64;
-  return <Avatar alt={contact?.parsedName || fallback} src={src} sx={{ width: size, height: size }} />;
+  return (
+    <Avatar
+      className="message-avatar"
+      alt={contact?.parsedName || fallback}
+      src={src}
+      style={{ width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.4)) }}
+    />
+  );
 };

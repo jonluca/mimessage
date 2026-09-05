@@ -1,84 +1,87 @@
-import * as path from "path";
 import type { MenuItemConstructorOptions } from "electron";
 import { app, dialog, Menu, shell } from "electron";
+import isDev from "electron-is-dev";
 import { windows } from "../index";
 import { showApp } from "../utils/util";
 import { requestContactsPerms, requestFullDiskAccess } from "../ipc/ipc-onboarding";
 import { clearSkipContactsPermsCheck } from "../options";
-import { copyDbAtPath, copyLatestDb } from "../data/db-file-utils";
 import logger, { logPath } from "../utils/logger";
+import dbWorker from "../workers/database-worker";
+import { getMainWindow, showSettingsWindow } from "./main-window";
 
 export const getMenu = () => {
+  const openSettings = async () => {
+    try {
+      await showSettingsWindow();
+    } catch (error) {
+      logger.error(`Unable to open Settings: ${String(error)}`);
+    }
+  };
+
+  const requestPermissions = async () => {
+    clearSkipContactsPermsCheck();
+    await requestContactsPerms();
+    await requestFullDiskAccess();
+  };
+
   const menuTemplate: MenuItemConstructorOptions[] = [
     {
-      label: "&App",
+      label: "&File",
       submenu: [
         {
-          label: "Show App",
-          type: "normal",
-          click: showApp,
+          label: "New Message",
+          accelerator: "CmdOrCtrl+N",
+          click: () => {
+            const window = getMainWindow();
+            if (!window) {
+              void showApp();
+              return;
+            }
+            window.show();
+            window.focus();
+            window.webContents.send("composeNewMessage");
+          },
         },
+        { type: "separator" },
+        { label: "Show Mimessage", click: showApp },
         {
-          label: "Load new messages",
-          type: "normal",
+          label: "Load New Messages",
           click: async () => {
-            await copyLatestDb();
+            await dbWorker.copyLocalDb();
             app.relaunch();
-            app.exit(0);
+            app.quit();
           },
         },
         {
-          label: "Load custom chat.db",
-          type: "normal",
+          label: "Load Custom chat.db…",
           click: async () => {
             const location = await dialog.showOpenDialog({
-              filters: [{ name: "SQlite DB", extensions: ["db"] }],
+              filters: [{ name: "Messages Database", extensions: ["db"] }],
               properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory"],
             });
             if (location.canceled) {
               return;
             }
-            await copyDbAtPath(location.filePaths[0]);
+            await dbWorker.copyLocalDbFromPath(location.filePaths[0]);
             app.relaunch();
-            app.exit(0);
-          },
-        },
-        { type: "separator" },
-        {
-          label: "Re-Request App Permissions",
-          type: "normal",
-          click: async () => {
-            clearSkipContactsPermsCheck();
-            await requestContactsPerms();
-            await requestFullDiskAccess();
-          },
-        },
-        { type: "separator" },
-        {
-          label: "Submit Feedback",
-          type: "normal",
-          click: () => {
-            shell.openExternal("mailto:mimessage@jonlu.ca");
-          },
-        },
-        {
-          label: "View Logs",
-          type: "normal",
-          click: () => {
-            shell.showItemInFolder(logPath);
-          },
-        },
-        { type: "separator" },
-        {
-          label: "Quit",
-          type: "normal",
-          click: async () => {
             app.quit();
           },
         },
-        { role: "reload" },
-        { role: "forceReload" },
-        { role: "toggleDevTools" },
+        {
+          label: "iMessage Wrapped…",
+          click: () => {
+            const window = getMainWindow();
+            if (!window) {
+              void showApp();
+              return;
+            }
+            window.show();
+            window.focus();
+            window.webContents.send("openWrapped");
+          },
+        },
+        { type: "separator" },
+        { role: "close" },
       ],
     },
     {
@@ -93,6 +96,11 @@ export const getMenu = () => {
         { role: "pasteAndMatchStyle", registerAccelerator: false },
         { role: "delete" },
         { role: "selectAll" },
+        { type: "separator" },
+        {
+          label: "Speech",
+          submenu: [{ role: "startSpeaking" }, { role: "stopSpeaking" }],
+        },
       ],
     },
     {
@@ -103,72 +111,84 @@ export const getMenu = () => {
         { role: "zoomOut" },
         { type: "separator" },
         { role: "togglefullscreen" },
-        { type: "separator" },
-        { role: "reload" },
-        { role: "forceReload" },
-        { role: "toggleDevTools" },
+        ...(isDev || process.argv.includes("--devTools")
+          ? ([
+              { type: "separator" },
+              { role: "reload" },
+              { role: "forceReload" },
+              { role: "toggleDevTools" },
+            ] satisfies MenuItemConstructorOptions[])
+          : []),
       ],
     },
     {
       label: "&Window",
       role: "window",
-      submenu: [{ role: "minimize" }, { role: "close" }],
+      submenu: [{ role: "close" }, { role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }],
     },
     {
       label: "&Help",
       role: "help",
       submenu: [
         {
-          label: "View Mimessage logs",
+          label: "Submit Feedback…",
+          click: () => {
+            void shell.openExternal("mailto:mimessage@jonlu.ca");
+          },
+        },
+        {
+          label: "View Mimessage Logs",
           click() {
-            shell.showItemInFolder(path.join(app.getPath("logs"), "last-run.log"));
+            shell.showItemInFolder(logPath);
           },
         },
       ],
     },
   ];
 
-  const macMenu: MenuItemConstructorOptions = {
-    label: app.getName(),
-    submenu: [
-      { role: "about" },
-      { type: "separator" },
-      { role: "services" },
-      { type: "separator" },
-      { role: "hide" },
-      { role: "hideOthers" },
-      { role: "unhide" },
-      { type: "separator" },
-      {
-        label: "Quit",
-        accelerator: "CmdOrCtrl+Q",
-        click: () => {
-          logger.info("Cmd + Q is pressed");
-          windows.forEach((win) => win.close());
-          app.quit();
-        },
-      },
-    ],
-  };
-  menuTemplate.unshift(macMenu);
-
-  // Add to Edit menu
-  (menuTemplate[1].submenu as MenuItemConstructorOptions[]).push(
-    { type: "separator" },
+  const preferenceItems: MenuItemConstructorOptions[] = [
+    { label: "Settings…", accelerator: "CmdOrCtrl+,", click: openSettings },
     {
-      label: "Speech",
-      submenu: [{ role: "startSpeaking" }, { role: "stopSpeaking" }],
+      label: "Re-Request App Permissions…",
+      click: requestPermissions,
     },
-  );
-
-  // Window menu
-  menuTemplate[3].submenu = [
-    { role: "close" },
-    { role: "minimize" },
-    { role: "zoom" },
-    { type: "separator" },
-    { role: "front" },
   ];
+
+  if (process.platform === "darwin") {
+    menuTemplate.unshift({
+      label: app.getName(),
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        ...preferenceItems,
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        {
+          label: `Quit ${app.getName()}`,
+          accelerator: "CmdOrCtrl+Q",
+          click: () => {
+            logger.info("Cmd + Q is pressed");
+            for (const win of [...windows]) {
+              if (!win.isDestroyed()) {
+                win.close();
+              }
+            }
+            app.quit();
+          },
+        },
+      ],
+    });
+  } else {
+    menuTemplate.unshift({
+      label: "&App",
+      submenu: [...preferenceItems, { type: "separator" }, { role: "quit" }],
+    });
+  }
 
   return Menu.buildFromTemplate(menuTemplate);
 };

@@ -1,10 +1,7 @@
 import { useMimessage } from "../../context";
 import React, { useState } from "react";
-import Backdrop from "@mui/material/Backdrop";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
 import { useChatById } from "../../hooks/dataHooks";
+import { NativeModal } from "../NativeModal";
 
 export const ExportChat = ({ onClose }: { onClose: () => void }) => {
   const chatId = useMimessage((state) => state.chatId);
@@ -13,8 +10,29 @@ export const ExportChat = ({ onClose }: { onClose: () => void }) => {
   const [includeAttachments, setIncludeAttachments] = useState(false);
   const [fullExport, setFullExport] = useState(false);
   const [format, setFormat] = useState<"json" | "txt" | "csv">("json");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const onExport = async () => {
-    await ipcRenderer.invoke("export", { chat, fullExport, format, includeAttachments });
+    if (isExporting) {
+      return;
+    }
+    setExportError(null);
+    setIsExporting(true);
+    try {
+      const didExport = (await ipcRenderer.invoke("export", {
+        chat,
+        fullExport,
+        format,
+        includeAttachments,
+      })) as boolean;
+      if (didExport) {
+        onClose();
+      }
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "The conversation couldn’t be exported.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (!chatId) {
@@ -22,65 +40,96 @@ export const ExportChat = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <Backdrop sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }} open onClick={onClose}>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          height: "auto",
-          width: 600,
-          m: 1,
-          p: 1,
-          background: "#2c2c2c",
-          borderRadius: 2,
-        }}
-        onClick={(e) => e.stopPropagation()}
+    <NativeModal className="export-backdrop" open onClose={isExporting ? undefined : onClose}>
+      <dialog
+        open
+        className="messages-modal messages-sheet export-modal"
+        aria-modal="true"
+        aria-labelledby="export-title"
+        aria-describedby="export-description"
       >
-        <Typography variant={"h1"}>Export Chat</Typography>
-        <FormGroup>
-          <FormControlLabel
-            control={
-              <Checkbox
-                style={{
-                  color: "white",
-                }}
-                checked={includeAttachments}
-                onChange={() => setIncludeAttachments((v) => !v)}
-              />
-            }
-            label="Include attachments"
-          />
-          {format === "json" && (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  style={{
-                    color: "white",
-                  }}
-                  checked={fullExport}
-                  onChange={() => setFullExport((v) => !v)}
-                />
-              }
-              label="Full raw export (all message metadata)"
+        <header className="messages-modal-header export-header">
+          <h2 id="export-title" className="messages-modal-title export-title">
+            Export Conversation
+          </h2>
+          <p id="export-description" className="messages-modal-subtitle export-subtitle">
+            Save a copy of this conversation on your Mac.
+          </p>
+        </header>
+
+        <fieldset className="messages-modal-content export-options">
+          <legend className="visually-hidden">Export options</legend>
+          <div className="export-format export-form-row">
+            <label id="export-format-label" htmlFor="export-format-select">
+              Format:
+            </label>
+            <select
+              id="export-format-select"
+              className="export-format-select"
+              value={format}
+              disabled={isExporting}
+              onChange={(event) => setFormat(event.currentTarget.value as "json" | "txt" | "csv")}
+            >
+              <option value="json">JSON</option>
+              <option value="txt">Plain Text</option>
+              <option value="csv">CSV</option>
+            </select>
+          </div>
+          <label className="export-option export-form-row">
+            <span className="export-form-label">Options:</span>
+            <input
+              className="export-checkbox"
+              type="checkbox"
+              checked={includeAttachments}
+              disabled={isExporting}
+              onChange={(event) => setIncludeAttachments(event.currentTarget.checked)}
             />
+            <span className="export-option-copy">
+              <span>Include attachments</span>
+              <small>Copies photos, videos, and other files into the export.</small>
+            </span>
+          </label>
+          {format === "json" && (
+            <label className="export-option export-option--indented">
+              <input
+                className="export-checkbox"
+                type="checkbox"
+                checked={fullExport}
+                disabled={isExporting}
+                onChange={(event) => setFullExport(event.currentTarget.checked)}
+              />
+              <span className="export-option-copy">
+                <span>Include all message metadata</span>
+                <small>Adds the full underlying Messages record to the JSON file.</small>
+              </span>
+            </label>
           )}
-          <FormControlLabel
-            control={
-              <select
-                style={{ margin: "0 10px", cursor: "pointer", fontSize: 16 }}
-                value={format}
-                onChange={(e) => setFormat(e.target.value as any)}
-              >
-                <option value={"json"}>JSON</option>
-                <option value={"txt"}>TXT</option>
-                <option value={"csv"}>CSV</option>
-              </select>
-            }
-            label="Output Format"
-          />
-        </FormGroup>
-        <Button onClick={onExport}>Export</Button>
-      </Box>
-    </Backdrop>
+          {exportError && (
+            <p className="messages-inline-error export-error" role="alert">
+              {exportError}
+            </p>
+          )}
+        </fieldset>
+
+        <footer className="messages-modal-actions export-actions">
+          <button
+            type="button"
+            className="messages-modal-button export-cancel-button"
+            disabled={isExporting}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="messages-modal-button messages-modal-button--primary export-primary-button"
+            disabled={isExporting}
+            onClick={() => void onExport()}
+          >
+            {isExporting ? "Exporting…" : "Export"}
+          </button>
+        </footer>
+      </dialog>
+    </NativeModal>
   );
 };

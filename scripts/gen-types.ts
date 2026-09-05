@@ -1,22 +1,32 @@
 import fs from "fs-extra";
 import path from "path";
-import prettier from "prettier";
-import parserTypescript from "prettier/parser-typescript";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import jetpack from "fs-jetpack";
 import { execa } from "execa";
-import packageJson from "../package.json" assert { type: "json" };
+import { format } from "oxfmt";
+import packageJson from "../package.json" with { type: "json" };
 import * as os from "os";
 import SqliteDb from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const appPath = packageJson.build.appId;
-const prettierOptions: prettier.Options = {
-  parser: "typescript",
-  plugins: [parserTypescript],
-  printWidth: 120,
+
+const formatTypes = async (fileName: string, sourceText: string) => {
+  const result = await format(fileName, sourceText, {
+    arrowParens: "always",
+    printWidth: 120,
+    semi: true,
+    tabWidth: 2,
+    trailingComma: "all",
+  });
+
+  if (result.errors.length > 0) {
+    throw new Error(`Could not format ${fileName}: ${JSON.stringify(result.errors)}`);
+  }
+
+  return result.code;
 };
 
 const libDir = path.join(os.homedir(), "Library");
@@ -43,29 +53,39 @@ const run = async () => {
   }
 
   const dir = path.join(__dirname, "../_generated");
-  const out = await execa(`DATABASE_URL="${dbDir}" yarn kysely-codegen`, { shell: true });
+  const out = await execa("yarn", ["kysely-codegen"], { env: { DATABASE_URL: dbDir } });
   console.log(out.stdout);
   console.log(out.stderr);
   const typeStr = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");
-  await fs.writeFile(path.join(dir, filename), prettier.format(typeStr, prettierOptions));
+  await fs.writeFile(path.join(dir, filename), await formatTypes(filename, typeStr));
 
   try {
-    const embeddins = await execa(`DATABASE_URL="${embeddingDbDir}" yarn kysely-codegen`, { shell: true });
+    const embeddins = await execa("yarn", ["kysely-codegen"], { env: { DATABASE_URL: embeddingDbDir } });
     console.log(embeddins.stdout);
     console.log(embeddins.stderr);
     const typeStrEmbedding = await fs.readFile("node_modules/kysely-codegen/dist/db.d.ts", "utf8");
-    await fs.writeFile(path.join(dir, filenameEmbedding), prettier.format(typeStrEmbedding, prettierOptions));
+    await fs.writeFile(path.join(dir, filenameEmbedding), await formatTypes(filenameEmbedding, typeStrEmbedding));
   } catch (e) {
     console.log(e);
   }
 };
 
+let rebuiltForNode = false;
+
 try {
-  await run();
-} catch (e) {
-  console.log("Rebuilding binaries for arch...");
-  await execa(`npm rebuild better-sqlite3 --update-binary`, { shell: true });
-  console.log("Done rebuilding binaries");
-  await run();
+  try {
+    await run();
+  } catch {
+    rebuiltForNode = true;
+    console.log("Rebuilding binaries for the host Node.js runtime...");
+    await execa("npm", ["rebuild", "better-sqlite3", "--update-binary"]);
+    console.log("Done rebuilding binaries");
+    await run();
+  }
+} finally {
+  if (rebuiltForNode) {
+    console.log("Restoring native modules for Electron...");
+    await execa("yarn", ["postinstall"], { stdio: "inherit" });
+  }
 }
 process.exit(0);

@@ -45,7 +45,6 @@ src/public/sw.js
 .env.local
 .env.production.local
 .env.test.local
-.eslintcache
 .fusebox/
 .grunt
 .idea/**/aws.xml
@@ -131,6 +130,7 @@ logs
 next-env.d.ts
 node_modules
 node_modules/
+/native/liquid-glass/prebuilds/
 npm-debug.log*
 out
 out/

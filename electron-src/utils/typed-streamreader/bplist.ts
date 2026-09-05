@@ -34,7 +34,7 @@ export class BPlistReader {
           return decoded[0];
         }
         return decoded;
-      } catch (e) {
+      } catch {
         return data;
       }
     } else if (typeof data == "object") {

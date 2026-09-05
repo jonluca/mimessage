@@ -4,7 +4,7 @@ import { buildStructEncoding } from "../encodings";
 export abstract class KnownArchivedObject {
   static archivedName: string;
   static consumeEnd: boolean;
-  static initFromUnarchiver(unarchiver: Unarchiver, archivedClass: CClass): KnownArchivedObject {
+  static initFromUnarchiver(_unarchiver: Unarchiver, _archivedClass: CClass): KnownArchivedObject {
     throw new Error("Method not implemented");
   }
 }
@@ -24,7 +24,7 @@ export abstract class KnownStruct {
   static structName: string;
   static fieldEncodings: string[];
   static encoding: string;
-  protected constructor(fields: any[]) {
+  protected constructor(_fields: any[]) {
     // none
   }
 }

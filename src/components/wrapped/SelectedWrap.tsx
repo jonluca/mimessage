@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Box from "@mui/material/Box";
 import { useMimessage, WRAPPED_ALL_TIME_YEAR } from "../../context";
 import {
   useChatById,
@@ -9,14 +8,15 @@ import {
   useSlowWrappedStats,
   useWrappedStats,
 } from "../../hooks/dataHooks";
-import Typography from "@mui/material/Typography";
 import type { WrappedStats } from "../../interfaces";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
-import { LinearProgress } from "@mui/material";
-import { GenericValue, SECTION_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
+import { GenericValue, SectionHeader, SectionWrapper } from "./Containers";
 import { MessagesByHour, MessagesByMonth, MessagesByPerson, MessagesByYear } from "./Charts";
 import { SimpleWordcloud } from "./WordCloud";
+import { SystemSymbol } from "../SystemSymbol";
+
+const DisclosureIcon = ({ expanded }: { expanded: boolean }) => (
+  <SystemSymbol name={expanded ? "chevron-up" : "chevron-down"} />
+);
 
 const TwoSidedSection = ({
   title,
@@ -42,83 +42,94 @@ const TwoSidedSection = ({
   const left = allLeft?.slice(0, showAll ? 10 : 5) || [];
   const allRight = data?.[rightKey] || [];
   const right = allRight?.slice(0, showAll ? 10 : 5) || [];
-  const hasLeft = right.length > 0;
-  const hasRight = left.length > 0;
+  const hasLeft = left.length > 0;
+  const hasRight = right.length > 0;
 
   const showArrow = allRight.length > 5 || allLeft.length > 5;
   if (!hasLeft && !hasRight) {
     return null;
   }
 
-  const ArrowIcon = showAll ? ArrowDropUpIcon : ArrowDropDownIcon;
-
   return (
-    <SectionWrapper sx={{ width: SECTION_WIDTH, minHeight: SECTION_HEIGHT }}>
+    <SectionWrapper className="wrapped-comparison-card">
       {title && <SectionHeader>{title}</SectionHeader>}
-      {isLoading && <LinearProgress />}
-      <Box sx={{ width: "100%", display: "flex" }}>
-        {hasRight && (
-          <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start", mr: 1 }}>
-            <Typography>{leftTitle}</Typography>
-            {left.map((d) => render(d))}
-          </Box>
-        )}
+      {isLoading && <progress className="wrapped-progress" aria-label={`Loading ${title}`} />}
+      <div className="wrapped-comparison-columns">
         {hasLeft && (
-          <Box sx={{ width: "50%", display: "flex", flexDirection: "column", alignItems: "start" }}>
-            <Typography>{rightTitle}</Typography>
-            {right.map((d) => render(d))}
-          </Box>
+          <div className="wrapped-comparison-column">
+            <h3 className="wrapped-comparison-title">{leftTitle}</h3>
+            {left.map((d) => render(d))}
+          </div>
         )}
-      </Box>
+        {hasRight && (
+          <div className="wrapped-comparison-column">
+            <h3 className="wrapped-comparison-title">{rightTitle}</h3>
+            {right.map((d) => render(d))}
+          </div>
+        )}
+      </div>
       {showArrow && (
-        <ArrowIcon sx={{ width: "100%", cursor: "pointer", color: "white" }} onClick={() => setShowAll((v) => !v)} />
+        <button
+          type="button"
+          className="wrapped-disclosure"
+          aria-expanded={showAll}
+          aria-label={showAll ? `Show fewer ${title}` : `Show all ${title}`}
+          onClick={() => setShowAll((value) => !value)}
+        >
+          <span>{showAll ? "Show Less" : "Show More"}</span>
+          <DisclosureIcon expanded={showAll} />
+        </button>
       )}
     </SectionWrapper>
   );
 };
+
 const MessageCount = () => {
   const { data: wrappedStats } = useWrappedStats();
   const isCurrentChatSingleMember = useIsCurrentChatSingleMember();
 
   const chatMap = useChatMap();
-  const contacts = React.useMemo(() => {
+  const uniqueContactIdentities = React.useMemo(() => {
     const interactions = wrappedStats?.chatInteractions;
     const sent = interactions?.sent || [];
     const received = interactions?.received || [];
-    return [
-      ...sent.map((i) => chatMap?.get(i.chat_id!)?.handles),
-      ...received.map((i) => chatMap?.get(i.chat_id!)?.handles),
-    ].flat();
+    const identities = new Set<string>();
+    for (const interaction of [...sent, ...received]) {
+      if (interaction.chat_id === null) {
+        continue;
+      }
+      for (const handle of chatMap.get(interaction.chat_id)?.handles || []) {
+        const identity = handle.contact?.identifier
+          ? `contact:${handle.contact.identifier}`
+          : handle.handle_id !== null
+            ? `handle:${handle.handle_id}`
+            : handle.id
+              ? `address:${handle.id}`
+              : null;
+        if (identity) {
+          identities.add(identity);
+        }
+      }
+    }
+    return identities;
   }, [wrappedStats, chatMap]);
-
-  const uniqueContacts = new Set(contacts.flat());
-  const wrapperStyle = { width: 350 };
-  const sx = {
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    fontWeight: "bold",
-    fontSize: 40,
-  };
   return (
-    <>
-      <Box display={"flex"}>
-        <SectionWrapper sx={wrapperStyle}>
-          <SectionHeader>Sent</SectionHeader>
-          <Typography sx={sx}>{(wrappedStats?.messageCount?.sent || 0).toLocaleString()}</Typography>
+    <div className="wrapped-summary-grid" aria-label="Message totals">
+      <SectionWrapper className="wrapped-stat-card">
+        <SectionHeader>Sent</SectionHeader>
+        <p className="wrapped-stat-value">{(wrappedStats?.messageCount?.sent || 0).toLocaleString()}</p>
+      </SectionWrapper>
+      <SectionWrapper className="wrapped-stat-card">
+        <SectionHeader>Received</SectionHeader>
+        <p className="wrapped-stat-value">{(wrappedStats?.messageCount?.received || 0).toLocaleString()}</p>
+      </SectionWrapper>
+      {!isCurrentChatSingleMember && (
+        <SectionWrapper className="wrapped-stat-card">
+          <SectionHeader>People</SectionHeader>
+          <p className="wrapped-stat-value">{uniqueContactIdentities.size.toLocaleString()}</p>
         </SectionWrapper>
-        <SectionWrapper sx={wrapperStyle}>
-          <SectionHeader>Received</SectionHeader>
-          <Typography sx={sx}>{(wrappedStats?.messageCount?.received || 0).toLocaleString()}</Typography>
-        </SectionWrapper>
-        {!isCurrentChatSingleMember && (
-          <SectionWrapper sx={wrapperStyle}>
-            <SectionHeader>People</SectionHeader>
-            <Typography sx={sx}>{(uniqueContacts?.size || 0).toLocaleString()}</Typography>
-          </SectionWrapper>
-        )}
-      </Box>
-    </>
+      )}
+    </div>
   );
 };
 const FavoriteWords = () => {
@@ -126,7 +137,7 @@ const FavoriteWords = () => {
 
   return (
     <TwoSidedSection
-      title={"Favorite Text"}
+      title={"Favorite Words & Emoji"}
       leftKey={"topOneHundred"}
       rightKey={"topEmojis"}
       data={wrappedStats}
@@ -174,7 +185,11 @@ const BusiestDay = () => {
   const { data: wrappedStats } = useWrappedStats();
   const interactions = wrappedStats?.weekdayInteractions;
   return (
-    <TwoSidedSection title={"Days"} data={interactions} render={(d) => <DayInteraction key={d.weekday} day={d} />} />
+    <TwoSidedSection
+      title={"Busiest Days"}
+      data={interactions}
+      render={(d) => <DayInteraction key={d.weekday} day={d} />}
+    />
   );
 };
 const BusiestMonth = () => {
@@ -182,7 +197,7 @@ const BusiestMonth = () => {
   const interactions = wrappedStats?.monthlyInteractions;
   return (
     <TwoSidedSection
-      title={"Months"}
+      title={"Busiest Months"}
       data={interactions}
       render={(m) => <MonthInteraction key={m.month} month={m} />}
     />
@@ -212,7 +227,7 @@ const TopConversationPartners = () => {
   const handleInteractions = wrappedStats?.handleInteractions;
   return (
     <TwoSidedSection
-      title={"People"}
+      title={"Top People"}
       data={handleInteractions || interactions}
       render={(i) => {
         if (handleInteractions) {
@@ -228,7 +243,7 @@ const LateNightChatter = () => {
   const interactions = wrappedStats?.lateNightInteractions;
   return (
     <TwoSidedSection
-      title={"Down Bad (12am-4am)"}
+      title={"Late Night (12–4 AM)"}
       data={interactions}
       render={(m) => <ChatInteraction key={m.chat_id} chatInteraction={m} />}
     />
@@ -241,77 +256,66 @@ const EntryHeader = () => {
 
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   return (
-    <Typography variant={"h1"}>
-      Your {wrappedYear === WRAPPED_ALL_TIME_YEAR ? "" : `${wrappedYear} `}iMessage Wrapped
+    <h1 className="wrapped-dashboard-title" id="wrapped-title">
+      {wrappedYear === WRAPPED_ALL_TIME_YEAR ? "" : `${wrappedYear} `}iMessage Wrapped
       {chat ? ` with ${chat.name}` : ""}
-    </Typography>
+    </h1>
   );
 };
 
 export const SelectedWrap = () => {
-  const { isFetching } = useWrappedStats();
+  const wrappedStatsQuery = useWrappedStats();
+  const { data: wrappedStats, error, isFetching, isPending, refetch } = wrappedStatsQuery;
 
   const wrappedYear = useMimessage((state) => state.wrappedYear);
   const chatId = useMimessage((state) => state.chatId);
   const isSingleMemberChat = useIsCurrentChatSingleMember();
+  const isInitialLoading = isPending || (isFetching && !wrappedStats);
+  const messageCount = (wrappedStats?.messageCount.sent || 0) + (wrappedStats?.messageCount.received || 0);
 
   return (
-    <Box
-      sx={{
-        zIndex: 999,
-        justifyContent: "center",
-        width: "100%",
-        height: "100%",
-        flexDirection: "column",
-        background: "#1e1e1e",
-        overflowY: "hidden",
-        p: 1,
-        display: "flex",
-      }}
-    >
-      <EntryHeader />
-      {isFetching ? (
-        <>
-          <LinearProgress />
-          <Box sx={{ height: "100%" }} />
-        </>
+    <main className="wrapped-dashboard" aria-labelledby="wrapped-title">
+      <header className="wrapped-dashboard-header draggable">
+        <EntryHeader />
+      </header>
+      {isInitialLoading ? (
+        <div className="wrapped-loading" aria-live="polite">
+          <progress className="wrapped-progress" aria-label="Loading Wrapped statistics" />
+          <p>Loading your message history…</p>
+        </div>
+      ) : !wrappedStats ? (
+        <div className="wrapped-loading" role="alert">
+          <p>{error ? "Mimessage couldn’t load your Wrapped statistics." : "Wrapped statistics are unavailable."}</p>
+          <button className="wrapped-retry-button" type="button" onClick={() => void refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : messageCount === 0 ? (
+        <div className="wrapped-loading" role="status">
+          <p>No messages were found for this period.</p>
+        </div>
       ) : (
-        <Box
-          sx={{
-            zIndex: 999,
-            width: "100%",
-            background: "#1e1e1e",
-            overflowY: "auto",
-            flexGrow: 1,
-            flexBasis: 1,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+        <div className="wrapped-dashboard-scroll">
           <MessageCount />
-          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+          <div className="wrapped-card-grid wrapped-insight-grid">
             <TopConversationPartners />
             <BusiestDay />
             <BusiestMonth />
             <MostPopularOpeners />
             <LateNightChatter />
             <FavoriteWords />
-          </Box>
-          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
-            {wrappedYear === WRAPPED_ALL_TIME_YEAR && (
-              <>
-                <MessagesByYear />
-              </>
-            )}
-            <MessagesByMonth />
-            <MessagesByHour />
-            {chatId !== null && !isSingleMemberChat && <MessagesByPerson />}
-          </Box>
-          <Box sx={{ display: "flex", flexWrap: "wrap" }}>
+          </div>
+          <div className="wrapped-card-grid wrapped-chart-grid">
+            {wrappedYear === WRAPPED_ALL_TIME_YEAR && <MessagesByYear stats={wrappedStats.chartStats} />}
+            <MessagesByMonth stats={wrappedStats.chartStats} />
+            <MessagesByHour stats={wrappedStats.chartStats} />
+            {chatId !== null && !isSingleMemberChat && <MessagesByPerson stats={wrappedStats.chartStats} />}
+          </div>
+          <div className="wrapped-card-grid wrapped-wordcloud-grid">
             <SimpleWordcloud />
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
-    </Box>
+    </main>
   );
 };

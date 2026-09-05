@@ -1,15 +1,19 @@
-import { GPT4Tokenizer } from "gpt4-tokenizer";
+import { getSemanticTokenizer } from "./tokenizer";
 
-const tokenizer = new GPT4Tokenizer({ type: "gpt3" });
+const EMBEDDING_PRICE_PER_MILLION_TOKENS = 0.1;
 
-export const getStatsForText = (text: string[]) => {
+export const getStatsForText = async (text: string[]) => {
   let totalTokens = 0;
   const uniqueText = new Set<string>();
   for (const line of text) {
-    if (line && !uniqueText.has(line)) {
+    if (line) {
       uniqueText.add(line);
-      const tokens = tokenizer.estimateTokenCount(line);
-      totalTokens += tokens;
+    }
+  }
+  if (uniqueText.size) {
+    const tokenizer = await getSemanticTokenizer();
+    for (const line of uniqueText) {
+      totalTokens += tokenizer.estimateTokenCount(line);
     }
   }
 
@@ -20,8 +24,8 @@ export const getStatsForText = (text: string[]) => {
   return {
     totalMessages,
     totalTokens,
-    averageTokensPerLine: totalTokens / totalMessages,
-    estimatedPrice: (totalTokens / 1000) * 0.0004, // dollars
+    averageTokensPerLine: totalMessages ? totalTokens / totalMessages : 0,
+    estimatedPrice: (totalTokens / 1_000_000) * EMBEDDING_PRICE_PER_MILLION_TOKENS,
     // openai ratelimiter is
     // 3,500 RPM
     // 350,000 TPM

@@ -1,26 +1,107 @@
 import React from "react";
-import type { OptionsProp, CallbacksProp } from "react-wordcloud";
-import ReactWordcloud from "react-wordcloud";
+import { computeWords } from "@isoterik/react-word-cloud";
+import type { ComputedWordData, Word } from "@isoterik/react-word-cloud";
 import { useSlowWrappedStats } from "../../hooks/dataHooks";
-import { CHART_HEIGHT, SectionHeader, SectionWrapper } from "./Containers";
-import Box from "@mui/material/Box";
+import { SectionHeader, SectionWrapper } from "./Containers";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { LinearProgress } from "@mui/material";
 
-const options = {
-  enableOptimizations: true,
-  deterministic: true,
-  fontSizes: [15, 80],
-  padding: 5,
-  rotations: 0,
-  fontFamily: "arbeit",
-} as OptionsProp;
+const CLOUD_WIDTH = 1000;
+const CLOUD_HEIGHT = 320;
+const MIN_FONT_SIZE = 15;
+const MAX_FONT_SIZE = 80;
 
-const callbacks = {
-  getWordColor: () => {
-    return "#5871f5";
-  },
-} as CallbacksProp;
+const createSeededRandom = () => {
+  let seed = 0x5eed1234;
+  return () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 0x100000000;
+  };
+};
+
+const DeterministicWordCloud = ({ words }: { words: Word[] }) => {
+  const [computedWords, setComputedWords] = React.useState<ComputedWordData[]>([]);
+  const [computeError, setComputeError] = React.useState<Error | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    setComputeError(null);
+    const squareRoots = words.map((word) => Math.sqrt(Math.max(0, word.value)));
+    const minValue = Math.min(...squareRoots);
+    const maxValue = Math.max(...squareRoots);
+    const fontSize = (word: Word) => {
+      if (minValue === maxValue) {
+        return (MIN_FONT_SIZE + MAX_FONT_SIZE) / 2;
+      }
+      const value = Math.sqrt(Math.max(0, word.value));
+      return MIN_FONT_SIZE + ((value - minValue) / (maxValue - minValue)) * (MAX_FONT_SIZE - MIN_FONT_SIZE);
+    };
+
+    void computeWords(
+      {
+        words,
+        width: CLOUD_WIDTH,
+        height: CLOUD_HEIGHT,
+        font: "-apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize,
+        padding: 5,
+        rotate: () => 0,
+        random: createSeededRandom(),
+      },
+      () => undefined,
+    ).then(
+      (nextWords) => {
+        if (active) {
+          setComputedWords(nextWords);
+        }
+      },
+      (error: unknown) => {
+        if (active) {
+          setComputeError(error instanceof Error ? error : new Error("Unable to compute word cloud"));
+        }
+      },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [words]);
+
+  if (computeError) {
+    throw computeError;
+  }
+
+  return (
+    <svg
+      className="wrapped-word-cloud"
+      aria-label="Favorite word cloud"
+      role="img"
+      viewBox={`0 0 ${CLOUD_WIDTH} ${CLOUD_HEIGHT}`}
+      width="100%"
+      height="100%"
+    >
+      <g transform={`translate(${CLOUD_WIDTH / 2}, ${CLOUD_HEIGHT / 2})`}>
+        {computedWords.map((word, index) => (
+          <text
+            key={`${word.text}-${index}`}
+            className="wrapped-word-cloud-word"
+            textAnchor="middle"
+            transform={`translate(${word.x}, ${word.y}) rotate(${word.rotate})`}
+            style={{
+              fontFamily: word.font,
+              fontSize: `${word.size}px`,
+              fontStyle: word.style,
+              fontWeight: word.weight,
+            }}
+          >
+            <title>{`${word.text}: ${word.value}`}</title>
+            {word.text}
+          </text>
+        ))}
+      </g>
+    </svg>
+  );
+};
+
 export const SimpleWordcloud = () => {
   const { data: wrappedStats, isLoading } = useSlowWrappedStats();
 
@@ -36,12 +117,12 @@ export const SimpleWordcloud = () => {
     [topOneHundred],
   );
   return (
-    <SectionWrapper sx={{ width: "100%", height: CHART_HEIGHT }}>
-      <SectionHeader>Wordcloud</SectionHeader>
-      {isLoading && <LinearProgress />}
-      <Box sx={{ width: "100%", height: "90%" }}>
-        <ErrorBoundary>{data && <ReactWordcloud callbacks={callbacks} options={options} words={data} />}</ErrorBoundary>
-      </Box>
+    <SectionWrapper className="wrapped-wordcloud-card">
+      <SectionHeader>Favorite Words</SectionHeader>
+      {isLoading && <progress className="wrapped-progress" aria-label="Loading favorite words" />}
+      <div className="wrapped-wordcloud-canvas">
+        <ErrorBoundary variant="section">{data.length > 0 && <DeterministicWordCloud words={data} />}</ErrorBoundary>
+      </div>
     </SectionWrapper>
   );
 };

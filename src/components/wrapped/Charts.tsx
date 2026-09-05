@@ -1,12 +1,9 @@
 import React from "react";
-import { useHandleMap, useWrappedDates } from "../../hooks/dataHooks";
-import { groupBy } from "lodash-es";
-import type { MessageDate } from "../../interfaces";
-import { CHART_HEIGHT, SECTION_WIDTH, SectionHeader, SectionWrapper } from "./Containers";
-import Box from "@mui/material/Box";
-import dayjs from "dayjs";
+import { useHandleMap } from "../../hooks/dataHooks";
+import { SectionHeader, SectionWrapper } from "./Containers";
 import { ErrorBoundary } from "../ErrorBoundary";
-import type { MessageDates } from "../../interfaces";
+import type { WrappedChartStats } from "../../interfaces";
+import { WRAPPED_HOUR_LABELS, WRAPPED_MONTH_LABELS } from "../../utils/wrapped-chart-labels";
 
 import type { ChartData, ChartOptions } from "chart.js";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
@@ -14,215 +11,241 @@ import { Bar } from "react-chartjs-2";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+const DARK_APPEARANCE_QUERY = "(prefers-color-scheme: dark)";
+
+interface WrappedChartProps {
+  stats: WrappedChartStats;
+}
+
+const subscribeToAppearance = (onStoreChange: () => void) => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => undefined;
+  }
+
+  const appearance = window.matchMedia(DARK_APPEARANCE_QUERY);
+  appearance.addEventListener("change", onStoreChange);
+  return () => appearance.removeEventListener("change", onStoreChange);
+};
+
+const getAppearanceSnapshot = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia(DARK_APPEARANCE_QUERY).matches;
+};
+
+const getServerAppearanceSnapshot = () => false;
+
+const getSemanticColor = (property: string, fallback: string) => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  return window.getComputedStyle(document.documentElement).getPropertyValue(property).trim() || fallback;
+};
+
 const MessagesByBase = ({
-  getDataCallback,
+  data,
+  emptyMessage = "No dated messages available.",
   title,
 }: {
-  getDataCallback: (dates: MessageDates | undefined) => ChartData<"bar"> | null;
+  data: ChartData<"bar"> | null;
+  emptyMessage?: string;
   title: string;
 }) => {
-  const { data: dates } = useWrappedDates();
+  const isDarkAppearance = React.useSyncExternalStore(
+    subscribeToAppearance,
+    getAppearanceSnapshot,
+    getServerAppearanceSnapshot,
+  );
 
-  const data = React.useMemo(() => {
-    const series = getDataCallback(dates);
-    return series;
-  }, [dates, getDataCallback]);
+  const themedData = React.useMemo(() => {
+    if (!data) {
+      return null;
+    }
+
+    const accentColor = getSemanticColor("--accent", isDarkAppearance ? "#0091ff" : "#0088ff");
+    return {
+      ...data,
+      datasets: data.datasets.map((dataset) => ({
+        ...dataset,
+        backgroundColor: accentColor,
+        borderRadius: 3,
+        borderSkipped: false,
+        maxBarThickness: 22,
+      })),
+    };
+  }, [data, isDarkAppearance]);
 
   return (
-    <SectionWrapper sx={{ width: SECTION_WIDTH, height: CHART_HEIGHT }}>
+    <SectionWrapper className="wrapped-chart-card">
       <SectionHeader>{title}</SectionHeader>
-      <Box sx={{ width: "100%", height: "90%" }}>
-        <ErrorBoundary>{data && <BaseChart data={data} />}</ErrorBoundary>
-      </Box>
+      <div className="wrapped-chart-canvas">
+        <ErrorBoundary variant="section">
+          {themedData ? (
+            <BaseChart data={themedData} isDarkAppearance={isDarkAppearance} />
+          ) : (
+            <p className="wrapped-chart-empty">{emptyMessage}</p>
+          )}
+        </ErrorBoundary>
+      </div>
     </SectionWrapper>
   );
 };
-const getMessagesByYear = (dates: MessageDates | undefined): ChartData<"bar"> | null => {
-  const grouped = groupBy(dates || [], (d: MessageDate) => {
-    if (d.date_obj) {
-      return d.date_obj.getFullYear();
+export const MessagesByYear = ({ stats }: WrappedChartProps) => {
+  const data = React.useMemo<ChartData<"bar"> | null>(() => {
+    if (!stats.byYear.length) {
+      return null;
     }
-  });
-
-  const datums = Object.entries(grouped)
-    .filter((l) => l[0] !== "undefined")
-    .map(([_, dates]) => {
-      const startOfYear = dayjs(dates[0].date_obj!).startOf("year");
-      const primary = startOfYear.add(1, "M").toDate();
-      return {
-        primary,
-        secondary: dates.length,
-      };
-    })
-    .filter((l) => l.primary);
-  if (!datums) {
-    return null;
-  }
-
-  return {
-    labels: datums.map((l) => l.primary.getUTCFullYear()),
-    datasets: [{ label: "Messages by Year", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
-  };
+    return {
+      labels: stats.byYear.map((datum) => datum.year),
+      datasets: [{ label: "Messages by Year", data: stats.byYear.map((datum) => datum.count) }],
+    };
+  }, [stats.byYear]);
+  return <MessagesByBase title="Messages by Year" data={data} />;
 };
 
-const getMessagesByMonth = (dates: MessageDates | undefined): ChartData<"bar"> | null => {
-  const grouped = groupBy(dates || [], (d: MessageDate) => {
-    if (d.date_obj) {
-      return d.date_obj.getMonth();
+export const MessagesByMonth = ({ stats }: WrappedChartProps) => {
+  const data = React.useMemo<ChartData<"bar"> | null>(() => {
+    if (!stats.byMonth.some((count) => count > 0)) {
+      return null;
     }
-  });
+    return {
+      labels: WRAPPED_MONTH_LABELS,
+      datasets: [{ label: "Messages by Month", data: stats.byMonth }],
+    };
+  }, [stats.byMonth]);
+  return <MessagesByBase title="Messages by Month" data={data} />;
+};
 
-  const datums = Object.entries(grouped)
-    .filter((l) => l[0] !== "undefined")
-    .map(([month, dates]) => ({
-      primary: month,
-      secondary: dates.length,
-    }))
-    .filter((l) => l.primary);
-
-  // add missing months
-  for (let i = 0; i < 12; i++) {
-    if (!datums.find((d) => Number(d.primary) === i)) {
-      datums.push({
-        primary: String(i),
-        secondary: 0,
-      });
+export const MessagesByHour = ({ stats }: WrappedChartProps) => {
+  const data = React.useMemo<ChartData<"bar"> | null>(() => {
+    if (!stats.byHour.some((count) => count > 0)) {
+      return null;
     }
-  }
-  // sort by month
-  datums.sort((a, b) => {
-    return Number(a.primary) - Number(b.primary);
-  });
-
-  for (const d of datums) {
-    // map month number to month name
-    d.primary = dayjs().month(Number(d.primary)).format("MMMM");
-  }
-  if (!datums) {
-    return null;
-  }
-
-  return {
-    labels: datums.map((l) => l.primary),
-    datasets: [{ label: "Messages by Month", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
-  };
+    return {
+      labels: WRAPPED_HOUR_LABELS,
+      datasets: [{ label: "Messages by Hour", data: stats.byHour }],
+    };
+  }, [stats.byHour]);
+  return <MessagesByBase title="Messages by Hour" data={data} />;
 };
 
-const getMessagesByHour = (dates: MessageDates | undefined): ChartData<"bar"> | null => {
-  const grouped = groupBy(dates || [], (d: MessageDate) => {
-    if (d.date_obj) {
-      return d.date_obj.getHours();
-    }
-  });
-
-  const datums = Object.entries(grouped)
-    .filter((l) => l[0] !== "undefined")
-    .map(([hour, dates]) => ({
-      primary: hour,
-      secondary: dates.length,
-    }))
-    .filter((l) => l.primary);
-
-  // add missing hours
-  for (let i = 0; i < 24; i++) {
-    if (!datums.find((d) => Number(d.primary) === i)) {
-      datums.push({
-        primary: String(i),
-        secondary: 0,
-      });
-    }
-  }
-  // sort by hour
-  datums.sort((a, b) => {
-    return Number(a.primary) - Number(b.primary);
-  });
-
-  for (const d of datums) {
-    // map month number to hour name
-    d.primary = dayjs().hour(Number(d.primary)).format("H A");
-  }
-  if (!datums) {
-    return null;
-  }
-  return {
-    labels: datums.map((l) => l.primary),
-    datasets: [{ label: "Messages by Hour", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
-  };
-};
-
-export const MessagesByYear = () => {
-  return <MessagesByBase title={"Messages by Year"} getDataCallback={getMessagesByYear} />;
-};
-
-export const MessagesByMonth = () => {
-  return <MessagesByBase title={"Messages by Month"} getDataCallback={getMessagesByMonth} />;
-};
-export const MessagesByHour = () => {
-  return <MessagesByBase title={"Messages by Hour"} getDataCallback={getMessagesByHour} />;
-};
-
-export const MessagesByPerson = () => {
+export const MessagesByPerson = ({ stats }: WrappedChartProps) => {
   const handleMap = useHandleMap();
-  const getMessagesByPerson = React.useCallback(
-    (dates: MessageDates | undefined): ChartData<"bar"> | null => {
-      const grouped = groupBy(dates || [], (d: MessageDate) => {
-        if (d.handle_id) {
-          return d.handle_id;
-        }
-      });
-
-      const datums = Object.entries(grouped)
-        .filter((l) => l[0] !== "undefined")
-        .map(([handle, dates]) => ({
-          primary: handle,
-          secondary: dates.length,
-        }))
-        .filter((l) => l.primary);
-
-      if (!datums) {
-        return null;
+  const data = React.useMemo<ChartData<"bar"> | null>(() => {
+    const people = new Map<string, { count: number; label: string }>();
+    for (const datum of stats.byHandle) {
+      const handle = handleMap[datum.handleId];
+      const identity =
+        datum.handleId === 0
+          ? "you"
+          : handle?.contact?.identifier
+            ? `contact:${handle.contact.identifier}`
+            : `handle:${datum.handleId}`;
+      const label = datum.handleId === 0 ? "You" : handle?.contact?.parsedName || handle?.id || String(datum.handleId);
+      const existing = people.get(identity);
+      if (existing) {
+        existing.count += datum.count;
+      } else {
+        people.set(identity, { count: datum.count, label });
       }
-      return {
-        labels: datums.map((l) => {
-          const handle = handleMap[l.primary];
-          if (handle) {
-            return handle.contact?.parsedName || handle.id;
-          }
-          return l.primary;
-        }),
-        datasets: [{ label: "Messages by Hour", data: datums.map((l) => l.secondary), backgroundColor: "#5871f5" }],
-      };
-    },
-    [handleMap],
-  );
-  return <MessagesByBase title={"Messages by Person"} getDataCallback={getMessagesByPerson} />;
+    }
+
+    const sorted = Array.from(people.values()).sort(
+      (left, right) => right.count - left.count || left.label.localeCompare(right.label),
+    );
+    if (!sorted.length) {
+      return null;
+    }
+    return {
+      labels: sorted.map((person) => person.label),
+      datasets: [{ label: "Messages by Person", data: sorted.map((person) => person.count) }],
+    };
+  }, [handleMap, stats.byHandle]);
+  return <MessagesByBase title="Messages by Person" data={data} emptyMessage="No participant messages available." />;
 };
-const axisStyles = {
-  ticks: {
-    color: "white",
-    beginAtZero: true,
-  },
-  grid: {
-    color: "#464646",
-  },
-};
-const options = {
-  responsive: true,
-  plugins: {
-    legend: {
-      position: "top" as const,
-      display: false,
+const createChartOptions = (isDarkAppearance: boolean): ChartOptions<"bar"> => {
+  const primaryLabelFallback = isDarkAppearance ? "rgba(255, 255, 255, 1)" : "rgba(0, 0, 0, 0.85)";
+  const secondaryLabelFallback = isDarkAppearance ? "rgba(255, 255, 255, 0.56)" : "rgba(60, 60, 67, 0.6)";
+  const popoverFallback = isDarkAppearance ? "rgba(49, 49, 49, 0.97)" : "rgba(246, 246, 246, 0.96)";
+  const tickStyles = {
+    color: getSemanticColor("--label-secondary", secondaryLabelFallback),
+    font: {
+      family: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+      size: 11,
+      weight: 400 as const,
     },
-  },
-  maintainAspectRatio: false,
-  scales: {
-    y: axisStyles,
-    x: axisStyles,
-  },
-} as ChartOptions<"bar">;
-export const BaseChart = ({ data }: { data: ChartData<"bar"> }) => {
+    padding: 7,
+  };
+
+  return {
+    responsive: true,
+    animation: {
+      duration: 180,
+    },
+    layout: {
+      padding: {
+        top: 3,
+        right: 3,
+      },
+    },
+    plugins: {
+      legend: {
+        position: "top",
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: getSemanticColor("--popover-background", popoverFallback),
+        bodyColor: getSemanticColor("--label-primary", primaryLabelFallback),
+        titleColor: getSemanticColor("--label-primary", primaryLabelFallback),
+        borderColor: getSemanticColor("--separator", "rgba(60, 60, 67, 0.16)"),
+        borderWidth: 1,
+        cornerRadius: 7,
+        displayColors: false,
+        padding: 8,
+      },
+    },
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        border: {
+          display: false,
+        },
+        grid: {
+          color: getSemanticColor("--separator", "rgba(60, 60, 67, 0.16)"),
+          drawTicks: false,
+        },
+        ticks: {
+          ...tickStyles,
+          maxTicksLimit: 5,
+          precision: 0,
+        },
+      },
+      x: {
+        border: {
+          display: false,
+        },
+        grid: {
+          display: false,
+        },
+        ticks: {
+          ...tickStyles,
+          maxRotation: 0,
+          minRotation: 0,
+        },
+      },
+    },
+  };
+};
+
+export const BaseChart = ({ data, isDarkAppearance }: { data: ChartData<"bar">; isDarkAppearance?: boolean }) => {
+  const options = React.useMemo(() => createChartOptions(Boolean(isDarkAppearance)), [isDarkAppearance]);
+
   return (
-    <ErrorBoundary>
+    <ErrorBoundary variant="section">
       <Bar data={data} options={options} />
     </ErrorBoundary>
   );

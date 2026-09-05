@@ -7,7 +7,7 @@ import os from "os";
 import { appPath } from "../versions";
 import { createWriteStream } from "fs";
 
-const { combine, timestamp, printf, colorize, errors, json, splat } = winston.format;
+const { combine, timestamp, printf, colorize, errors, splat } = winston.format;
 const ts = timestamp({
   format: "YYYY-MM-DD HH:mm:ss",
 });

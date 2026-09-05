@@ -9,9 +9,13 @@ export const useWindowSize = () => {
       setSize([window.innerWidth, window.innerHeight]);
     }
 
-    window.addEventListener("resize", throttle(updateSize, 100));
+    const throttledUpdateSize = throttle(updateSize, 100);
+    window.addEventListener("resize", throttledUpdateSize);
     updateSize();
-    return () => window.removeEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", throttledUpdateSize);
+      throttledUpdateSize.cancel();
+    };
   }, []);
   return size;
 };

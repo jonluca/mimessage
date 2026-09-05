@@ -1,24 +1,57 @@
-import { Button } from "@mui/material";
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import theme from "../theme";
 import React from "react";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useMimessage } from "../../context";
-export const ImessageWrapped = ({ back }: { back?: boolean }) => {
-  const setIsInWrapped = useMimessage((state) => state.setIsInWrapped);
-  const setChatId = useMimessage((state) => state.setChatId);
+import { SystemSymbol } from "../SystemSymbol";
 
-  const openImessageWrapped = () => {
-    if (!back) {
-      setChatId(null);
+export type ConversationListFilter = "all" | "deleted" | "spam" | "unknown" | "unread";
+
+interface ConversationFilterButtonProps {
+  hasUnread?: boolean;
+  value: ConversationListFilter;
+  onChange: (value: ConversationListFilter) => void;
+}
+
+const FilterIcon = () => <SystemSymbol name="filter" />;
+
+export const ConversationFilterButton = ({ hasUnread = false, value, onChange }: ConversationFilterButtonProps) => {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const openMenu = async () => {
+    if (menuOpen) {
+      return;
     }
-    setIsInWrapped(!back);
+    setMenuOpen(true);
+    try {
+      const selection = (await global.ipcRenderer.invoke("showConversationFilterMenu", value)) as
+        | ConversationListFilter
+        | "manage"
+        | null;
+      if (selection === "manage") {
+        await global.ipcRenderer.invoke("showSettings");
+      } else if (selection) {
+        onChange(selection);
+      }
+    } finally {
+      setMenuOpen(false);
+    }
   };
-  const Icon = back ? ArrowBackIcon : AutoFixHighIcon;
+
   return (
-    <Button variant="contained" title={"Open iMessage Wrapped"} sx={{ mb: 1.5, mx: 1.5 }} onClick={openImessageWrapped}>
-      <Icon sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }} />
-      {back ? "Back" : "iMessage Wrapped"}
-    </Button>
+    <button
+      type="button"
+      className={`toolbar-icon-button messages-filter-button${value === "all" ? "" : " is-filtered"}`}
+      aria-label="Filter conversations"
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      title="Filter conversations"
+      onClick={() => void openMenu()}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          void openMenu();
+        }
+      }}
+    >
+      <FilterIcon />
+      {hasUnread ? <span className="messages-filter-unread-badge" aria-hidden="true" /> : null}
+    </button>
   );
 };

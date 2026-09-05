@@ -1,455 +1,803 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import Box from "@mui/material/Box";
-import { useMimessage } from "../../context";
-import {
-  useChatMap,
-  useContactsWithChats,
-  useEarliestMessageDate,
-  useGlobalSearch,
-  useGroupChatList,
-  useHandleMap,
-  useLoadSemanticResultsIntoMemory,
-  useSemanticSearchCacheSize,
-} from "../../hooks/dataHooks";
-import { CircularProgress, LinearProgress, TextField } from "@mui/material";
-import { Button, Checkbox, FormControlLabel, FormGroup } from "@mui/material";
-
-import { Virtuoso } from "react-virtuoso";
-import { debounce } from "lodash-es";
-import InputBase from "@mui/material/InputBase";
-import theme from "../theme";
-import type { Chat, ChatList, GlobalSearchResult } from "../../interfaces";
-import Typography from "@mui/material/Typography";
-import { MessageAvatar } from "../message/Avatar";
-import dayjs from "dayjs";
-import Select from "react-select";
-import type { Contact } from "electron-mac-contacts";
-import { selectTheme } from "../wrapped/YearSelector";
+import React, { useEffect, useMemo, useState } from "react";
 import Highlighter from "react-highlight-words";
+import { useShallow } from "zustand/react/shallow";
+import { useMimessage } from "../../context";
+import { useChatMap, useGlobalSearch, useHandleMap, useHomeDir } from "../../hooks/dataHooks";
+import type { Chat, GlobalSearchResult, Handle } from "../../interfaces";
+import { MessageAvatar } from "../message/Avatar";
+import { SystemSymbol, type SystemSymbolName } from "../SystemSymbol";
 
-import type { DateRange } from "react-day-picker";
-import { DayPicker } from "react-day-picker";
-import Popover from "@mui/material/Popover";
-import { shallow } from "zustand/shallow";
-import { SemanticSearchInfo } from "../chat/OpenAiKey";
-import Backdrop from "@mui/material/Backdrop";
+const CONVERSATION_LIMIT = 4;
+const COLLAPSED_MESSAGE_LIMIT = 3;
+const EXPANDED_MESSAGE_LIMIT = 100;
+const COLLAPSED_LINK_LIMIT = 6;
+const COLLAPSED_PHOTO_LIMIT = 9;
+const COLLAPSED_DOCUMENT_LIMIT = 3;
+const EXPANDED_CONTENT_LIMIT = 100;
 
-const GloablSearchInput = () => {
-  const globalSearch = useMimessage((state) => state.globalSearch);
-  const setGlobalSearch = useMimessage((state) => state.setGlobalSearch);
+const PHOTO_EXTENSIONS = new Set(["gif", "heic", "heif", "jpeg", "jpg", "mov", "mp4", "png", "tiff", "webp"]);
+const DOCUMENT_EXTENSIONS = new Set([
+  "csv",
+  "doc",
+  "docx",
+  "key",
+  "numbers",
+  "pages",
+  "pdf",
+  "ppt",
+  "pptx",
+  "rtf",
+  "txt",
+  "xls",
+  "xlsx",
+  "zip",
+]);
 
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onFilterChange = useCallback(() => {
-    const input = inputRef.current;
-    const value = input?.value;
-    setGlobalSearch(value || "");
-  }, [setGlobalSearch]);
-  const onChangeDebounced = useMemo(() => debounce(onFilterChange, 450), [onFilterChange]);
+interface AttachmentHit {
+  attachment: GlobalSearchResult;
+  parent: GlobalSearchResult;
+}
 
-  return (
-    <Box
-      sx={{
-        transition: "top 0.5s",
-        zIndex: 999,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width: "100%",
-        height: "fit-content",
-        mt: 2,
-      }}
-    >
-      <InputBase
-        ref={ref}
-        onFocus={onChangeDebounced}
-        defaultValue={globalSearch || ""}
-        sx={{
-          width: "100%",
-          px: 1,
-          height: 50,
-          background: "#2c2c2c",
-          display: "flex",
-          borderRadius: "5px",
-          color: "white",
-        }}
-        inputProps={{
-          sx: { p: 0, height: 50, color: theme.colors.white, background: "#2c2c2c", borderRadius: "5px" },
-          ref: inputRef,
-        }}
-        onChange={onChangeDebounced}
-        placeholder={"Global Search"}
-      />
-      <SemanticSearchInfo />
-    </Box>
-  );
+interface LinkHit {
+  parent: GlobalSearchResult;
+  url: string;
+}
+
+const EMPTY_SEARCH_RESULTS: GlobalSearchResult[] = [];
+
+const searchWords = (query: string, semantic: boolean) => (semantic ? [] : query.trim().split(/\s+/u).filter(Boolean));
+
+const SearchMatch = ({ query, semantic, text }: { query: string; semantic: boolean; text: string }) => (
+  <Highlighter
+    autoEscape
+    highlightClassName="sidebar-search-match"
+    highlightTag="strong"
+    searchWords={searchWords(query, semantic)}
+    textToHighlight={text}
+  />
+);
+
+const getFileLabel = (attachment: GlobalSearchResult) => {
+  const candidate = attachment.transfer_name || attachment.filename || "Attachment";
+  return candidate.split("/").filter(Boolean).at(-1) || candidate;
 };
 
-const SearchResult = ({ result }: { result: GlobalSearchResult }) => {
-  const setChatId = useMimessage((state) => state.setChatId);
-  const setMessageIdToBringToFocus = useMimessage((state) => state.setMessageIdToBringToFocus);
-  const handleMap = useHandleMap();
-  const globalSearch = useMimessage((state) => state.globalSearch);
+const getFileExtension = (attachment: GlobalSearchResult) =>
+  getFileLabel(attachment).split(".").at(-1)?.toLocaleLowerCase() || "";
 
-  const handle = handleMap?.[result.handle_id!];
-  const chatMap = useChatMap();
-  const chat = chatMap?.get(result.chat_id!);
-  const contact = handle?.contact;
-  const onClick = () => {
-    setChatId(result.chat_id!);
-    setMessageIdToBringToFocus(result.message_id!);
-  };
+const isPhotoAttachment = (attachment: GlobalSearchResult) =>
+  Boolean(attachment.mime_type?.startsWith("image/") || attachment.mime_type?.startsWith("video/")) ||
+  PHOTO_EXTENSIONS.has(getFileExtension(attachment));
 
-  if (!result.text) {
-    // this is for attachments, to do in the future
-    return null;
+const isDocumentAttachment = (attachment: GlobalSearchResult) =>
+  Boolean(
+    attachment.mime_type === "application/pdf" ||
+    attachment.mime_type?.startsWith("text/") ||
+    attachment.mime_type?.includes("document") ||
+    attachment.mime_type?.includes("presentation") ||
+    attachment.mime_type?.includes("spreadsheet") ||
+    attachment.mime_type?.includes("zip"),
+  ) || DOCUMENT_EXTENSIONS.has(getFileExtension(attachment));
+
+const extractHttpUrls = (text: string | null) => {
+  if (!text) {
+    return [];
   }
-  return (
-    <Box
-      onClick={onClick}
-      sx={{
-        display: "flex",
-        cursor: "pointer",
-        p: 1,
-        my: 1,
-        borderRadius: 4,
-        background: "#2c2c2c",
-        alignItems: "center",
-      }}
-    >
-      <MessageAvatar fallback={chat?.name} contact={contact} />
-      <Box sx={{ ml: 1, wordBreak: "break-word" }}>
-        <Highlighter searchWords={[globalSearch!]} autoEscape={true} textToHighlight={result.text || ""} />
-        <Typography variant={"h6"} sx={{ color: "grey", fontSize: 12 }}>
-          {result.is_from_me ? "You" : contact?.parsedName || handle?.id}
-          {result.date_obj && <> on {dayjs(result.date_obj).format("MM/DD/YYYY HH:mm A")}</>}
-          {chat?.name && <> in {chat.name}</>}
-        </Typography>
-      </Box>
-    </Box>
-  );
-};
-
-const ContactFilter = () => {
-  const contacts = useContactsWithChats();
-
-  const contactFilter = useMimessage((state) => state.contactFilter);
-  const setContactFilter = useMimessage((state) => state.setContactFilter);
-
-  return (
-    <Box sx={{ mr: 0.5, width: 160 }}>
-      <Select<Contact, true>
-        value={contactFilter}
-        options={contacts || []}
-        theme={selectTheme}
-        name={"contactFilter"}
-        placeholder={"Contacts"}
-        blurInputOnSelect
-        isSearchable
-        isMulti
-        onChange={(value) => {
-          setContactFilter(value as Contact[]);
-        }}
-        styles={{
-          option: (baseStyles, state) => ({
-            ...baseStyles,
-            color: state.isSelected ? "white" : baseStyles.color,
-          }),
-        }}
-        getOptionLabel={(option) => option.parsedName || option.identifier || "Unknown"}
-        getOptionValue={(option) => option.identifier}
-      />
-    </Box>
-  );
-};
-const GroupChatFilter = () => {
-  const groupChatList = useGroupChatList();
-  const chatFilter = useMimessage((state) => state.chatFilter);
-  const setChatFilter = useMimessage((state) => state.setChatFilter);
-
-  return (
-    <Box sx={{ mx: 0.5, width: 160 }}>
-      <Select<Chat, true>
-        value={chatFilter}
-        options={groupChatList || []}
-        theme={selectTheme}
-        name={"chatFilter"}
-        placeholder={"Groups"}
-        closeMenuOnSelect={false}
-        isSearchable
-        isMulti
-        onChange={(value) => {
-          setChatFilter(value as ChatList);
-        }}
-        styles={{
-          option: (baseStyles, state) => ({
-            ...baseStyles,
-            color: state.isSelected ? "white" : baseStyles.color,
-          }),
-        }}
-        getOptionLabel={(option) => option.name || "Unknown"}
-        getOptionValue={(option) => String(option.chat_id)}
-      />
-    </Box>
-  );
-};
-
-const ToggleSemanticSearch = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const { mutateAsync, isLoading } = useLoadSemanticResultsIntoMemory();
-  const { data: cacheSize } = useSemanticSearchCacheSize();
-  const { setOpenAiKey, openAiKey, setUseSemanticSearch, useSemanticSearch } = useMimessage(
-    (state) => ({
-      useSemanticSearch: state.useSemanticSearch,
-      setUseSemanticSearch: state.setUseSemanticSearch,
-      openAiKey: state.openAiKey,
-      setOpenAiKey: state.setOpenAiKey,
-    }),
-    shallow,
-  );
-  const disabled = !openAiKey || isLoading;
-  const cacheIsLoaded = (cacheSize || 0) > 0;
-  return (
-    <>
-      <Backdrop open={isOpen} onClick={() => !isLoading && setIsOpen(false)}>
-        <Box
-          onClick={(e) => e.stopPropagation()}
-          sx={{ background: "#2c2c2c", maxWidth: 600, p: 2, m: 2 }}
-          display={"flex"}
-          flexDirection={"column"}
-        >
-          {isLoading ? (
-            <>
-              <Typography variant="h1" sx={{ color: "white" }}>
-                Loading Vectors into Memory
-              </Typography>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                This takes ~3s per 100k messages
-              </Typography>
-              <CircularProgress sx={{ my: 2 }} />
-            </>
-          ) : disabled ? (
-            <>
-              <TextField
-                defaultValue={openAiKey}
-                placeholder={"Enter your OpenAI API key"}
-                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  const key = e.currentTarget.value;
-                  if (!key.startsWith("sk-") || key.length !== 51) {
-                    return;
-                  }
-                  setOpenAiKey(key);
-                }}
-                sx={{ mt: 1 }}
-              />
-            </>
-          ) : (
-            <>
-              <Typography variant="h1" sx={{ color: "white" }}>
-                Semantic Search
-              </Typography>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                Semantic search uses the OpenAI API to find similar messages. This will load all messages and embeddings
-                into memory, which may take a while.
-                <br />
-                <br />
-                It will then create a new embedding for your query, and do a cosine similarity search to find messages
-                with similar content.
-              </Typography>
-            </>
-          )}
-          <FormGroup>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  style={{
-                    color: disabled ? "grey" : "white",
-                  }}
-                  checked={useSemanticSearch}
-                  onChange={async () => {
-                    const newUseSemanticSearch = !useSemanticSearch;
-                    if (newUseSemanticSearch) {
-                      await mutateAsync();
-                    }
-                    setUseSemanticSearch(newUseSemanticSearch);
-                    setIsOpen(false);
-                  }}
-                  disabled={disabled}
-                  title={openAiKey ? "" : "OpenAI Key Required"}
-                />
-              }
-              sx={{
-                color: "white",
-                "& .MuiFormControlLabel-label.Mui-disabled": {
-                  color: "#bbbbbb",
-                },
-                py: 3,
-              }}
-              label="Use Semantic Search"
-            />
-          </FormGroup>
-          <Typography variant="h6" sx={{ color: "white" }}>
-            Cache Loaded: {cacheIsLoaded ? "Yes" : "No"}
-          </Typography>
-          {cacheIsLoaded && (
-            <>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                Cache Size: {cacheSize!.toLocaleString()}
-              </Typography>
-            </>
-          )}
-        </Box>
-      </Backdrop>
-      <Button sx={{ ml: 1, whiteSpace: "pre", wordWrap: "none" }} variant={"outlined"} onClick={() => setIsOpen(true)}>
-        Semantic Search
-      </Button>
-    </>
-  );
-};
-
-const GlobalSearchFilter = () => {
-  const { data: results } = useGlobalSearch();
-  const count = results?.length || 0;
-  const globalSearch = useMimessage((state) => state.globalSearch);
-  return (
-    <Box
-      sx={{
-        zIndex: 999,
-        justifyContent: "flex-start",
-        alignItems: "center",
-        width: "100%",
-        flexDirection: "row",
-        background: "#1e1e1e",
-        py: 1,
-        display: "flex",
-      }}
-    >
-      {results && globalSearch && (
-        <Typography sx={{ my: 1, mr: 1, color: "grey", whiteSpace: "pre" }} variant={"h4"}>
-          {count} results
-        </Typography>
-      )}
-      <ContactFilter />
-      <GroupChatFilter />
-      <DateFilter />
-      <ToggleSemanticSearch />
-    </Box>
-  );
-};
-
-const DateFilter = () => {
-  const { startDate, setStartDate, setEndDate, endDate } = useMimessage(
-    (state) => ({
-      startDate: state.startDate,
-      endDate: state.endDate,
-      setStartDate: state.setStartDate,
-      setEndDate: state.setEndDate,
-    }),
-    shallow,
-  );
-
-  const { data: earliestDate } = useEarliestMessageDate();
-  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-  const id = open ? `date-popover-selector` : undefined;
-  const range = { from: startDate || undefined, to: endDate || undefined };
-  const onSelect = (range: DateRange | undefined) => {
-    if (range) {
-      setStartDate(range.from);
-      setEndDate(range.to);
-    } else {
-      setStartDate(null);
-      setEndDate(null);
+  const candidates = text.match(/https?:\/\/[^\s]+/giu) || [];
+  return candidates.flatMap((candidate) => {
+    const trimmed = candidate.replace(/[),.!?;:'"\]}]+$/u, "");
+    try {
+      const url = new URL(trimmed);
+      return url.protocol === "http:" || url.protocol === "https:" ? [url.toString()] : [];
+    } catch {
+      return [];
     }
-  };
+  });
+};
+
+const isLocationUrl = (value: string) => {
+  const url = new URL(value);
+  const hostname = url.hostname.replace(/^www\./u, "");
   return (
-    <>
-      <Button sx={{ ml: 1, whiteSpace: "pre", wordWrap: "none" }} variant={"outlined"} id={id} onClick={handleClick}>
-        Dates
-      </Button>
-      <Popover
-        id={id}
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-        PaperProps={{
-          sx: { p: 2, backgroundColor: "#2c2c2c", color: "white" },
-        }}
+    hostname === "maps.apple.com" ||
+    hostname === "maps.google.com" ||
+    (hostname === "google.com" && url.pathname.startsWith("/maps")) ||
+    (hostname === "goo.gl" && url.pathname.startsWith("/maps"))
+  );
+};
+
+const textMatchesQuery = (text: string | null, query: string) => {
+  const normalizedText = text?.toLocaleLowerCase() || "";
+  const terms = query.toLocaleLowerCase().trim().split(/\s+/u).filter(Boolean);
+  return terms.length > 0 && terms.every((term) => normalizedText.includes(term));
+};
+
+const encodeAssetPath = (value: string) => value.split("/").map(encodeURIComponent).join("/");
+
+const getAttachmentAssetUrl = (attachment: GlobalSearchResult, homeDir: string | undefined) => {
+  const originalPath = attachment.filename || "";
+  const absolutePath = originalPath.startsWith("~/")
+    ? homeDir
+      ? `${homeDir}${originalPath.slice(1)}`
+      : ""
+    : originalPath;
+  return absolutePath ? `mimessage-asset://${encodeAssetPath(absolutePath)}` : "";
+};
+
+const getLinkPreviewAttachment = (parent: GlobalSearchResult) =>
+  ([parent, ...(parent.attachmentMessages || [])] as GlobalSearchResult[]).find(
+    (attachment) => isPhotoAttachment(attachment) && Boolean(attachment.filename),
+  );
+
+const getLinkTitle = (parent: GlobalSearchResult, url: string) => {
+  const messageCopy = (parent.text || "")
+    .replaceAll(/https?:\/\/[^\s]+/giu, " ")
+    .replaceAll(/\s+/gu, " ")
+    .trim();
+  return messageCopy || new URL(url).hostname.replace(/^www\./u, "");
+};
+
+const contentSymbolNames: Record<"document" | "link" | "video", SystemSymbolName> = {
+  document: "doc-fill",
+  link: "link",
+  video: "video",
+};
+
+const ContentIcon = ({ kind }: { kind: keyof typeof contentSymbolNames }) => (
+  <SystemSymbol name={contentSymbolNames[kind]} />
+);
+
+const resultTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: "numeric",
+  hour12: false,
+  minute: "2-digit",
+});
+const resultDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+});
+const resultDateWithYearFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const formatResultDate = (date: Date) => {
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) {
+    return resultTimeFormatter.format(date);
+  }
+  if (date.getFullYear() === today.getFullYear()) {
+    return resultDateFormatter.format(date);
+  }
+  return resultDateWithYearFormatter.format(date);
+};
+
+const getConversationContact = (chat: Chat | undefined) =>
+  chat?.handles?.length === 1 ? chat.handles[0]?.contact : null;
+
+const getResultDetails = (
+  result: GlobalSearchResult,
+  chat: Chat | undefined,
+  handleMap: Record<number | string, Handle>,
+) => {
+  const handle = handleMap[result.handle_id!];
+  const senderContact = handle?.contact;
+  const conversationContact = getConversationContact(chat);
+  const sender = result.is_from_me ? "You" : senderContact?.parsedName || handle?.id || "Unknown Sender";
+  const title = chat?.name || sender;
+  const avatarContact = conversationContact || senderContact;
+  return { avatarContact, sender, title };
+};
+
+const moveSearchResultFocus: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+    return;
+  }
+  const buttons = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>("[data-search-result]:not(:disabled)"),
+  );
+  if (!buttons.length) {
+    return;
+  }
+  event.preventDefault();
+  const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+  const direction = event.key === "ArrowDown" ? 1 : -1;
+  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + direction + buttons.length) % buttons.length;
+  buttons[nextIndex]?.focus();
+};
+
+const ConversationResult = ({
+  chat,
+  onSelect,
+  query,
+  selected,
+  semantic,
+}: {
+  chat: Chat;
+  onSelect: (chat: Chat) => void;
+  query: string;
+  selected: boolean;
+  semantic: boolean;
+}) => (
+  <li className="sidebar-search-conversation-item">
+    <button
+      type="button"
+      data-search-result
+      className={`sidebar-search-conversation-button${selected ? " is-selected" : ""}`}
+      aria-current={selected ? "page" : undefined}
+      aria-label={`Open conversation with ${chat.name || "Unknown"}`}
+      onClick={() => onSelect(chat)}
+    >
+      <span className="sidebar-search-conversation-avatar" aria-hidden="true">
+        <MessageAvatar contact={getConversationContact(chat)} fallback={chat.name || "?"} size={20} />
+      </span>
+      <span className="sidebar-search-conversation-name">
+        <SearchMatch query={query} semantic={semantic} text={chat.name || "Unknown"} />
+      </span>
+    </button>
+  </li>
+);
+
+const MessageResult = ({
+  chat,
+  handleMap,
+  onSelect,
+  query,
+  result,
+  selected,
+  semantic,
+}: {
+  chat: Chat | undefined;
+  handleMap: Record<number | string, Handle>;
+  onSelect: (result: GlobalSearchResult) => void;
+  query: string;
+  result: GlobalSearchResult;
+  selected: boolean;
+  semantic: boolean;
+}) => {
+  const { avatarContact, sender, title } = getResultDetails(result, chat, handleMap);
+  const resultDate = result.date_obj && !Number.isNaN(result.date_obj.getTime()) ? result.date_obj : null;
+
+  return (
+    <li className="sidebar-search-message-item">
+      <button
+        type="button"
+        data-search-result
+        className={`sidebar-search-message-button${result.is_from_me ? " is-from-me" : ""}${
+          selected ? " is-selected" : ""
+        }`}
+        aria-current={selected ? "true" : undefined}
+        aria-label={`Open message in ${title}: ${sender}, ${result.text || "attachment"}${
+          resultDate ? `, ${formatResultDate(resultDate)}` : ""
+        }`}
+        onClick={() => onSelect(result)}
       >
-        <DayPicker
-          selected={range || undefined}
-          onSelect={onSelect}
-          captionLayout="dropdown-buttons"
-          mode={"range"}
-          fromYear={earliestDate?.getFullYear()}
-          toDate={new Date()}
-        />
-      </Popover>
-    </>
+        <span className="sidebar-search-message-avatar" aria-hidden="true">
+          <MessageAvatar contact={avatarContact} fallback={title} size={28} />
+        </span>
+        <span className="sidebar-search-message-content">
+          <span className="sidebar-search-message-preview">
+            <SearchMatch query={query} semantic={semantic} text={result.text || "Attachment"} />
+          </span>
+        </span>
+        <span className="sidebar-search-message-meta" aria-hidden="true">
+          {resultDate ? (
+            <time className="sidebar-search-message-date" dateTime={resultDate.toISOString()}>
+              {formatResultDate(resultDate)}
+            </time>
+          ) : null}
+          <SystemSymbol name="chevron-right" />
+        </span>
+      </button>
+    </li>
   );
 };
 
-const SearchResults = () => {
-  const { data: results } = useGlobalSearch();
-  const count = results?.length || 0;
+const SearchSectionHeader = ({
+  expanded,
+  hasMore,
+  id,
+  onExpand,
+  title,
+}: {
+  expanded: boolean;
+  hasMore: boolean;
+  id: string;
+  onExpand: () => void;
+  title: string;
+}) => (
+  <header className="sidebar-search-section-header">
+    <h2 className="sidebar-search-section-title" id={id}>
+      {title}
+    </h2>
+    {hasMore && !expanded ? (
+      <button type="button" className="sidebar-search-show-more" onClick={onExpand}>
+        Show More
+      </button>
+    ) : null}
+  </header>
+);
 
-  const searchResultRenderer = (index: number) => {
-    const result = results?.[index];
+const PhotoSearchSection = ({
+  chatMap,
+  expanded,
+  handleMap,
+  hits,
+  homeDir,
+  onExpand,
+  onSelect,
+}: {
+  chatMap: Map<number, Chat>;
+  expanded: boolean;
+  handleMap: Record<number | string, Handle>;
+  hits: AttachmentHit[];
+  homeDir: string | undefined;
+  onExpand: () => void;
+  onSelect: (result: GlobalSearchResult) => void;
+}) => {
+  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_PHOTO_LIMIT);
+  return (
+    <section className="sidebar-search-section sidebar-search-photos" aria-labelledby="sidebar-photos-title">
+      <SearchSectionHeader
+        expanded={expanded}
+        hasMore={hits.length > COLLAPSED_PHOTO_LIMIT}
+        id="sidebar-photos-title"
+        onExpand={onExpand}
+        title="Photos"
+      />
+      <ul className="sidebar-search-photo-grid">
+        {visibleHits.map(({ attachment, parent }) => {
+          const label = getFileLabel(attachment);
+          const assetUrl = getAttachmentAssetUrl(attachment, homeDir);
+          const { avatarContact, title } = getResultDetails(parent, chatMap.get(parent.chat_id!), handleMap);
+          const isImage =
+            Boolean(attachment.mime_type?.startsWith("image/")) ||
+            ["gif", "heic", "heif", "jpeg", "jpg", "png", "tiff", "webp"].includes(getFileExtension(attachment));
+          return (
+            <li key={`${parent.message_id ?? parent.guid}-${attachment.attachment_id ?? label}`}>
+              <button
+                type="button"
+                data-search-result
+                className="sidebar-search-photo-button"
+                aria-label={`Open ${label} in conversation`}
+                onClick={() => onSelect(parent)}
+              >
+                <span className="sidebar-search-photo-preview">
+                  {assetUrl && isImage ? (
+                    <img src={assetUrl} alt="" decoding="async" loading="lazy" />
+                  ) : (
+                    <span className="sidebar-search-content-icon">
+                      <ContentIcon kind="video" />
+                    </span>
+                  )}
+                  {avatarContact ? (
+                    <span className="sidebar-search-photo-avatar" aria-hidden="true">
+                      <MessageAvatar contact={avatarContact} fallback={title} size={26} />
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
 
-    if (!result) {
-      return null;
+const LinkSearchSection = ({
+  chatMap,
+  expanded,
+  handleMap,
+  hits,
+  homeDir,
+  onExpand,
+  onSelect,
+  query,
+  sectionKey = "links",
+  title = "Links",
+}: {
+  chatMap: Map<number, Chat>;
+  expanded: boolean;
+  handleMap: Record<number | string, Handle>;
+  hits: LinkHit[];
+  homeDir: string | undefined;
+  onExpand: () => void;
+  onSelect: (result: GlobalSearchResult) => void;
+  query: string;
+  sectionKey?: "links" | "locations";
+  title?: string;
+}) => {
+  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_LINK_LIMIT);
+  const titleId = `sidebar-${sectionKey}-title`;
+  return (
+    <section className={`sidebar-search-section sidebar-search-${sectionKey}`} aria-labelledby={titleId}>
+      <SearchSectionHeader
+        expanded={expanded}
+        hasMore={hits.length > COLLAPSED_LINK_LIMIT}
+        id={titleId}
+        onExpand={onExpand}
+        title={title}
+      />
+      <ul className="sidebar-search-link-grid">
+        {visibleHits.map(({ parent, url }) => {
+          const hostname = new URL(url).hostname.replace(/^www\./u, "");
+          const title = getLinkTitle(parent, url);
+          const previewAttachment = getLinkPreviewAttachment(parent);
+          const previewUrl = previewAttachment ? getAttachmentAssetUrl(previewAttachment, homeDir) : "";
+          const { avatarContact, title: conversationTitle } = getResultDetails(
+            parent,
+            chatMap.get(parent.chat_id!),
+            handleMap,
+          );
+          return (
+            <li key={`${parent.message_id ?? parent.guid}-${url}`}>
+              <button
+                type="button"
+                data-search-result
+                className="sidebar-search-link-button"
+                aria-label={`Open link from ${hostname} in conversation`}
+                onClick={() => onSelect(parent)}
+              >
+                <span className="sidebar-search-link-preview" aria-hidden="true">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="" decoding="async" loading="lazy" />
+                  ) : (
+                    <span className="sidebar-search-link-fallback">
+                      <ContentIcon kind="link" />
+                    </span>
+                  )}
+                  {avatarContact ? (
+                    <span className="sidebar-search-link-avatar">
+                      <MessageAvatar contact={avatarContact} fallback={conversationTitle} size={26} />
+                    </span>
+                  ) : null}
+                </span>
+                <span className="sidebar-search-link-copy">
+                  <span className="sidebar-search-link-title">
+                    <SearchMatch query={query} semantic={false} text={title} />
+                  </span>
+                  <span className="sidebar-search-link-host">
+                    <SearchMatch query={query} semantic={false} text={hostname} />
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
+const DocumentSearchSection = ({
+  expanded,
+  hits,
+  onExpand,
+  onSelect,
+  query,
+}: {
+  expanded: boolean;
+  hits: AttachmentHit[];
+  onExpand: () => void;
+  onSelect: (result: GlobalSearchResult) => void;
+  query: string;
+}) => {
+  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_DOCUMENT_LIMIT);
+  return (
+    <section className="sidebar-search-section sidebar-search-documents" aria-labelledby="sidebar-documents-title">
+      <SearchSectionHeader
+        expanded={expanded}
+        hasMore={hits.length > COLLAPSED_DOCUMENT_LIMIT}
+        id="sidebar-documents-title"
+        onExpand={onExpand}
+        title="Documents"
+      />
+      <ul className="sidebar-search-content-list">
+        {visibleHits.map(({ attachment, parent }) => {
+          const primary = getFileLabel(attachment);
+          return (
+            <li key={`${parent.message_id ?? parent.guid}-${attachment.attachment_id ?? primary}`}>
+              <button
+                type="button"
+                data-search-result
+                className="sidebar-search-content-button"
+                aria-label={`Open ${primary} in conversation`}
+                onClick={() => onSelect(parent)}
+              >
+                <span className="sidebar-search-content-icon" aria-hidden="true">
+                  <ContentIcon kind="document" />
+                </span>
+                <span className="sidebar-search-content-copy">
+                  <span className="sidebar-search-content-title">
+                    <SearchMatch query={query} semantic={false} text={primary} />
+                  </span>
+                  <span className="sidebar-search-content-subtitle">{attachment.mime_type || "Document"}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
+export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] }) => {
+  const {
+    chatId,
+    globalSearch,
+    search,
+    selectedSearchMessageId,
+    setChatId,
+    setIsComposingNewMessage,
+    setMessageIdToBringToFocus,
+    setSelectedSearchMessageId,
+    useSemanticSearch,
+  } = useMimessage(
+    useShallow((state) => ({
+      chatId: state.chatId,
+      globalSearch: state.globalSearch || "",
+      search: state.search || "",
+      selectedSearchMessageId: state.selectedSearchMessageId,
+      setChatId: state.setChatId,
+      setIsComposingNewMessage: state.setIsComposingNewMessage,
+      setMessageIdToBringToFocus: state.setMessageIdToBringToFocus,
+      setSelectedSearchMessageId: state.setSelectedSearchMessageId,
+      useSemanticSearch: state.useSemanticSearch,
+    })),
+  );
+  const { data: results, isError, isLoading } = useGlobalSearch();
+  const { data: homeDir } = useHomeDir();
+  const chatMap = useChatMap();
+  const handleMap = useHandleMap();
+  const [showMore, setShowMore] = useState(false);
+  const [expandedContentSections, setExpandedContentSections] = useState<Set<string>>(() => new Set());
+  const draftQuery = search.trim();
+  const committedQuery = globalSearch.trim();
+  const queryNeedsCommit = draftQuery !== committedQuery;
+  const semanticQueryNeedsCommit = useSemanticSearch && queryNeedsCommit;
+
+  useEffect(() => {
+    setShowMore(false);
+    setExpandedContentSections(new Set());
+  }, [committedQuery]);
+
+  const visibleConversations = useMemo(
+    () => conversations.filter((chat) => chat.chat_id !== null).slice(0, CONVERSATION_LIMIT),
+    [conversations],
+  );
+  const rawResults = queryNeedsCommit ? EMPTY_SEARCH_RESULTS : results || EMPTY_SEARCH_RESULTS;
+  const messageResults = rawResults.filter((result) => result.text?.trim());
+  const visibleMessageResults = messageResults.slice(0, showMore ? EXPANDED_MESSAGE_LIMIT : COLLAPSED_MESSAGE_LIMIT);
+  const hasMoreMessages = !showMore && messageResults.length > COLLAPSED_MESSAGE_LIMIT;
+  const { documents, links, locations, photos } = useMemo(() => {
+    const categorized = {
+      documents: [] as AttachmentHit[],
+      links: [] as LinkHit[],
+      locations: [] as LinkHit[],
+      photos: [] as AttachmentHit[],
+    };
+    if (useSemanticSearch || !committedQuery) {
+      return categorized;
     }
 
-    return <SearchResult result={result} key={`${result.chat_id}-${index}`} />;
+    const normalizedQuery = committedQuery.toLocaleLowerCase();
+    const seenAttachments = new Set<string>();
+    const seenLinks = new Set<string>();
+    for (const parent of rawResults) {
+      const parentTextMatches = textMatchesQuery(parent.text, normalizedQuery);
+      const attachments = [parent, ...(parent.attachmentMessages || [])] as GlobalSearchResult[];
+      for (const attachment of attachments) {
+        if (attachment.attachment_id === null && !attachment.filename && !attachment.mime_type) {
+          continue;
+        }
+        const label = getFileLabel(attachment);
+        if (!parentTextMatches && !label.toLocaleLowerCase().includes(normalizedQuery)) {
+          continue;
+        }
+        const key = String(attachment.attachment_id ?? attachment.filename ?? `${parent.message_id}-${label}`);
+        if (seenAttachments.has(key)) {
+          continue;
+        }
+        seenAttachments.add(key);
+        if (isPhotoAttachment(attachment)) {
+          categorized.photos.push({ attachment, parent });
+        } else if (isDocumentAttachment(attachment)) {
+          categorized.documents.push({ attachment, parent });
+        }
+      }
+
+      for (const url of extractHttpUrls(parent.text)) {
+        if (!parentTextMatches && !url.toLocaleLowerCase().includes(normalizedQuery)) {
+          continue;
+        }
+        const key = `${parent.message_id ?? parent.guid}-${url}`;
+        if (!seenLinks.has(key)) {
+          seenLinks.add(key);
+          categorized[isLocationUrl(url) ? "locations" : "links"].push({ parent, url });
+        }
+      }
+    }
+    return categorized;
+  }, [committedQuery, rawResults, useSemanticSearch]);
+  const hasAnyResults =
+    visibleConversations.length > 0 ||
+    messageResults.length > 0 ||
+    photos.length > 0 ||
+    links.length > 0 ||
+    locations.length > 0 ||
+    documents.length > 0;
+
+  const expandContentSection = (section: string) =>
+    setExpandedContentSections((current) => new Set(current).add(section));
+
+  const selectConversation = (chat: Chat) => {
+    if (chat.chat_id === null) {
+      return;
+    }
+    setMessageIdToBringToFocus(null);
+    setSelectedSearchMessageId(null);
+    setIsComposingNewMessage(false);
+    setChatId(chat.chat_id);
   };
+
+  const selectMessage = (result: GlobalSearchResult) => {
+    if (result.chat_id === null || result.message_id === null) {
+      return;
+    }
+    setSelectedSearchMessageId(result.message_id);
+    setMessageIdToBringToFocus(result.message_id);
+    setIsComposingNewMessage(false);
+    setChatId(result.chat_id);
+  };
+
+  if (!draftQuery && !committedQuery) {
+    return (
+      <div className="sidebar-search-empty sidebar-search-empty-initial" role="status">
+        Search conversations and messages
+      </div>
+    );
+  }
+
   return (
-    <Virtuoso
-      totalCount={count}
-      style={{ height: "100%" }}
-      itemContent={searchResultRenderer}
-      overscan={100}
-      increaseViewportBy={2000}
-    />
-  );
-};
-
-export const GlobalSearch = () => {
-  const chatId = useMimessage((state) => state.chatId);
-
-  const { isLoading } = useGlobalSearch();
-
-  return (
-    <Box
-      sx={{
-        zIndex: 999,
-        justifyContent: "center",
-        width: "100%",
-        flexDirection: "column",
-        background: "#1e1e1e",
-        p: 2,
-        display: chatId ? "none" : "flex",
-      }}
+    <div
+      className="sidebar-search-results"
+      aria-busy={(isLoading || queryNeedsCommit) && !semanticQueryNeedsCommit}
+      aria-label="Search results"
+      onKeyDown={moveSearchResultFocus}
     >
-      <GloablSearchInput />
-      {isLoading && <LinearProgress />}
-      <GlobalSearchFilter />
-      <SearchResults />
-    </Box>
+      {visibleConversations.length ? (
+        <section
+          className="sidebar-search-section sidebar-search-conversations"
+          aria-labelledby="sidebar-conversations-title"
+        >
+          <h2 className="sidebar-search-section-title" id="sidebar-conversations-title">
+            Conversations
+          </h2>
+          <ul className="sidebar-search-conversation-rail">
+            {visibleConversations.map((chat) => (
+              <ConversationResult
+                key={chat.chat_id}
+                chat={chat}
+                onSelect={selectConversation}
+                query={draftQuery}
+                selected={chatId === chat.chat_id}
+                semantic={useSemanticSearch}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {semanticQueryNeedsCommit ? (
+        <p className="sidebar-search-status" role="status">
+          Press Return to search by meaning
+        </p>
+      ) : queryNeedsCommit ? (
+        <div className="sidebar-search-loading" role="status">
+          <progress className="sidebar-search-progress" aria-label="Searching messages" />
+          <span>Searching…</span>
+        </div>
+      ) : isError ? (
+        <p className="sidebar-search-status sidebar-search-error" role="alert">
+          Search is temporarily unavailable
+        </p>
+      ) : isLoading && !rawResults.length ? (
+        <div className="sidebar-search-loading" role="status">
+          <progress className="sidebar-search-progress" aria-label="Searching messages" />
+          <span>Searching…</span>
+        </div>
+      ) : messageResults.length ? (
+        <section className="sidebar-search-section sidebar-search-messages" aria-labelledby="sidebar-messages-title">
+          <header className="sidebar-search-section-header">
+            <h2 className="sidebar-search-section-title" id="sidebar-messages-title">
+              Messages
+            </h2>
+            {hasMoreMessages ? (
+              <button type="button" className="sidebar-search-show-more" onClick={() => setShowMore(true)}>
+                Show More
+              </button>
+            ) : null}
+          </header>
+          <ul className="sidebar-search-message-list">
+            {visibleMessageResults.map((result) => (
+              <MessageResult
+                key={result.message_id ?? result.guid}
+                chat={chatMap.get(result.chat_id!)}
+                handleMap={handleMap}
+                onSelect={selectMessage}
+                query={committedQuery}
+                result={result}
+                selected={selectedSearchMessageId === result.message_id}
+                semantic={useSemanticSearch}
+              />
+            ))}
+          </ul>
+          {showMore && messageResults.length > EXPANDED_MESSAGE_LIMIT ? (
+            <p className="sidebar-search-result-limit" role="status">
+              Showing the first {EXPANDED_MESSAGE_LIMIT.toLocaleString()} messages
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {links.length ? (
+        <LinkSearchSection
+          chatMap={chatMap}
+          expanded={expandedContentSections.has("links")}
+          handleMap={handleMap}
+          hits={links}
+          homeDir={homeDir}
+          onExpand={() => expandContentSection("links")}
+          onSelect={selectMessage}
+          query={committedQuery}
+        />
+      ) : null}
+
+      {photos.length ? (
+        <PhotoSearchSection
+          chatMap={chatMap}
+          expanded={expandedContentSections.has("photos")}
+          handleMap={handleMap}
+          hits={photos}
+          homeDir={homeDir}
+          onExpand={() => expandContentSection("photos")}
+          onSelect={selectMessage}
+        />
+      ) : null}
+
+      {locations.length ? (
+        <LinkSearchSection
+          chatMap={chatMap}
+          expanded={expandedContentSections.has("locations")}
+          handleMap={handleMap}
+          hits={locations}
+          homeDir={homeDir}
+          onExpand={() => expandContentSection("locations")}
+          onSelect={selectMessage}
+          query={committedQuery}
+          sectionKey="locations"
+          title="Locations"
+        />
+      ) : null}
+
+      {documents.length ? (
+        <DocumentSearchSection
+          expanded={expandedContentSections.has("documents")}
+          hits={documents}
+          onExpand={() => expandContentSection("documents")}
+          onSelect={selectMessage}
+          query={committedQuery}
+        />
+      ) : null}
+
+      {!queryNeedsCommit && !isError && !isLoading && !hasAnyResults ? (
+        <div className="sidebar-search-empty sidebar-search-empty-no-results" role="status">
+          No Results
+        </div>
+      ) : null}
+    </div>
   );
 };

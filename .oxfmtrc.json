@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "arrowParens": "always",
+  "semi": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "sortImports": false,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    ".idea/**",
+    "build/**",
+    "dist/**",
+    "node_modules/**",
+    "src/.next/**",
+    "src/out/**",
+    "*.tsbuildinfo",
+    "yarn-error.log"
+  ]
+}

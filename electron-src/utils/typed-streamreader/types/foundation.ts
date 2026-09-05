@@ -114,7 +114,7 @@ export class NSAttributedString extends NSString {
             } else {
               attributeValue[key.string] = decoded;
             }
-          } catch (e) {
+          } catch {
             if (unarchiver.binaryDecoding == Unarchiver.BinaryDecoding.all) {
               attributeValue[key.string] = data;
             }

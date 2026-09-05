@@ -15,21 +15,6 @@ const SIGNATURE_TO_BYTE_ORDER_MAP: Record<string, "BE" | "LE"> = {
   streamtyped: "LE",
 };
 
-// These values are taken from the NXSYSTEMVERSION constants
-// from typedstream.h from an early (Darwin 0.1) version of the Objective-C runtime:
-// https://sourceforge.net/projects/aapl-darwin/files/Darwin-0.1/objc-1.tar.gz/download
-// These appear to correspond to early NeXTSTEP version numbers (0.8.x, 0.9.x).
-const SYSTEM_VERSION_NEXTSTEP_082 = 82;
-const SYSTEM_VERSION_NEXTSTEP_083 = 83;
-const SYSTEM_VERSION_NEXTSTEP_090 = 90;
-const SYSTEM_VERSION_NEXTSTEP_0900 = 900;
-const SYSTEM_VERSION_NEXTSTEP_0901 = 901;
-const SYSTEM_VERSION_NEXTSTEP_0905 = 905;
-const SYSTEM_VERSION_NEXTSTEP_0930 = 930;
-// This is the system version used by all versions of Mac OS X since at least 10.4
-// (and probably earlier - if the numbering scheme is to be trusted, probably since NeXTSTEP 1.0).
-const SYSTEM_VERSION_MAC_OS_X = 1000;
-
 // In the original Darwin code,
 // the term "label" is used ambiguously -
 // both for the static integer constants listed below,

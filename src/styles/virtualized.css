@@ -13,25 +13,11 @@
 
 .ReactVirtualized__Grid__innerScrollContainer {
 }
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
 /* Table default theme */
 
 .ReactVirtualized__Table {
 }
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
 .ReactVirtualized__Table__Grid {
-}
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
 }
 
 .ReactVirtualized__Table__headerRow {

@@ -1,0 +1,42 @@
+diff --git a/node_modules/electron-mac-contacts/contacts.mm b/node_modules/electron-mac-contacts/contacts.mm
+index bdd32ef..fca3522 100644
+--- a/node_modules/electron-mac-contacts/contacts.mm
++++ b/node_modules/electron-mac-contacts/contacts.mm
+@@ -262,8 +262,20 @@ CNAuthorizationStatus AuthStatus() {
+   return [CNContactStore authorizationStatusForEntityType:entityType];
+ }
+ 
++// Limited Contacts access is represented by status 4 in current Apple SDKs.
++// Use the numeric value so this module continues to compile with older SDKs that
++// do not declare CNAuthorizationStatusLimited for macOS.
++bool HasContactsReadAccess() {
++  CNAuthorizationStatus status = AuthStatus();
++  return status == CNAuthorizationStatusAuthorized ||
++         static_cast<NSInteger>(status) == 4;
++}
++
+ // Returns the authorization status as a string.
+ std::string AuthStatusString() {
++  if (static_cast<NSInteger>(AuthStatus()) == 4)
++    return "Limited";
++
+   switch (AuthStatus()) {
+   case CNAuthorizationStatusAuthorized:
+     return "Authorized";
+@@ -488,6 +500,6 @@ Napi::Array GetAllContacts(const Napi::CallbackInfo &info) {
+   Napi::Env env = info.Env();
+ 
+-  if (AuthStatus() != CNAuthorizationStatusAuthorized)
++  if (!HasContactsReadAccess())
+     return Napi::Array::New(env);
+ 
+   CNContactStore *addressBook = [[CNContactStore alloc] init];
+@@ -541,7 +553,7 @@ Napi::Array GetContactsByName(const Napi::CallbackInfo &info) {
+   Napi::Env env = info.Env();
+   Napi::Array contacts = Napi::Array::New(env);
+ 
+-  if (AuthStatus() != CNAuthorizationStatusAuthorized)
++  if (!HasContactsReadAccess())
+     return contacts;
+ 
+   const std::string name_string = info[0].As<Napi::String>().Utf8Value();

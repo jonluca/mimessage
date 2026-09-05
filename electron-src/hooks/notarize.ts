@@ -1,9 +1,7 @@
 import { dirname, resolve } from "path";
 import path from "path";
 import fs from "fs-extra";
-import packageJson from "../../package.json" assert { type: "json" };
 
-const appPath = packageJson.build.appId;
 import { notarize } from "./notarize-utils";
 import { fileURLToPath } from "url";
 const DEV_MODE = process.env.APP_ENV === "local";
@@ -13,9 +11,26 @@ if (DEV_MODE || process.platform !== "darwin") {
   process.exit(0);
 }
 
-if (!process.env.APPLE_ID) {
-  console.log("Skipping notarization - no apple id");
-  process.exit(0);
+const appleApiKey = process.env.APPLE_API_KEY;
+const appleApiKeyId = process.env.APPLE_API_KEY_ID;
+const appleApiIssuer = process.env.APPLE_API_ISSUER;
+const appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD || process.env.APPLE_ID_PASSWORD;
+const apiKeyCredentials =
+  appleApiKey && appleApiKeyId && appleApiIssuer ? { appleApiIssuer, appleApiKey, appleApiKeyId } : null;
+const passwordCredentials =
+  process.env.APPLE_ID && appleIdPassword && process.env.APPLE_TEAM_ID
+    ? {
+        appleId: process.env.APPLE_ID,
+        appleIdPassword,
+        teamId: process.env.APPLE_TEAM_ID,
+      }
+    : null;
+
+const notarizationCredentials = apiKeyCredentials || passwordCredentials;
+if (!notarizationCredentials) {
+  throw new Error(
+    "APPLE_API_KEY, APPLE_API_KEY_ID, and APPLE_API_ISSUER are required for notarization (Apple ID credentials remain supported as a fallback)",
+  );
 }
 
 console.log("Notarizing...");
@@ -32,7 +47,7 @@ while (absDir !== "/" && dirUp < maxDir) {
   try {
     await fs.access(absDir, fs.constants.F_OK);
     break;
-  } catch (err: any) {
+  } catch {
     absDir = path.join(absDir, "../..", folderWeAreLookingFor);
     dirUp++;
   }
@@ -55,15 +70,15 @@ for (const dir of builds) {
 }
 
 const apps = paths.filter((path) => path.endsWith(".app"));
+if (!apps.length) {
+  throw new Error(`No .app bundles were found under ${absDir}`);
+}
 
 const notaries = apps.map((app) => {
   return notarize({
     tool: "notarytool",
-    teamId: "F35YQQ5672",
-    appBundleId: appPath,
     appPath: app,
-    appleId: process.env.APPLE_ID!,
-    appleIdPassword: process.env.APPLE_ID_PASSWORD!,
+    ...notarizationCredentials,
   }).catch((e) => {
     console.error(e);
     throw e;

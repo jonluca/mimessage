@@ -48,7 +48,6 @@ export class CArray {
   elements: Array<any>;
   constructor(elements: Array<any>) {
     this.elements = elements;
-    const test = TypedValue;
   }
 }
 
@@ -154,7 +153,7 @@ export class Unarchiver {
       } else if (terminatingEvent instanceof ObjectReference) {
         nextSuperclass = this.lookupReference(terminatingEvent);
       } else {
-        throw new AssertionError();
+        throw new AssertionError({ message: "Unexpected class hierarchy terminator" });
       }
 
       // Convert the SingleClass events from the stream into Class objects with a superclass.

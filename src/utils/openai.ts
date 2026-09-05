@@ -1,58 +1,49 @@
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import { GPT4Tokenizer } from "gpt4-tokenizer";
-import axios from "axios";
-import type { ChatCompletionRequestMessage } from "openai/api";
 import type { ChatList, MessagesForChat } from "../interfaces";
 import type { AiMessage } from "../context";
 import { useMimessage } from "../context";
 
 interface InitialPromptForFile {
+  instructions: string;
   lastInteracted: Date;
   name: string;
   relation: string;
 }
 
 class OpenAIClient {
-  openai: OpenAIApi | null = null;
+  openai: OpenAI | null = null;
   encoder: GPT4Tokenizer;
-  configuration: Configuration | null = null;
+  private configuredKey: string | null = null;
 
   constructor() {
-    this.setConfiguration();
     this.encoder = new GPT4Tokenizer({ type: "gpt3" }); // or 'codex'
+    this.setConfiguration();
   }
 
   setConfiguration = () => {
-    const key = process.env.OPENAI_API_KEY || useMimessage.getState().openAiKey || "";
-    if (key) {
-      this.configuration = new Configuration({
-        apiKey: key,
-      });
-      this.openai = new OpenAIApi(this.configuration);
+    const key = useMimessage.getState().openAiKey?.trim() || "";
+    if (!key) {
+      this.openai = null;
+      this.configuredKey = null;
+      return;
     }
+    if (this.openai && this.configuredKey === key) {
+      return;
+    }
+    this.openai = new OpenAI({
+      apiKey: key,
+      dangerouslyAllowBrowser: true,
+    });
+    this.configuredKey = key;
   };
 
   MESSAGE_TOKEN_LIMIT = 4096;
-  private getInitialPromptForFile = (
-    metadata: InitialPromptForFile,
-    previousHistory: MessagesForChat,
-    newMessage: ChatCompletionRequestMessage,
-  ): string => {
-    const messageHistory = previousHistory.map((m) => {
-      return `**${m.is_from_me ? "Them" : "You"}**: ${m.text}\n`;
-    });
-    let tokens = 0;
-    let historyPrompt = ``;
-    while (tokens < this.MESSAGE_TOKEN_LIMIT && messageHistory.length > 0) {
-      const message = messageHistory.pop()!;
-      historyPrompt = `${message}${historyPrompt}`;
-      tokens += this.checkPromptLength(message);
-    }
-    return `You are ${metadata.name}, the ${
+  private getInitialPromptForFile = (metadata: InitialPromptForFile): string => {
+    const basePrompt = `You are ${metadata.name}, the ${
       metadata.relation
-    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention that you are an AI. If you can't do something, respond in the voice of the person you are pretending to be - under no circumstance should you say you are an AI. You should provide emotional and friendly support, and continue the conversation at all costs. You should reply in the same voice and style, based on their historical voice. Please match the use of punctuation and tone/style of communicating. Here are some examples of messages that have been sent that you should learn from:\n\n${historyPrompt}\n\n**Them**: ${
-      newMessage.content
-    }\n**You**:`;
+    } of the person you're talking to. You haven't spoken since ${metadata.lastInteracted.toDateString()}. Do NOT break character. Do NOT mention that you are an AI. If you can't do something, respond in the voice of the person you are pretending to be. You should provide emotional and friendly support. Reply in the same voice and style as the historical messages, including their punctuation and tone.`;
+    return metadata.instructions ? `${basePrompt}\n\nAdditional style guidance: ${metadata.instructions}` : basePrompt;
   };
 
   private checkPromptLength = (prompt: string): number => {
@@ -61,57 +52,79 @@ class OpenAIClient {
   };
 
   generatePrompts = (
-    newMessage: ChatCompletionRequestMessage,
+    newMessage: AiMessage,
     existingAiMessages: Array<AiMessage>,
     previousHistory: MessagesForChat,
     chat: ChatList[number],
   ) => {
     const lastMessageSent = previousHistory[previousHistory.length - 1];
+    const firstHandle = chat.handles[0];
+    const settings = useMimessage.getState();
     const metadata = {
-      lastInteracted: lastMessageSent.date_obj!,
-      name: chat.handles[0].contact?.parsedName || chat.handles[0].id,
-      relation: useMimessage.getState().relation,
+      instructions: settings.aiPersonaInstructions.trim().slice(0, 2000),
+      lastInteracted: lastMessageSent?.date_obj || new Date(),
+      name: firstHandle?.contact?.parsedName || firstHandle?.id || chat.name || "the other person",
+      relation: settings.relation,
     };
-    // remove all non-printable chars, and trim
-
-    const latestMessages = previousHistory
+    const history = previousHistory
       .slice(-100)
-      .filter((l) => (l.text || "").replace(/[\u{FFFC}-\u{FFFD}]/gu, "").trim());
-    const initialContent = this.getInitialPromptForFile(metadata, latestMessages, newMessage);
-    const prompts: ChatCompletionRequestMessage[] = [
+      .filter((message) => (message.text || "").replace(/[\u{FFFC}-\u{FFFD}]/gu, "").trim());
+    const initialContent = this.getInitialPromptForFile(metadata);
+    const historyMessages: OpenAI.ChatCompletionMessageParam[] = [
+      ...history.map((message) => ({
+        content: message.text ?? "",
+        role: message.is_from_me ? ("user" as const) : ("assistant" as const),
+      })),
+      ...existingAiMessages.flatMap((message) =>
+        message.content && !message.pending ? [{ content: message.content, role: message.role }] : [],
+      ),
+    ];
+    const newestHistory: OpenAI.ChatCompletionMessageParam[] = [];
+    let tokens = this.checkPromptLength(initialContent) + this.checkPromptLength(newMessage.content);
+    while (historyMessages.length) {
+      const message = historyMessages.pop()!;
+      const messageTokens = this.checkPromptLength(typeof message.content === "string" ? message.content : "");
+      if (tokens + messageTokens > this.MESSAGE_TOKEN_LIMIT) {
+        break;
+      }
+      tokens += messageTokens;
+      newestHistory.unshift(message);
+    }
+    const prompts: OpenAI.ChatCompletionMessageParam[] = [
       { content: initialContent, role: "system" },
-      ...latestMessages.map(
-        (m) => ({ content: m.text, role: m.is_from_me ? "user" : "assistant" } as ChatCompletionRequestMessage),
-      ),
-      ...existingAiMessages.flatMap(
-        (m) =>
-          [Boolean(m.content) && { content: m.content, role: m.role }].filter(
-            Boolean,
-          ) as ChatCompletionRequestMessage[],
-      ),
+      ...newestHistory,
       { content: newMessage.content, role: newMessage.role },
     ];
     return prompts;
   };
   runCompletion = async (
-    messages: Array<ChatCompletionRequestMessage>,
-  ): Promise<ChatCompletionRequestMessage | undefined | null> => {
+    messages: Array<OpenAI.ChatCompletionMessageParam>,
+  ): Promise<Pick<AiMessage, "content" | "role"> | null> => {
     try {
       this.setConfiguration();
       if (!this.openai) {
         return null;
       }
-      const completion = await this.openai.createChatCompletion({
+      const completion = await this.openai.chat.completions.create({
         model: "gpt-4",
         messages,
       });
-      const text = completion.data.choices[0]?.message;
-      return text;
+      const message = completion.choices[0]?.message;
+      if (!message) {
+        return null;
+      }
+      const content = message.content ?? message.refusal;
+      if (!content?.trim()) {
+        return null;
+      }
+      return {
+        content,
+        role: "assistant",
+      };
     } catch (e) {
-      if (axios.isAxiosError(e)) {
-        // axios error logger
-        console.error(e.response?.status);
-        console.error(e.response?.data);
+      if (e instanceof OpenAI.APIError) {
+        console.error(e.status);
+        console.error(e.error);
       } else {
         console.error(e);
       }

@@ -1,81 +1,349 @@
 name: CI
+
 on:
+  workflow_dispatch:
   push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
     paths:
+      - .github/workflows/ci.yml
+      - .nvmrc
+      - .oxfmtrc.json
+      - .oxlintrc.json
       - electron-src/**
+      - native/**
+      - scripts/**
       - src/**
       - package.json
+      - yarn.lock
+      - next.config.mjs
+      - patches/**
+      - README.md
+      - tsconfig.json
       - _generated/**
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  NODE_ENV: production
   APP_ENV: production
-  APPLE_ID: ${{ secrets.APPLE_ID }}
-  APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-  CSC_LINK: ${{ secrets.CSC_LINK }}
-  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+  NODE_ENV: production
 
 jobs:
-  build:
+  verify:
     name: Build & test
-    runs-on: macos-latest
+    runs-on: macos-26
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v7
         with:
-          node-version: 19
+          persist-credentials: false
 
-      - uses: oven-sh/setup-bun@v1
+      - uses: actions/setup-node@v7
         with:
-          bun-version: latest
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
 
-      - run: bun install --no-save --ignore-scripts
-        env:
-          NODE_ENV: development
-
+      - run: yarn install --frozen-lockfile --production=false
+      - run: yarn format:check
+      - run: yarn typecheck
+      - run: yarn lint
+      - name: Verify macOS Contacts packaging inputs
+        run: |
+          set -euo pipefail
+          node -e 'const mac = require("./package.json").build.mac; if (mac.hardenedRuntime !== true) throw new Error("mac.hardenedRuntime must remain enabled"); if (!mac.extendInfo?.NSContactsUsageDescription?.trim()) throw new Error("NSContactsUsageDescription must be non-empty")'
+          for plist in electron-src/entitlements.plist electron-src/entitlements.dev.plist; do
+            test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.personal-information.addressbook' "$plist")" = true
+          done
+      - run: yarn test:semantic
+      - run: yarn test:wrapped
+      - run: yarn test:messages
+      - run: yarn test:snapshots
+      - run: yarn test:renderer
+      - run: yarn test:liquid-glass
       - run: yarn build
-      - run: yarn package -p onTag
-      - run: yarn check-signature
-      - run: yarn notarize
       - run: zip -r build.zip build src/out
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v7
         with:
-          name: artifacts
-          path: |
-            build.zip
-            dist/*.zip
-            dist/*.dmg
-            dist/*.yml
-            dist/*.yaml
-            !dist/**/*.app
+          name: build-output
+          path: build.zip
           if-no-files-found: error
 
-  publish:
-    name: Publish a release
-    runs-on: "ubuntu-20.04"
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: build
+  liquid-glass-intel:
+    name: Liquid Glass runtime (Intel)
+    runs-on: macos-26-intel
+    permissions:
+      contents: read
     steps:
-      - name: Get all artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v7
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          persist-credentials: false
 
-      - name: Upload Release Assets
-        id: upload-release-assets
-        uses: dwenegar/upload-release-assets@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v7
         with:
-          release_id: ${{ steps.create_release.outputs.id }}
-          assets_path: ./*/
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - run: yarn install --frozen-lockfile --production=false
+      - run: yarn test:liquid-glass
+
+  release:
+    name: Sign, notarize & verify
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs:
+      - verify
+      - liquid-glass-intel
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - run: yarn install --frozen-lockfile --production=false
+      - name: Prepare and verify signing credentials
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            expected_tag="v$(node -p "require('./package.json').version")"
+            test "$GITHUB_REF_NAME" = "$expected_tag"
+          else
+            test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          fi
+
+          test -n "$APPLE_API_ISSUER"
+          test -n "$APPLE_API_KEY_ID"
+          test -n "$APPLE_API_KEY_P8"
+          test -n "$CSC_LINK"
+          test -n "$CSC_KEY_PASSWORD"
+
+          umask 077
+          apple_api_key="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$apple_api_key"
+          chmod 600 "$apple_api_key"
+          openssl pkey -in "$apple_api_key" -check -noout >/dev/null
+          printf 'APPLE_API_KEY=%s\n' "$apple_api_key" >> "$GITHUB_ENV"
+
+          certificate_archive="$RUNNER_TEMP/signing-identity.p12"
+          certificate_pem="$RUNNER_TEMP/signing-identity.pem"
+          certificate_public_key="$RUNNER_TEMP/signing-certificate-public.der"
+          private_public_key="$RUNNER_TEMP/signing-private-public.der"
+          cleanup_signing_preflight() {
+            rm -P -- \
+              "$certificate_archive" \
+              "$certificate_pem" \
+              "$certificate_public_key" \
+              "$private_public_key" 2>/dev/null || true
+          }
+          trap cleanup_signing_preflight EXIT
+
+          SIGNING_CERTIFICATE_P12="$certificate_archive" node <<'NODE'
+          const fs = require("node:fs");
+          const encoded = process.env.CSC_LINK
+            .replace(/^data:[^,]*;base64,/, "")
+            .replace(/\s/g, "");
+          if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+            throw new Error("CSC_LINK is not a base64-encoded PKCS#12 archive");
+          }
+          const archive = Buffer.from(encoded, "base64");
+          if (!archive.length) {
+            throw new Error("CSC_LINK decoded to an empty PKCS#12 archive");
+          }
+          fs.writeFileSync(process.env.SIGNING_CERTIFICATE_P12, archive, {
+            flag: "wx",
+            mode: 0o600,
+          });
+          NODE
+
+          openssl pkcs12 \
+            -in "$certificate_archive" \
+            -passin env:CSC_KEY_PASSWORD \
+            -clcerts \
+            -nokeys \
+            -out "$certificate_pem"
+          test "$(grep -c 'BEGIN CERTIFICATE' "$certificate_pem")" -eq 1
+
+          openssl pkcs12 \
+            -in "$certificate_archive" \
+            -passin env:CSC_KEY_PASSWORD \
+            -nocerts \
+            -nodes | openssl pkey -pubout -outform DER -out "$private_public_key"
+          openssl x509 \
+            -in "$certificate_pem" \
+            -pubkey \
+            -noout | openssl pkey -pubin -outform DER -out "$certificate_public_key"
+          cmp -s "$private_public_key" "$certificate_public_key"
+
+          certificate_subject="$(openssl x509 -in "$certificate_pem" -subject -nameopt RFC2253 -noout)"
+          grep -Fq 'CN=Developer ID Application:' <<<"$certificate_subject"
+          grep -Fq 'OU=F35YQQ5672' <<<"$certificate_subject"
+          openssl x509 -in "$certificate_pem" -checkend 2592000 -noout
+          security verify-cert -q -p codeSign -c "$certificate_pem"
+
+          xcrun notarytool history \
+            --key "$apple_api_key" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" \
+            --output-format json \
+            --no-progress >/dev/null
+
+      - run: yarn build
+      - name: Build signed and notarized packages
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+        run: yarn package --publish never
+
+      - name: Gate updates to supported macOS versions
+        run: |
+          yarn stamp:update-metadata
+          grep -Fxq 'minimumSystemVersion: 22.0.0' dist/latest-mac.yml
+
+      - name: Verify signed applications and distributable archives
+        run: |
+          set -euo pipefail
+          verify_app() {
+            local app="$1"
+            local expected_arch="$2"
+            local contacts_usage
+            local entitlements
+            local entitlements_json
+            local fuses
+            local signature
+
+            assert_exact_arch() {
+              local binary="$1"
+              local architecture="$2"
+              test "$(lipo -archs "$binary")" = "$architecture"
+            }
+
+            test -d "$app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            spctl --assess --type execute --verbose=4 "$app"
+            xcrun stapler validate "$app"
+
+            contacts_usage="$(/usr/libexec/PlistBuddy -c 'Print :NSContactsUsageDescription' "$app/Contents/Info.plist")"
+            [[ -n "${contacts_usage//[[:space:]]/}" ]]
+
+            fuses="$(node node_modules/@electron/fuses/dist/bin.js read --app "$app")"
+            printf '%s\n' "$fuses"
+            grep -q "RunAsNode is Disabled" <<<"$fuses"
+            grep -q "EnableNodeOptionsEnvironmentVariable is Disabled" <<<"$fuses"
+            grep -q "EnableNodeCliInspectArguments is Disabled" <<<"$fuses"
+            grep -q "EnableEmbeddedAsarIntegrityValidation is Enabled" <<<"$fuses"
+            grep -q "OnlyLoadAppFromAsar is Enabled" <<<"$fuses"
+            grep -q "GrantFileProtocolExtraPrivileges is Disabled" <<<"$fuses"
+
+            assert_exact_arch "$app/Contents/MacOS/Mimessage" "$expected_arch"
+            signature="$(codesign -dvvv "$app" 2>&1)"
+            grep -q "TeamIdentifier=F35YQQ5672" <<<"$signature"
+            grep -Eq 'flags=.*\([^)]*runtime[^)]*\)' <<<"$signature"
+            entitlements="$(codesign -d --entitlements - --xml "$app" 2>/dev/null)"
+            entitlements_json="$(plutil -convert json -o - - <<<"$entitlements")"
+            ENTITLEMENTS_JSON="$entitlements_json" node -e '
+              const entitlements = JSON.parse(process.env.ENTITLEMENTS_JSON);
+              if (entitlements["com.apple.security.personal-information.addressbook"] !== true) {
+                throw new Error("Packaged app lacks the Contacts entitlement");
+              }
+            '
+            ! grep -q "disable-library-validation" <<<"$entitlements"
+            ! grep -q "allow-unsigned-executable-memory" <<<"$entitlements"
+
+            for module in \
+              Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node \
+              Contents/Resources/app.asar.unpacked/node_modules/electron-mac-contacts/build/Release/contacts.node \
+              Contents/Resources/native/mimessage_liquid_glass.node; do
+              test -f "$app/$module"
+              assert_exact_arch "$app/$module" "$expected_arch"
+              codesign --verify --strict --verbose=2 "$app/$module"
+              codesign -dvv "$app/$module" 2>&1 | grep -q "TeamIdentifier=F35YQQ5672"
+            done
+
+            test "$(xcrun vtool -show-build "$app/Contents/Resources/native/mimessage_liquid_glass.node" | awk '$1 == "minos" { print $2 }')" = "13.0"
+
+            strings "$app/Contents/Resources/app.asar.unpacked/node_modules/electron-mac-contacts/build/Release/contacts.node" |
+              grep -Fxq "Limited"
+          }
+
+          verify_app "dist/mac/Mimessage.app" "x86_64"
+          verify_app "dist/mac-arm64/Mimessage.app" "arm64"
+
+          validation_root="$(mktemp -d "$RUNNER_TEMP/mimessage-artifacts.XXXXXX")"
+          x64_mount="$validation_root/dmg-x64"
+          arm64_mount="$validation_root/dmg-arm64"
+          cleanup() {
+            hdiutil detach "$x64_mount" >/dev/null 2>&1 || true
+            hdiutil detach "$arm64_mount" >/dev/null 2>&1 || true
+            rm -rf -- "$validation_root"
+          }
+          trap cleanup EXIT
+
+          version="$(node -p "require('./package.json').version")"
+          for artifact_arch in x64 arm64; do
+            if [[ "$artifact_arch" == "x64" ]]; then
+              expected_arch="x86_64"
+              dmg="dist/Mimessage-x64.dmg"
+              zip="dist/Mimessage-${version}-mac.zip"
+              mountpoint="$x64_mount"
+            else
+              expected_arch="arm64"
+              dmg="dist/Mimessage-arm64.dmg"
+              zip="dist/Mimessage-${version}-arm64-mac.zip"
+              mountpoint="$arm64_mount"
+            fi
+
+            extract_dir="$validation_root/zip-$artifact_arch"
+            mkdir -p "$mountpoint" "$extract_dir"
+            hdiutil attach "$dmg" -readonly -nobrowse -mountpoint "$mountpoint" >/dev/null
+            verify_app "$mountpoint/Mimessage.app" "$expected_arch"
+            hdiutil detach "$mountpoint" >/dev/null
+
+            ditto -x -k "$zip" "$extract_dir"
+            verify_app "$extract_dir/Mimessage.app" "$expected_arch"
+          done
+
+      - name: Publish verified artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = "true"
+            test "$(gh release view "$GITHUB_REF_NAME" --json isPrerelease --jq .isPrerelease)" = "true"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --prerelease \
+              --generate-notes \
+              --title "Mimessage $GITHUB_REF_NAME" \
+              --verify-tag
+          fi
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/*.blockmap \
+            dist/*.dmg \
+            dist/*.zip \
+            dist/latest-mac.yml \
+            --clobber
+          # The installed 1.1.2 updater cannot enforce the new macOS 13 floor.
+          # Keep Electron 44 builds out of the stable channel until a
+          # Monterey-compatible bridge release has upgraded those clients.
+          gh release edit "$GITHUB_REF_NAME" --prerelease --draft=false

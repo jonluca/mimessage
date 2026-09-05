@@ -1,212 +1,185 @@
-import InputBase from "@mui/material/InputBase";
-import { styled } from "@mui/material/styles";
-import Cross from "@mui/icons-material/Close";
 import React, { useRef } from "react";
-import theme from "../theme";
-import Box from "@mui/material/Box";
 import type { AiMessage } from "../../context";
 import { useMimessage } from "../../context";
-import { useChatById, useLocalMessagesForChatId } from "../../hooks/dataHooks";
-import openai from "../../utils/openai";
+import { useAiMessagesForChatId, useChatById, useLocalMessagesForChatId } from "../../hooks/dataHooks";
 import { OpenAiKey } from "./OpenAiKey";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
-import { Button } from "@mui/material";
-import Popover from "@mui/material/Popover";
-import Typography from "@mui/material/Typography";
-import { Check } from "@mui/icons-material";
+import { SystemSymbol } from "../SystemSymbol";
 
-const SearchInput = styled(InputBase)<{ light?: boolean }>`
-  display: flex;
-  border-radius: 5px;
-  color: ${(p) => (p.light ? undefined : theme.colors.white)};
-  background: #3a3e44;
-`;
+const PlusIcon = () => <SystemSymbol name="plus" />;
 
-const RELATION_OPTIONS = [
-  "Friend",
-  "Girlfriend",
-  "Boyfriend",
-  "Husband",
-  "Wife",
-  "Mother",
-  "Father",
-  "Brother",
-  "Sister",
-  "Grandmother",
-  "Grandfather",
-];
+const ArrowUpIcon = () => <SystemSymbol name="arrow-up" />;
 
-const SetRelationButton = () => {
-  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-  const relation = useMimessage((state) => state.relation);
-  const setRelation = useMimessage((state) => state.setRelation);
+const AudioWaveIcon = () => <SystemSymbol name="waveform" />;
 
-  const handleChangeRelation = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
+const EmojiIcon = () => <SystemSymbol name="face-smiling" />;
+
+const MessageAppsButton = () => {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const openMenu = async () => {
+    if (menuOpen) {
+      return;
+    }
+    setMenuOpen(true);
+    try {
+      await global.ipcRenderer.invoke("showMessageAppsMenu");
+    } finally {
+      setMenuOpen(false);
+    }
   };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-  const id = open ? "relation-button" : undefined;
 
   return (
-    <>
-      <Button aria-describedby={id} variant="contained" title={"Change AI Relation"} onClick={handleChangeRelation}>
-        <ManageAccountsIcon sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }} />
-      </Button>
-      <Popover
-        id={id}
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        PaperProps={{
-          sx: { p: 2, backgroundColor: "#2c2c2c" },
-        }}
-      >
-        <Box display={"flex"} flexDirection={"row"}>
-          <Box display={"flex"} flexDirection={"column"} width={"400px"} p={2}>
-            <Typography variant={"h4"}>How do you want to change them?</Typography>
-            <textarea
-              style={{
-                fontSize: 15,
-                fontFamily: "arbeit",
-                color: "black",
-                border: "none",
-                background: "white",
-                height: "100%",
-                width: "100%",
-                borderRadius: 14,
-                padding: 10,
-              }}
-            />
-          </Box>
-          <Box display={"flex"} flexDirection={"column"}>
-            <Typography variant={"h4"}>Set Persons Relation To You</Typography>
-            {RELATION_OPTIONS.map((option) => (
-              <Button
-                key={option}
-                variant={"contained"}
-                sx={{ my: 0.5 }}
-                onClick={() => {
-                  setRelation(option);
-                }}
-              >
-                {relation === option && <Check />}
-                {option}
-              </Button>
-            ))}
-          </Box>
-        </Box>
-      </Popover>
-    </>
+    <button
+      type="button"
+      className="composer-add-button"
+      aria-label="Apps"
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      title="Apps"
+      onClick={() => void openMenu()}
+    >
+      <PlusIcon />
+    </button>
   );
 };
 
 export const SendMessageBox = () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const setExtendedConversations = useMimessage((state) => state.setExtendedConversations);
-  const extendedConversations = useMimessage((state) => state.extendedConversations);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [hasDraft, setHasDraft] = React.useState(false);
+  const inFlightRef = useRef(false);
+  const updateConversation = useMimessage((state) => state.updateConversation);
   const chatId = useMimessage((state) => state.chatId);
   const openAiKey = useMimessage((state) => state.openAiKey);
-  const setOpenAiKey = useMimessage((state) => state.setOpenAiKey);
   const chat = useChatById(chatId);
-  const { data: localMessages, isLoading: isLoadingMessages } = useLocalMessagesForChatId(chatId);
+  const canCompose = Boolean(openAiKey && chat && chat.handles.length <= 1);
+  const { data: localMessages, isLoading: isLoadingMessages } = useLocalMessagesForChatId(canCompose ? chatId : null);
+  const currConvo = useAiMessagesForChatId(chatId);
 
-  const currConvo = React.useMemo(() => extendedConversations[chatId!] ?? [], [chatId, extendedConversations]);
   const submit = async () => {
     const current = inputRef.current;
-    const content = current?.value;
-    if (current && content && chatId) {
-      // submit message
-      const newMessage = {
-        role: "user",
-        content,
-        date: new Date(),
-      } as AiMessage;
-      current.value = "";
-      extendedConversations[chatId] = [...currConvo, newMessage, { role: "assistant", content: "", date: new Date() }];
-      setExtendedConversations(extendedConversations);
+    const content = current?.value.trim();
+    if (!current || !content || chatId === null || !chat || !localMessages || inFlightRef.current) {
+      return;
+    }
 
-      const prompts = openai.generatePrompts(newMessage, currConvo, localMessages!, chat!);
+    inFlightRef.current = true;
+    const submittedChatId = chatId;
+    const requestId = globalThis.crypto.randomUUID();
+    const newMessage: AiMessage = { role: "user", content, date: new Date(), requestId };
+    const pendingMessage: AiMessage = {
+      role: "assistant",
+      content: "",
+      date: new Date(),
+      pending: true,
+      requestId,
+    };
+    current.value = "";
+    current.style.height = "";
+    setHasDraft(false);
+    updateConversation(submittedChatId, (conversation) => [...conversation, newMessage, pendingMessage]);
+
+    let responseMessage: AiMessage;
+    try {
+      const { default: openai } = await import("../../utils/openai");
+      const prompts = openai.generatePrompts(newMessage, currConvo, localMessages, chat);
       const response = await openai.runCompletion(prompts);
-      const responseMessage = {
-        ...(response ? response : { role: "assistant", content: "I'm sorry, I don't know how to respond to that." }),
+      responseMessage = {
+        ...(response || {
+          role: "assistant",
+          content: "I'm sorry, I don't know how to respond to that.",
+          errored: true,
+        }),
         date: new Date(),
+        requestId,
       } as AiMessage;
-      extendedConversations[chatId] = [...currConvo, newMessage, responseMessage];
-      setExtendedConversations(extendedConversations);
+    } catch (error) {
+      console.error(error);
+      responseMessage = {
+        role: "assistant",
+        content: "I'm sorry, I don't know how to respond to that.",
+        date: new Date(),
+        errored: true,
+        requestId,
+      };
+    } finally {
+      inFlightRef.current = false;
+    }
+
+    updateConversation(submittedChatId, (conversation) =>
+      conversation.map((message) =>
+        message.requestId === requestId && message.role === "assistant" ? responseMessage : message,
+      ),
+    );
+  };
+
+  const handleShortcuts = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      void submit();
     }
   };
-  const handleShortcuts = async (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      submit();
-    }
-  };
+
   if (!chatId) {
     return null;
   }
 
-  const isAwaitingResponse = Boolean(currConvo.length) && currConvo[currConvo.length - 1].content === "";
+  const isAwaitingResponse = currConvo.some((message) => message.pending);
   const tooManyParticipants = (chat?.handles.length || 0) > 1;
-  const isDisabled = tooManyParticipants || isLoadingMessages || isAwaitingResponse;
-  return (
-    <Box sx={{ display: "flex", flexDirection: "row", py: 1, justifyContent: "center", alignItems: "center" }}>
-      {openAiKey ? (
-        <>
-          <SearchInput
-            ref={ref}
-            sx={{
-              borderRadius: 4,
-              width: "100%",
-              mx: 1.25,
-              height: 30,
-              background: "#3a3e44",
-              "& .MuiInputBase-input.Mui-disabled": {
-                WebkitTextFillColor: "white",
-              },
-            }}
-            inputProps={{
-              sx: { borderRadius: 4, px: 1.5, color: theme.colors.white, background: "#3a3e44" },
-              ref: inputRef,
-              onKeyDown: handleShortcuts,
-            }}
-            placeholder={tooManyParticipants ? "AI message cannot be used in group chats" : "AI message"}
-            disabled={isDisabled}
-          />
-          {!tooManyParticipants && (
-            <>
-              <ArrowUpwardIcon
-                sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
-                titleAccess={"send"}
-                onClick={submit}
-              />
-              <SetRelationButton />
-              <Cross
-                sx={{ mx: 0.5, color: theme.colors.white, fontSize: 18, cursor: "pointer" }}
-                titleAccess={"Clear API Key"}
-                onClick={() => {
-                  setOpenAiKey(null);
-                }}
-              />
-            </>
-          )}
-        </>
-      ) : (
+  const isDisabled = !chat || tooManyParticipants || isLoadingMessages || isAwaitingResponse;
+  if (!openAiKey) {
+    return (
+      <footer className="message-composer message-composer--setup" aria-label="Message composer">
         <OpenAiKey />
-      )}
-    </Box>
+      </footer>
+    );
+  }
+
+  return (
+    <footer className="message-composer message-composer--ai" aria-label="Message composer">
+      <MessageAppsButton />
+      <div className={`message-composer-field${isDisabled ? " is-disabled" : ""}`}>
+        <textarea
+          className="message-composer-input"
+          ref={inputRef}
+          aria-label="Ask AI about this conversation"
+          rows={1}
+          onKeyDown={handleShortcuts}
+          onInput={(event) => {
+            const input = event.currentTarget;
+            setHasDraft(Boolean(input.value.trim()));
+            input.style.height = "0";
+            input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+          }}
+          placeholder={tooManyParticipants ? "Not available in group conversations" : "iMessage"}
+          disabled={isDisabled}
+        />
+        {!tooManyParticipants && hasDraft ? (
+          <button
+            type="button"
+            className="message-composer-send"
+            aria-label="Send AI message"
+            disabled={isDisabled}
+            onClick={() => void submit()}
+          >
+            <ArrowUpIcon />
+          </button>
+        ) : (
+          <span className="message-composer-audio-icon" aria-hidden="true">
+            <AudioWaveIcon />
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        className="message-composer-emoji-icon"
+        aria-label="Show emoji and symbols"
+        title="Show emoji and symbols"
+        onClick={() => {
+          inputRef.current?.focus();
+          void global.ipcRenderer.invoke("showEmojiPanel");
+        }}
+      >
+        <EmojiIcon />
+      </button>
+    </footer>
   );
 };
