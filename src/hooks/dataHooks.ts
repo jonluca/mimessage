@@ -20,12 +20,6 @@ const ipcRenderer = global.ipcRenderer;
 const EMPTY_MESSAGE_PAGES: MessagesPage[] = [];
 const EMPTY_MESSAGE_PAGE_PARAMS: MessagePageOptions[] = [];
 const EMPTY_AI_MESSAGES: AiMessage[] = [];
-let localDbRefreshedThisSession = false;
-
-const refreshLocalMessagesSnapshot = async () => {
-  await ipcRenderer.invoke("copyLocalDb");
-  localDbRefreshedThisSession = true;
-};
 const useDbChatList = () => {
   return useQuery<ChatList | null>({
     queryKey: ["dbChatList"],
@@ -705,7 +699,7 @@ export const useCopyDbMutation = () => {
   return useMutation({
     mutationKey: ["copyDb"],
     mutationFn: async () => {
-      await refreshLocalMessagesSnapshot();
+      await ipcRenderer.invoke("copyLocalDb");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["localDbExists"] }),
   });
@@ -715,9 +709,6 @@ export const useInitialize = () => {
   return useMutation({
     mutationKey: ["initialize"],
     mutationFn: async () => {
-      if (!localDbRefreshedThisSession) {
-        await refreshLocalMessagesSnapshot();
-      }
       await ipcRenderer.invoke("initialize");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["isDbInitialized"] }),

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { serialize } from "node:v8";
 import SqliteDb from "better-sqlite3";
 import { SQLDatabase } from "../electron-src/data/database";
 
@@ -99,6 +100,28 @@ const run = async () => {
     INSERT INTO chat_message_join (chat_id, message_id, message_date)
     SELECT 4, ROWID, date FROM message WHERE ROWID BETWEEN 1000 AND 1204;
   `);
+  // Synthetic binary plists exercise the decoded values that the renderer
+  // needs after their original attributed-body and rich-link blobs are removed.
+  const attachmentBody = Buffer.from(
+    "YnBsaXN0MDDRAQJVdmFsdWXRAwRWc3RyaW5nXxAPYmV0YSB3aXRoIGZpbGVzCAsRFBsAAAAAAAABAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAALQ==",
+    "base64",
+  );
+  const previewBody = Buffer.from(
+    "YnBsaXN0MDDRAQJVdmFsdWXRAwRWc3RyaW5nXxATbGF0ZXN0IHRpZWQgbWVzc2FnZQgLERQbAAAAAAAAAQEAAAAAAAAABQAAAAAAAAAAAAAAAAAAADE=",
+    "base64",
+  );
+  const richLinkPayload = Buffer.from(
+    "YnBsaXN0MDDTAQIDBAUaWSRhcmNoaXZlclgkb2JqZWN0c1QkdG9wXxAPTlNLZXllZEFyY2hpdmVyowYHClUkbnVsbNEICV8QEHJpY2hMaW5rTWV0YWRhdGGAAtULDA0ODxATFRYZVGljb25VaW1hZ2Vbb3JpZ2luYWxVUkxfEA9zcGVjaWFsaXphdGlvbjJVdGl0bGXRERJfECZyaWNoTGlua0ltYWdlQXR0YWNobWVudFN1YnN0aXR1dGVJbmRleBAA0REUEAFfEBtodHRwczovL2V4YW1wbGUuY29tL2ZpeHR1cmXRFxhYc3VidGl0bGVfEBVGaXh0dXJlIGxpbmsgc3VidGl0bGVfEBJGaXh0dXJlIGxpbmsgdGl0bGXRGxxUcm9vdIABAAgADwAZACIAJwA5AD0AQwBGAFkAWwBmAGsAcQB9AI8AlQCYAMEAwwDGAMgA5gDpAPIBCgEfASIBJwAAAAAAAAIBAAAAAAAAAB0AAAAAAAAAAAAAAAAAAAEp",
+    "base64",
+  );
+  fixture
+    .prepare("UPDATE message SET attributedBody = ?, payload_data = ? WHERE ROWID = 2")
+    .run(Buffer.alloc(1_048_576), Buffer.alloc(1_048_576));
+  fixture.prepare("UPDATE message SET attributedBody = ? WHERE ROWID = 3").run(attachmentBody);
+  fixture.prepare("UPDATE message SET text = NULL, attributedBody = ? WHERE ROWID = 8").run(previewBody);
+  fixture
+    .prepare("UPDATE message SET balloon_bundle_id = ?, payload_data = ? WHERE ROWID = 5")
+    .run("com.apple.messages.URLBalloonProvider", richLinkPayload);
   fixture.close();
 
   const database = new SQLDatabase("Message page fixture", databasePath);
@@ -112,6 +135,11 @@ const run = async () => {
       "chat previews must include each nonempty chat once, ordered by its latest message",
     );
     assert.equal(chats.find((chat) => chat.chat_id === 5)?.text, "latest tied message");
+    assert.equal(
+      chats.some((chat) => "attributedBody" in chat),
+      false,
+      "chat previews transport decoded text only",
+    );
     assert.equal(chats.find((chat) => chat.chat_id === 7)?.text, "undated message");
     assert.deepEqual(
       chats.find((chat) => chat.chat_id === 2)?.handles.map((handle) => handle.id),
@@ -157,6 +185,53 @@ const run = async () => {
     assert.equal("payload_data" in older.messages[0], false);
     assert.equal("attributedBody" in older.messages[1].attachmentMessages![0], false);
     assert.equal("payload_data" in older.messages[1].attachmentMessages![0], false);
+
+    const globalResults = await database.fullTextMessageSearchWithGuids(["guid-2", "guid-3", "guid-5"], "fixture");
+    assert.deepEqual(
+      globalResults.map((message) => message.message_id),
+      [2, 3, 5],
+      "global search preserves ranked results while removing raw binary transport",
+    );
+    const globalAttachment = globalResults[1].attachmentMessages?.[0];
+    assert.ok(globalAttachment);
+    for (const message of [...globalResults, globalAttachment]) {
+      assert.equal("attributedBody" in message, false);
+      assert.equal("payload_data" in message, false);
+    }
+    assert.ok(serialize(globalResults).byteLength < 10_000, "global search must not transport the 2 MiB raw blobs");
+    assert.equal(globalResults[0].text, "Alpha first");
+    assert.equal(globalResults[1].text, "beta with files");
+    assert.equal(globalAttachment.text, "beta with files");
+    assert.equal(globalAttachment.filename, "/tmp/b.jpg");
+    assert.deepEqual(globalResults[2].link_metadata, {
+      iconAttachmentIndex: 0,
+      imageAttachmentIndex: 1,
+      originalUrl: "https://example.com/fixture",
+      subtitle: "Fixture link subtitle",
+      title: "Fixture link title",
+    });
+    assert.deepEqual(globalResults[2].reply_origin, latest.messages[1].reply_origin);
+    assert.ok(globalResults[2].date_obj instanceof Date);
+
+    const mergedExport = await database.getMessagesForChatId([1, 2]);
+    assert.deepEqual(
+      mergedExport.map((message) => message.message_id),
+      [1, 2, 3, 4, 5],
+      "merged exports include each conversation's messages exactly once",
+    );
+    const sharedExportMessage = mergedExport.find((message) => message.message_id === 4);
+    assert.ok(sharedExportMessage);
+    assert.deepEqual(
+      [sharedExportMessage, ...(sharedExportMessage.attachmentMessages || [])].map((message) => message.attachment_id),
+      [23],
+      "a message shared between merged chats must not duplicate its attachment",
+    );
+    assert.deepEqual(
+      [mergedExport[2], ...(mergedExport[2].attachmentMessages || [])].map((message) => message.attachment_id),
+      [21, 22],
+      "merged exports preserve multiple distinct attachments",
+    );
+    assert.ok(Buffer.isBuffer(mergedExport[1].attributedBody), "exports retain original message blobs");
 
     const attachmentBoundary = await database.getMessagesPage(1, { anchorMessageId: 3, limit: 1 });
     assert.deepEqual(

@@ -220,10 +220,11 @@ export const ChatList = React.memo(function ChatList() {
     () => new Set(pinnedChats.flatMap((chat) => (chat.chat_id === null ? [] : [chat.chat_id]))),
     [pinnedChats],
   );
-  const visibleChats = useMemo(
-    () => (isInWrapped ? allChats : filteredChats).filter((chat) => !pinnedChatIds.has(chat.chat_id ?? -1)),
-    [allChats, filteredChats, isInWrapped, pinnedChatIds],
-  );
+  const showPinnedChats = !isComposingNewMessage && !isInWrapped && conversationFilter === "all";
+  const visibleChats = useMemo(() => {
+    const chats = isInWrapped ? allChats : filteredChats;
+    return showPinnedChats ? chats.filter((chat) => !pinnedChatIds.has(chat.chat_id ?? -1)) : chats;
+  }, [allChats, filteredChats, isInWrapped, pinnedChatIds, showPinnedChats]);
   const isConversationSearchActive = Boolean(search && !isInWrapped);
 
   const selectConversationFilter = (nextFilter: ConversationListFilter) => {
@@ -270,7 +271,7 @@ export const ChatList = React.memo(function ChatList() {
           }}
         >
           {isComposingNewMessage && !isInWrapped ? <NewMessageSidebarRow /> : null}
-          {!isComposingNewMessage && !isInWrapped && conversationFilter === "all" && pinnedChats.length ? (
+          {showPinnedChats && pinnedChats.length ? (
             <section className="pinned-conversations" aria-label="Pinned conversations">
               <div className="pinned-conversations-strip">
                 {pinnedChats.map((chat) => {

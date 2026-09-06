@@ -4,7 +4,6 @@ import isDev from "electron-is-dev";
 import type { SQLDatabase } from "../data/database";
 import fs from "fs-extra";
 import jsonexport from "jsonexport";
-import jetpack from "fs-jetpack";
 import path from "path";
 import * as os from "os";
 import { finished } from "node:stream/promises";
@@ -15,6 +14,8 @@ import dbWorker from "../workers/database-worker";
 import { fileTypeFromFile } from "file-type";
 import { resolveAttachmentPath } from "../utils/routes";
 import { parseBuffer as parseBinaryPlist } from "bplist-universal";
+import { getConversationExportIds } from "../../src/utils/conversation-export";
+import { copyExportAttachment, writeStagedExport } from "../utils/staged-export";
 
 const getSafeAttachmentExportName = (requestedName: string, fallbackName: string) => {
   const normalizedName = requestedName.replaceAll("\\", "/").replaceAll("\0", "");
@@ -299,6 +300,7 @@ handleIpc(
     ) {
       throw new Error("Invalid export request");
     }
+    const chatIds = getConversationExportIds(chat);
     const handles = chat.handles || [];
     const contactsInChat = handles.flatMap((handle) => {
       const name = handle.contact?.parsedName;
@@ -319,7 +321,7 @@ handleIpc(
     if (location.canceled) {
       return false;
     }
-    const messages = await dbWorker.worker.getMessagesForChatId(chat.chat_id!);
+    const messages = await dbWorker.worker.getMessagesForChatId(chatIds);
     const getAttachments = (message: (typeof messages)[number]) => [message, ...(message.attachmentMessages || [])];
 
     type HandleType = (typeof handles)[number];
@@ -342,123 +344,121 @@ handleIpc(
       };
     });
 
-    const filePath = location.filePath!;
-    const outputStream = fs.createWriteStream(filePath);
-    const outputFinished = finished(outputStream);
-    try {
-      switch (opts.format) {
-        case "txt":
-          for (const message of exportedMessages) {
-            outputStream.write(`${message.from} on ${message.date}: ${message.text}\n\n`);
-          }
-          break;
-        case "json":
-          if (fullExport) {
-            const iterate = async (obj: any) => {
-              for (const key in obj) {
-                const isObj = typeof obj[key] === "object";
-                if (!isObj) {
-                  continue;
-                }
-                const k = key as keyof typeof obj;
-                const entry = obj[k];
-                if (entry instanceof Buffer) {
-                  try {
-                    obj[k] = await decodeMessageBuffer(entry);
-                  } catch {
-                    // ignore
-                  }
-                }
-                if (Array.isArray(obj[key]) && Buffer.from(obj[key].slice(0, 6)).toString() === "bplist") {
-                  try {
-                    obj[key] = await decodeMessageBuffer(Buffer.from(obj[key]));
-                  } catch {
-                    // ignore
-                  }
-                }
-                if (obj[key] !== null) {
-                  await iterate(obj[key]);
-                }
-              }
-            };
-            for (const message of messages) {
-              await iterate(message);
+    await writeStagedExport(location.filePath!, includeAttachments, async ({ filePath, attachmentsPath }) => {
+      const outputStream = fs.createWriteStream(filePath);
+      const outputFinished = finished(outputStream);
+      try {
+        switch (opts.format) {
+          case "txt":
+            for (const message of exportedMessages) {
+              outputStream.write(`${message.from} on ${message.date}: ${message.text}\n\n`);
             }
-            outputStream.write(JSON.stringify(messages, null, 2));
-          } else {
-            outputStream.write(JSON.stringify(exportedMessages, null, 2));
-          }
-          break;
-        case "csv":
-          const csvSafeMessages = exportedMessages.map((message) =>
-            Object.fromEntries(Object.entries(message).map(([key, value]) => [key, escapeSpreadsheetFormula(value)])),
-          );
-          const csv = await jsonexport(csvSafeMessages);
-          outputStream.write(csv);
-          break;
-      }
-      outputStream.end();
-      await outputFinished;
-    } catch (error) {
-      outputStream.destroy();
-      await outputFinished.catch(() => undefined);
-      throw error;
-    }
-
-    if (includeAttachments) {
-      const rootDir = path.dirname(filePath);
-      const filename = path.basename(filePath).split(".").slice(0, -1).join(".");
-      const attachmentsRoot = path.resolve(rootDir, `${filename}-attachments`);
-      await jetpack.dirAsync(attachmentsRoot);
-      for (const [attachmentIndex, message] of messages.flatMap(getAttachments).entries()) {
-        const attachmentFilePath = message.filename;
-        if (attachmentFilePath) {
-          let cleanedPath: string;
-          try {
-            cleanedPath = await resolveAttachmentPath(attachmentFilePath);
-          } catch (error) {
-            logger.warn(`Skipping attachment outside the Messages attachment directory: ${String(error)}`);
-            continue;
-          }
-          const attachmentFileName = path.basename(cleanedPath);
-          const safeAttachmentName = getSafeAttachmentExportName(
-            message.transfer_name || attachmentFileName,
-            attachmentFileName,
-          );
-          const attachmentKey = message.attachment_id ?? attachmentIndex;
-          let destinationName = `${message.message_id ?? "message"}-${attachmentKey}-${safeAttachmentName}`;
-          if (destinationName.endsWith("pluginPayloadAttachment")) {
-            if (message.mime_type) {
-              const newSuffix = message.mime_type
-                .split("/")
-                .pop()
-                ?.toLowerCase()
-                .replaceAll(/[^a-z0-9.+-]/g, "");
-              if (newSuffix) {
-                destinationName = destinationName.replace(".pluginPayloadAttachment", `.${newSuffix}`);
+            break;
+          case "json":
+            if (fullExport) {
+              const iterate = async (obj: any) => {
+                for (const key in obj) {
+                  const isObj = typeof obj[key] === "object";
+                  if (!isObj) {
+                    continue;
+                  }
+                  const k = key as keyof typeof obj;
+                  const entry = obj[k];
+                  if (entry instanceof Buffer) {
+                    try {
+                      obj[k] = await decodeMessageBuffer(entry);
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  if (Array.isArray(obj[key]) && Buffer.from(obj[key].slice(0, 6)).toString() === "bplist") {
+                    try {
+                      obj[key] = await decodeMessageBuffer(Buffer.from(obj[key]));
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  if (obj[key] !== null) {
+                    await iterate(obj[key]);
+                  }
+                }
+              };
+              for (const message of messages) {
+                await iterate(message);
               }
+              outputStream.write(JSON.stringify(messages, null, 2));
             } else {
-              const fileType = await fileTypeFromFile(cleanedPath);
-              if (fileType) {
-                destinationName = destinationName.replace(".pluginPayloadAttachment", `.${fileType.ext}`);
-              }
-              // we have to infer the file type based on the file
+              outputStream.write(JSON.stringify(exportedMessages, null, 2));
             }
+            break;
+          case "csv":
+            const csvSafeMessages = exportedMessages.map((message) =>
+              Object.fromEntries(Object.entries(message).map(([key, value]) => [key, escapeSpreadsheetFormula(value)])),
+            );
+            const csv = await jsonexport(csvSafeMessages);
+            outputStream.write(csv);
+            break;
+        }
+        outputStream.end();
+        await outputFinished;
+      } catch (error) {
+        outputStream.destroy();
+        await outputFinished.catch(() => undefined);
+        throw error;
+      }
+
+      if (attachmentsPath) {
+        const attachmentsRoot = attachmentsPath;
+        for (const [attachmentIndex, message] of messages.flatMap(getAttachments).entries()) {
+          const attachmentFilePath = message.filename;
+          if (attachmentFilePath) {
+            let cleanedPath: string;
+            try {
+              cleanedPath = await resolveAttachmentPath(attachmentFilePath);
+            } catch (error) {
+              logger.warn(`Skipping attachment outside the Messages attachment directory: ${String(error)}`);
+              continue;
+            }
+            const attachmentFileName = path.basename(cleanedPath);
+            const safeAttachmentName = getSafeAttachmentExportName(
+              message.transfer_name || attachmentFileName,
+              attachmentFileName,
+            );
+            const attachmentKey = message.attachment_id ?? attachmentIndex;
+            let destinationName = `${message.message_id ?? "message"}-${attachmentKey}-${safeAttachmentName}`;
+            if (destinationName.endsWith("pluginPayloadAttachment")) {
+              if (message.mime_type) {
+                const newSuffix = message.mime_type
+                  .split("/")
+                  .pop()
+                  ?.toLowerCase()
+                  .replaceAll(/[^a-z0-9.+-]/g, "");
+                if (newSuffix) {
+                  destinationName = destinationName.replace(".pluginPayloadAttachment", `.${newSuffix}`);
+                }
+              } else {
+                const fileType = await fileTypeFromFile(cleanedPath);
+                if (fileType) {
+                  destinationName = destinationName.replace(".pluginPayloadAttachment", `.${fileType.ext}`);
+                }
+                // we have to infer the file type based on the file
+              }
+            }
+            const destination = path.resolve(attachmentsRoot, destinationName);
+            const relativeDestination = path.relative(attachmentsRoot, destination);
+            if (
+              relativeDestination === ".." ||
+              relativeDestination.startsWith(`..${path.sep}`) ||
+              path.isAbsolute(relativeDestination)
+            ) {
+              logger.warn("Skipping attachment with an unsafe export filename");
+              continue;
+            }
+            await copyExportAttachment(cleanedPath, destination);
           }
-          const destination = path.resolve(attachmentsRoot, destinationName);
-          const relativeDestination = path.relative(attachmentsRoot, destination);
-          if (
-            relativeDestination === ".." ||
-            relativeDestination.startsWith(`..${path.sep}`) ||
-            path.isAbsolute(relativeDestination)
-          ) {
-            logger.warn("Skipping attachment with an unsafe export filename");
-            continue;
-          }
-          await jetpack.copyAsync(cleanedPath, destination);
         }
       }
-    }
+    });
     return true;
   },
 );

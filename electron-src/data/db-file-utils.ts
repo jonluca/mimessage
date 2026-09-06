@@ -1,5 +1,6 @@
 import SqliteDb from "better-sqlite3";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { access, mkdir, realpath, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import logger from "../utils/logger";
@@ -52,6 +53,59 @@ export const verifyDbSnapshot = (snapshotPath: string) => {
   }
 };
 
+// Hash the pristine backup before adding any MiMessage-owned indexes or metadata.
+// Streaming keeps the comparison bounded even for multi-gigabyte Messages libraries.
+const recordSnapshotSourceHash = async (snapshotPath: string) => {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(snapshotPath)) {
+    hash.update(chunk);
+  }
+  const snapshot = new SqliteDb(snapshotPath, { fileMustExist: true });
+  try {
+    // The staged file must remain self-contained until its atomic rename.
+    snapshot.pragma("journal_mode = DELETE");
+    snapshot.transaction(() => {
+      snapshot.exec(`
+        DROP TABLE IF EXISTS mimessage_snapshot_source;
+        CREATE TABLE mimessage_snapshot_source (sha256 TEXT NOT NULL);
+      `);
+      snapshot.prepare("INSERT INTO mimessage_snapshot_source (sha256) VALUES (?)").run(hash.digest("hex"));
+    })();
+  } finally {
+    snapshot.close();
+  }
+};
+
+const readSnapshotSourceHash = (snapshotPath: string) => {
+  const snapshot = new SqliteDb(snapshotPath, { fileMustExist: true, readonly: true });
+  try {
+    const exists = snapshot
+      .prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'mimessage_snapshot_source'")
+      .get();
+    if (!exists) {
+      return undefined;
+    }
+    return snapshot.prepare<[], { sha256: string }>("SELECT sha256 FROM mimessage_snapshot_source").get()?.sha256;
+  } finally {
+    snapshot.close();
+  }
+};
+
+export const isUnchangedDbSnapshot = async (stagedPath: string, destinationPath = appMessagesDbCopy) => {
+  if (!(await localDbExists(destinationPath))) {
+    return false;
+  }
+  let previousHash: string | undefined;
+  try {
+    previousHash = readSnapshotSourceHash(destinationPath);
+  } catch (error) {
+    // A valid new snapshot must still be able to replace an unreadable local copy.
+    logger.warn(`Unable to compare the existing Messages snapshot; replacing it: ${String(error)}`);
+    return false;
+  }
+  return Boolean(previousHash && previousHash === readSnapshotSourceHash(stagedPath));
+};
+
 /**
  * Creates a transactionally consistent SQLite snapshot next to the destination.
  * SQLite's online backup API includes committed frames from an active WAL without
@@ -74,10 +128,11 @@ export const stageDbSnapshot = async (sourcePath: string, destinationPath = appM
     const metadata = await source.backup(stagedPath);
     logger.info(`SQLite snapshot copied ${metadata.totalPages} pages`);
     verifyDbSnapshot(stagedPath);
+    await recordSnapshotSourceHash(stagedPath);
     logger.info("SQLite snapshot passed integrity and Messages schema checks");
     return stagedPath;
   } catch (error) {
-    await rm(stagedPath, { force: true });
+    await discardStagedDb(stagedPath);
     throw error;
   } finally {
     source?.close();
@@ -98,17 +153,20 @@ export const installDbSnapshot = async (stagedPath: string, destinationPath = ap
 export const stageLatestDb = (sourcePath = messagesDb, destinationPath = appMessagesDbCopy) =>
   stageDbSnapshot(sourcePath, destinationPath);
 
-export const discardStagedDb = (stagedPath: string) => rm(stagedPath, { force: true });
+export const discardStagedDb = async (stagedPath: string) => {
+  await Promise.all([stagedPath, ...databaseSidecarPaths(stagedPath)].map((filePath) => rm(filePath, { force: true })));
+};
 
 /**
- * Compatibility helper for menu-driven imports. The running database keeps its
- * existing file descriptor until the immediate app relaunch, while the next
- * process opens the atomically installed snapshot.
+ * Copies a snapshot when no database worker has the destination open.
  */
 export const copyDbAtPath = async (sourcePath: string, destinationPath = appMessagesDbCopy) => {
   let stagedPath: string | undefined;
   try {
     stagedPath = await stageDbSnapshot(sourcePath, destinationPath);
+    if (await isUnchangedDbSnapshot(stagedPath, destinationPath)) {
+      return;
+    }
     await installDbSnapshot(stagedPath, destinationPath);
     stagedPath = undefined;
   } finally {

@@ -5,7 +5,13 @@ import type { SQLDatabase } from "../data/database";
 import { invalidateMessageTextIndex } from "../data/text-index";
 import { handleIpc } from "../ipc/ipc";
 import db from "../data/database";
-import { discardStagedDb, installDbSnapshot, localDbExists, stageDbSnapshot } from "../data/db-file-utils";
+import {
+  discardStagedDb,
+  installDbSnapshot,
+  isUnchangedDbSnapshot,
+  localDbExists,
+  stageDbSnapshot,
+} from "../data/db-file-utils";
 import isDev from "electron-is-dev";
 import logger from "../utils/logger";
 import type { EmbeddingsDatabase } from "../data/embeddings-database";
@@ -159,6 +165,10 @@ class DbWorker {
     logger.info("Initiating WAL-safe local DB snapshot");
     try {
       stagedPath = await stageDbSnapshot(sourcePath);
+      if (await isUnchangedDbSnapshot(stagedPath)) {
+        logger.info("Messages snapshot is unchanged; preserving the installed database and search indexes");
+        return;
+      }
       await this.stopDatabaseForRefresh();
       databaseStopped = true;
       await installDbSnapshot(stagedPath);

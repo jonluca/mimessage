@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Highlighter from "react-highlight-words";
 import { useShallow } from "zustand/react/shallow";
 import { useMimessage } from "../../context";
@@ -9,11 +9,10 @@ import { SystemSymbol, type SystemSymbolName } from "../SystemSymbol";
 
 const CONVERSATION_LIMIT = 4;
 const COLLAPSED_MESSAGE_LIMIT = 3;
-const EXPANDED_MESSAGE_LIMIT = 100;
 const COLLAPSED_LINK_LIMIT = 6;
 const COLLAPSED_PHOTO_LIMIT = 9;
 const COLLAPSED_DOCUMENT_LIMIT = 3;
-const EXPANDED_CONTENT_LIMIT = 100;
+const SEARCH_PAGE_SIZE = 100;
 
 const PHOTO_EXTENSIONS = new Set(["gif", "heic", "heif", "jpeg", "jpg", "mov", "mp4", "png", "tiff", "webp"]);
 const DOCUMENT_EXTENSIONS = new Set([
@@ -294,6 +293,64 @@ const MessageResult = ({
   );
 };
 
+type SearchSection = "messages" | "photos" | "links" | "locations" | "documents";
+type SearchPages = Partial<Record<SearchSection, number>>;
+
+const getPageIndex = (page: number, total: number) =>
+  Math.min(page, Math.max(0, Math.ceil(total / SEARCH_PAGE_SIZE) - 1));
+
+const getVisibleResults = <T,>(results: T[], page: number | undefined, collapsedLimit: number) => {
+  const start = page === undefined ? 0 : getPageIndex(page, results.length) * SEARCH_PAGE_SIZE;
+  return results.slice(start, start + (page === undefined ? collapsedLimit : SEARCH_PAGE_SIZE));
+};
+
+const SearchPagination = ({
+  onPageChange,
+  page,
+  title,
+  total,
+}: {
+  onPageChange: (page: number) => void;
+  page: number | undefined;
+  title: string;
+  total: number;
+}) => {
+  if (page === undefined || total <= SEARCH_PAGE_SIZE) {
+    return null;
+  }
+  const currentPage = getPageIndex(page, total);
+  const start = currentPage * SEARCH_PAGE_SIZE;
+  return (
+    <nav className="sidebar-search-section-header" aria-label={`${title} result pages`}>
+      <button
+        type="button"
+        className="sidebar-search-show-more"
+        disabled={currentPage === 0}
+        onClick={(event) => {
+          onPageChange(currentPage - 1);
+          event.currentTarget.closest("section")?.scrollIntoView({ block: "start" });
+        }}
+      >
+        Previous
+      </button>
+      <span className="sidebar-search-result-limit" role="status">
+        {start + 1}–{Math.min(start + SEARCH_PAGE_SIZE, total)} of {total}
+      </span>
+      <button
+        type="button"
+        className="sidebar-search-show-more"
+        disabled={start + SEARCH_PAGE_SIZE >= total}
+        onClick={(event) => {
+          onPageChange(currentPage + 1);
+          event.currentTarget.closest("section")?.scrollIntoView({ block: "start" });
+        }}
+      >
+        Next
+      </button>
+    </nav>
+  );
+};
+
 const SearchSectionHeader = ({
   expanded,
   hasMore,
@@ -321,29 +378,29 @@ const SearchSectionHeader = ({
 
 const PhotoSearchSection = ({
   chatMap,
-  expanded,
+  page,
   handleMap,
   hits,
   homeDir,
-  onExpand,
+  onPageChange,
   onSelect,
 }: {
   chatMap: Map<number, Chat>;
-  expanded: boolean;
+  page: number | undefined;
   handleMap: Record<number | string, Handle>;
   hits: AttachmentHit[];
   homeDir: string | undefined;
-  onExpand: () => void;
+  onPageChange: (page: number) => void;
   onSelect: (result: GlobalSearchResult) => void;
 }) => {
-  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_PHOTO_LIMIT);
+  const visibleHits = getVisibleResults(hits, page, COLLAPSED_PHOTO_LIMIT);
   return (
     <section className="sidebar-search-section sidebar-search-photos" aria-labelledby="sidebar-photos-title">
       <SearchSectionHeader
-        expanded={expanded}
+        expanded={page !== undefined}
         hasMore={hits.length > COLLAPSED_PHOTO_LIMIT}
         id="sidebar-photos-title"
-        onExpand={onExpand}
+        onExpand={() => onPageChange(0)}
         title="Photos"
       />
       <ul className="sidebar-search-photo-grid">
@@ -382,42 +439,43 @@ const PhotoSearchSection = ({
           );
         })}
       </ul>
+      <SearchPagination onPageChange={onPageChange} page={page} title="Photos" total={hits.length} />
     </section>
   );
 };
 
 const LinkSearchSection = ({
   chatMap,
-  expanded,
+  page,
   handleMap,
   hits,
   homeDir,
-  onExpand,
+  onPageChange,
   onSelect,
   query,
   sectionKey = "links",
   title = "Links",
 }: {
   chatMap: Map<number, Chat>;
-  expanded: boolean;
+  page: number | undefined;
   handleMap: Record<number | string, Handle>;
   hits: LinkHit[];
   homeDir: string | undefined;
-  onExpand: () => void;
+  onPageChange: (page: number) => void;
   onSelect: (result: GlobalSearchResult) => void;
   query: string;
   sectionKey?: "links" | "locations";
   title?: string;
 }) => {
-  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_LINK_LIMIT);
+  const visibleHits = getVisibleResults(hits, page, COLLAPSED_LINK_LIMIT);
   const titleId = `sidebar-${sectionKey}-title`;
   return (
     <section className={`sidebar-search-section sidebar-search-${sectionKey}`} aria-labelledby={titleId}>
       <SearchSectionHeader
-        expanded={expanded}
+        expanded={page !== undefined}
         hasMore={hits.length > COLLAPSED_LINK_LIMIT}
         id={titleId}
-        onExpand={onExpand}
+        onExpand={() => onPageChange(0)}
         title={title}
       />
       <ul className="sidebar-search-link-grid">
@@ -467,31 +525,32 @@ const LinkSearchSection = ({
           );
         })}
       </ul>
+      <SearchPagination onPageChange={onPageChange} page={page} title={title} total={hits.length} />
     </section>
   );
 };
 
 const DocumentSearchSection = ({
-  expanded,
+  page,
   hits,
-  onExpand,
+  onPageChange,
   onSelect,
   query,
 }: {
-  expanded: boolean;
+  page: number | undefined;
   hits: AttachmentHit[];
-  onExpand: () => void;
+  onPageChange: (page: number) => void;
   onSelect: (result: GlobalSearchResult) => void;
   query: string;
 }) => {
-  const visibleHits = hits.slice(0, expanded ? EXPANDED_CONTENT_LIMIT : COLLAPSED_DOCUMENT_LIMIT);
+  const visibleHits = getVisibleResults(hits, page, COLLAPSED_DOCUMENT_LIMIT);
   return (
     <section className="sidebar-search-section sidebar-search-documents" aria-labelledby="sidebar-documents-title">
       <SearchSectionHeader
-        expanded={expanded}
+        expanded={page !== undefined}
         hasMore={hits.length > COLLAPSED_DOCUMENT_LIMIT}
         id="sidebar-documents-title"
-        onExpand={onExpand}
+        onExpand={() => onPageChange(0)}
         title="Documents"
       />
       <ul className="sidebar-search-content-list">
@@ -520,6 +579,7 @@ const DocumentSearchSection = ({
           );
         })}
       </ul>
+      <SearchPagination onPageChange={onPageChange} page={page} title="Documents" total={hits.length} />
     </section>
   );
 };
@@ -552,17 +612,26 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
   const { data: homeDir } = useHomeDir();
   const chatMap = useChatMap();
   const handleMap = useHandleMap();
-  const [showMore, setShowMore] = useState(false);
-  const [expandedContentSections, setExpandedContentSections] = useState<Set<string>>(() => new Set());
   const draftQuery = search.trim();
   const committedQuery = globalSearch.trim();
   const queryNeedsCommit = draftQuery !== committedQuery;
   const semanticQueryNeedsCommit = useSemanticSearch && queryNeedsCommit;
 
-  useEffect(() => {
-    setShowMore(false);
-    setExpandedContentSections(new Set());
-  }, [committedQuery]);
+  const queryIdentity = `${useSemanticSearch ? "semantic" : "literal"}:${committedQuery}`;
+  const [pagination, setPagination] = useState<{ query: string; pages: SearchPages }>(() => ({
+    query: queryIdentity,
+    pages: {},
+  }));
+  if (pagination.query !== queryIdentity) {
+    setPagination({ query: queryIdentity, pages: {} });
+  }
+  const pages = pagination.query === queryIdentity ? pagination.pages : {};
+  const setPage = (section: SearchSection, page: number) => {
+    setPagination((current) => ({
+      query: queryIdentity,
+      pages: { ...(current.query === queryIdentity ? current.pages : {}), [section]: page },
+    }));
+  };
 
   const visibleConversations = useMemo(
     () => conversations.filter((chat) => chat.chat_id !== null).slice(0, CONVERSATION_LIMIT),
@@ -570,8 +639,8 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
   );
   const rawResults = queryNeedsCommit ? EMPTY_SEARCH_RESULTS : results || EMPTY_SEARCH_RESULTS;
   const messageResults = rawResults.filter((result) => result.text?.trim());
-  const visibleMessageResults = messageResults.slice(0, showMore ? EXPANDED_MESSAGE_LIMIT : COLLAPSED_MESSAGE_LIMIT);
-  const hasMoreMessages = !showMore && messageResults.length > COLLAPSED_MESSAGE_LIMIT;
+  const visibleMessageResults = getVisibleResults(messageResults, pages.messages, COLLAPSED_MESSAGE_LIMIT);
+  const hasMoreMessages = pages.messages === undefined && messageResults.length > COLLAPSED_MESSAGE_LIMIT;
   const { documents, links, locations, photos } = useMemo(() => {
     const categorized = {
       documents: [] as AttachmentHit[],
@@ -629,9 +698,6 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
     links.length > 0 ||
     locations.length > 0 ||
     documents.length > 0;
-
-  const expandContentSection = (section: string) =>
-    setExpandedContentSections((current) => new Set(current).add(section));
 
   const selectConversation = (chat: Chat) => {
     if (chat.chat_id === null) {
@@ -716,7 +782,7 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
               Messages
             </h2>
             {hasMoreMessages ? (
-              <button type="button" className="sidebar-search-show-more" onClick={() => setShowMore(true)}>
+              <button type="button" className="sidebar-search-show-more" onClick={() => setPage("messages", 0)}>
                 Show More
               </button>
             ) : null}
@@ -735,22 +801,23 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
               />
             ))}
           </ul>
-          {showMore && messageResults.length > EXPANDED_MESSAGE_LIMIT ? (
-            <p className="sidebar-search-result-limit" role="status">
-              Showing the first {EXPANDED_MESSAGE_LIMIT.toLocaleString()} messages
-            </p>
-          ) : null}
+          <SearchPagination
+            onPageChange={(page) => setPage("messages", page)}
+            page={pages.messages}
+            title="Messages"
+            total={messageResults.length}
+          />
         </section>
       ) : null}
 
       {links.length ? (
         <LinkSearchSection
           chatMap={chatMap}
-          expanded={expandedContentSections.has("links")}
+          page={pages.links}
           handleMap={handleMap}
           hits={links}
           homeDir={homeDir}
-          onExpand={() => expandContentSection("links")}
+          onPageChange={(page) => setPage("links", page)}
           onSelect={selectMessage}
           query={committedQuery}
         />
@@ -759,11 +826,11 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
       {photos.length ? (
         <PhotoSearchSection
           chatMap={chatMap}
-          expanded={expandedContentSections.has("photos")}
+          page={pages.photos}
           handleMap={handleMap}
           hits={photos}
           homeDir={homeDir}
-          onExpand={() => expandContentSection("photos")}
+          onPageChange={(page) => setPage("photos", page)}
           onSelect={selectMessage}
         />
       ) : null}
@@ -771,11 +838,11 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
       {locations.length ? (
         <LinkSearchSection
           chatMap={chatMap}
-          expanded={expandedContentSections.has("locations")}
+          page={pages.locations}
           handleMap={handleMap}
           hits={locations}
           homeDir={homeDir}
-          onExpand={() => expandContentSection("locations")}
+          onPageChange={(page) => setPage("locations", page)}
           onSelect={selectMessage}
           query={committedQuery}
           sectionKey="locations"
@@ -785,9 +852,9 @@ export const SidebarSearchResults = ({ conversations }: { conversations: Chat[] 
 
       {documents.length ? (
         <DocumentSearchSection
-          expanded={expandedContentSections.has("documents")}
+          page={pages.documents}
           hits={documents}
-          onExpand={() => expandContentSection("documents")}
+          onPageChange={(page) => setPage("documents", page)}
           onSelect={selectMessage}
           query={committedQuery}
         />

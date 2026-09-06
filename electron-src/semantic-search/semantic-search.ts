@@ -256,8 +256,7 @@ handleIpc(
       : undefined;
     await assertTextIndexSnapshot(snapshotId);
     if (!(await dbWorker.embeddingsWorker.isSemanticIndexCurrent(snapshotId, OPENAI_EMBEDDING_MODEL))) {
-      logger.info("Semantic index is not current for this Messages snapshot");
-      return [];
+      throw new Error("Set up semantic search in Settings for the current Messages library, or use text search.");
     }
 
     const startedAt = performance.now();

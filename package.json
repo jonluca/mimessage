@@ -3,7 +3,7 @@
   "author": "JonLuca DeCaro <mimessage@jonlu.ca>",
   "main": "build/electron-src/index.js",
   "name": "MiMessage",
-  "version": "1.2.0-beta.3",
+  "version": "1.2.0-beta.4",
   "productName": "Mimessage",
   "description": "Apple Messages UI alternative, with export, search, and more.",
   "scripts": {
@@ -34,6 +34,7 @@
     "test:liquid-glass": "yarn build:liquid-glass && electron native/liquid-glass/smoke-test.cjs",
     "test:semantic": "ELECTRON_RUN_AS_NODE=1 electron node_modules/tsx/dist/cli.mjs scripts/semantic-search-fixture.ts",
     "test:signing": "node scripts/signing-keychain-fixture.mjs",
+    "test:export": "tsx scripts/conversation-export-fixture.ts",
     "test:wrapped": "TZ=America/Los_Angeles ELECTRON_RUN_AS_NODE=1 electron node_modules/tsx/dist/cli.mjs scripts/wrapped-stats-fixture.ts",
     "typecheck": "tsc -p src --noEmit && tsc --noEmit",
     "test:renderer": "node scripts/renderer-performance-fixture.mjs",

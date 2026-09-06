@@ -86,6 +86,12 @@ export interface MessageReplyOrigin {
   text: string | null;
 }
 
+interface TransportMessage {
+  attachmentMessages?: TransportMessage[];
+  attributedBody?: unknown;
+  payload_data?: unknown;
+}
+
 const isTapbackMessageType = (value: number | null | undefined): value is number =>
   value !== null &&
   value !== undefined &&
@@ -226,7 +232,7 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
         }
       }),
     );
-    return enhancedChats;
+    return this.stripMessageTransportBlobs(enhancedChats);
   };
 
   getEarliestMessageDate = async () => {
@@ -426,18 +432,13 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       .orderBy("message.ROWID", "asc")
       .orderBy("attachment.ROWID", "asc");
 
-  private stripMessageTransportBlobs = <T extends JoinedMessageType>(messages: T[]) => {
-    interface TransportMessage {
-      attachmentMessages?: TransportMessage[];
-      attributedBody?: unknown;
-      payload_data?: unknown;
-    }
+  private stripMessageTransportBlobs = <T extends TransportMessage>(messages: T[]) => {
     const strip = (message: TransportMessage) => {
       delete message.attributedBody;
       delete message.payload_data;
       message.attachmentMessages?.forEach(strip);
     };
-    messages.forEach((message) => strip(message as unknown as TransportMessage));
+    messages.forEach(strip);
     return messages;
   };
 
@@ -577,7 +578,7 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
       }
       return aIndex - bIndex;
     });
-    return this.enhanceMessageResponses<(typeof messages)[number]>(messages);
+    return this.stripMessageTransportBlobs(await this.enhanceMessageResponses(messages));
   };
   private convertDate = (date: number) => {
     return new Date(date / 1000000 + 978307200000);
@@ -946,12 +947,11 @@ export class SQLDatabase extends BaseDatabase<MesssagesDatabase> {
     return getStatsForText(allText);
   };
   getMessagesForChatId = async (chatId: number | number[]) => {
-    const messages = await this.getJoinedMessageQuery()
-      .where("chat_message_join.chat_id", "in", [chatId].flat())
-      .where(
-        sql<boolean>`COALESCE(message.associated_message_type, 0) NOT BETWEEN ${TAPBACK_ADD_TYPE_MIN} AND ${TAPBACK_REMOVE_TYPE_MAX}`,
-      )
-      .execute();
+    const chatIds = this.normalizeChatIds(chatId);
+    if (!chatIds.length) {
+      return [];
+    }
+    const messages = await this.getJoinedMessageQueryForChatIds(chatIds).execute();
     const enhanced = await this.enhanceMessageResponses(messages);
     enhanced.sort((a, b) => {
       return (a.date || 0) - (b.date || 0);

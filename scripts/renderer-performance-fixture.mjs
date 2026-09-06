@@ -24,6 +24,8 @@ import { getExternalHttpUrl } from "./src/components/message/AttachmentView";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { ChatEntry } from "./src/components/chat-list/ChatEntry";
+import { ChatList } from "./src/components/chat-list/ChatList";
+import { useInitialize } from "./src/hooks/dataHooks";
 import { MessageBubble } from "./src/components/message/MessageBubble";
 import { useMimessage } from "./src/context";
 import { getTranscriptItemKey } from "./src/utils/message-pagination";
@@ -167,7 +169,110 @@ window.fixtureResult = (async () => {
   check(erroredConversation.length === 4 && erroredConversation[2].role === "user" && erroredConversation[2].content === "Keep the error prompt too", "failed completion preserves its user prompt");
   check(erroredConversation[3].role === "assistant" && erroredConversation[3].errored && !erroredConversation[3].pending, "failed completion replaces only its assistant placeholder");
   counts.aiCompletionPromptsPreserved = 2;
+  await flush(() => root.render(null));
   queryClient.clear();
+
+  const compositionChats = [1, 2].map(id => ({
+    chat_id: id, chat_guid: "composition-chat-" + id, chat_identifier: "person-" + id,
+    display_name: "Composition " + id, handles: [{ ROWID: id, handle_id: id, id: "person-" + id }],
+    latest_message_date: 1000000000000, latest_message_is_from_me: 0,
+    latest_message_is_read: 0, text: "Unread message",
+  }));
+  const searchResults = Array.from({ length: 205 }, (_, index) => ({
+    ...messages[0],
+    message_id: index + 1, guid: "search-" + index, chat_id: 1,
+    text: "needle " + (index + 1) + " https://example.com/" + index + " https://maps.google.com/" + index,
+    attachmentMessages: [
+      { attachment_id: index * 2 + 1, filename: null, transfer_name: "needle-photo-" + index + ".png", mime_type: "image/png" },
+      { attachment_id: index * 2 + 2, filename: null, transfer_name: "needle-document-" + index + ".pdf", mime_type: "application/pdf" },
+    ],
+  }));
+  globalThis.ipcRenderer.invoke = async name => {
+    ipcCalls.push(name);
+    if (name === "getChatList") return compositionChats;
+    if (name === "contacts") return [];
+    if (name === "getPinnedConversationIdentifiers") return ["person-1"];
+    if (name === "showConversationFilterMenu") return "unread";
+    if (name === "getEarliestMessageDate") return new Date(2020, 0, 1);
+    if (name === "getHomeDir") return "/synthetic-home";
+    if (name === "globalSearch") return searchResults;
+    if (name === "initialize") return true;
+    throw new Error("Unexpected composition fixture IPC: " + name);
+  };
+  const settle = async () => { for (let index = 0; index < 8; index++) await flush(() => {}); };
+  const compositionClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  await flush(() => {
+    useMimessage.setState({ chatId: null, filter: null, search: null, globalSearch: null, isInWrapped: false, isComposingNewMessage: false });
+    root.render(<QueryClientProvider client={compositionClient}><div style={{ height: "100vh", display: "flex" }}><ChatList /></div></QueryClientProvider>);
+  });
+  await settle();
+  check(document.querySelector(".pinned-conversation-name")?.textContent === "Composition 1", "the first unread conversation is pinned");
+  check(document.querySelectorAll(".conversation-row").length === 1, "All conversations does not duplicate the pinned conversation");
+  await flush(() => document.querySelector('[aria-label="Filter conversations"]').click());
+  await settle();
+  check(!document.querySelector(".pinned-conversation"), "Unread hides the pinned strip");
+  check(document.querySelectorAll(".conversation-row").length === 2, "Unread includes pinned and unpinned unread conversations");
+  await flush(() => useMimessage.getState().setIsInWrapped(true));
+  await settle();
+  check(!document.querySelector(".pinned-conversation"), "Wrapped hides the pinned strip");
+  check(document.querySelectorAll(".conversation-row").length === 2, "Wrapped includes pinned conversations");
+  counts.pinnedConversationsRemainAvailable = true;
+
+  await flush(() => useMimessage.setState({ isInWrapped: false, search: "needle", globalSearch: "needle" }));
+  await settle();
+  const sections = [
+    ["messages", 3], ["photos", 9], ["links", 6], ["locations", 6], ["documents", 3],
+  ];
+  const sectionElement = section => document.querySelector(".sidebar-search-" + section);
+  const sectionCount = section => sectionElement(section).querySelectorAll("[data-search-result]").length;
+  const clickPageButton = (section, label) => flush(() => {
+    const button = [...sectionElement(section).querySelectorAll("button")].find(candidate => candidate.textContent.trim() === label);
+    check(button && !button.disabled, "the " + label + " page is available for " + section);
+    button.click();
+  });
+  for (const [section, collapsedCount] of sections) {
+    check(sectionCount(section) === collapsedCount, section + " starts with a compact preview");
+    await clickPageButton(section, "Show More");
+    check(sectionCount(section) === 100, section + " expands to a bounded first page");
+    await clickPageButton(section, "Next");
+    check(sectionCount(section) === 100, section + " has a bounded second page");
+    await clickPageButton(section, "Next");
+    check(sectionCount(section) === 5, section + " exposes results beyond 200");
+    await flush(() => [...sectionElement(section).querySelectorAll("[data-search-result]")].at(-1).click());
+    check(useMimessage.getState().messageIdToBringToFocus === 205, section + " final result opens its underlying message");
+    check([...sectionElement(section).querySelectorAll("button")].find(button => button.textContent.trim() === "Next").disabled, section + " disables Next at the end");
+    await clickPageButton(section, "Previous");
+    check(sectionCount(section) === 100, section + " can return to the previous page");
+  }
+  counts.searchSectionsReachAll205Results = sections.length;
+  await flush(() => useMimessage.setState({ search: "needle 1", globalSearch: "needle 1" }));
+  await settle();
+  check(sectionCount("messages") === 3, "a changed query resets to the compact preview");
+  await flush(() => useMimessage.setState({ search: "needle", globalSearch: "needle" }));
+  await settle();
+  for (const [section, collapsedCount] of sections) {
+    check(sectionCount(section) === collapsedCount, "returning to a prior query resets " + section + " pagination");
+  }
+  await flush(() => root.render(null));
+  compositionClient.clear();
+
+  const InitializeFixture = () => {
+    const { mutate } = useInitialize();
+    React.useEffect(() => { mutate(); }, [mutate]);
+    return null;
+  };
+  const beforeStartup = ipcCalls.length;
+  for (let restart = 0; restart < 2; restart++) {
+    const startupClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await flush(() => root.render(<QueryClientProvider client={startupClient}><InitializeFixture /></QueryClientProvider>));
+    await settle();
+    await flush(() => root.render(null));
+    startupClient.clear();
+  }
+  const startupCalls = ipcCalls.slice(beforeStartup);
+  check(startupCalls.filter(name => name === "initialize").length === 2, "each simulated restart initializes the existing snapshot");
+  check(!startupCalls.includes("copyLocalDb"), "startup never replaces an existing imported snapshot");
+  counts.startupPreservesExistingSnapshot = true;
   await flush(() => root.render(<Rows />));
   window.fixtureCleanup = () => root.unmount();
   return counts;
@@ -178,6 +283,7 @@ window.fixtureResult = (async () => {
       loader: "tsx",
     },
     bundle: true,
+    jsx: "automatic",
     platform: "browser",
     loader: { ".ttf": "file", ".png": "file" },
     plugins: [

@@ -1,6 +1,5 @@
 import "./utils/dns-cache";
 import { app, Menu, nativeTheme, Notification, protocol, shell, systemPreferences } from "electron";
-addFlags(app);
 
 // Global imports to monkeypatch/polyfill/register
 import "./semantic-search/semantic-search";
@@ -9,7 +8,6 @@ import "./options";
 import "./ipc/ipc-onboarding";
 // normal imports
 import type { CustomScheme } from "electron";
-import { addFlags } from "./utils/flags";
 import isDev from "electron-is-dev";
 import { getDeferred, installExtensions, showApp, showErrorAlert } from "./utils/util";
 import registerContextMenu from "electron-context-menu";

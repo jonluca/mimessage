@@ -60,6 +60,7 @@ jobs:
       - run: yarn test:signing
       - run: yarn test:wrapped
       - run: yarn test:messages
+      - run: yarn test:export
       - run: yarn test:snapshots
       - run: yarn test:renderer
       - run: yarn test:liquid-glass

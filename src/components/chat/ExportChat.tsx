@@ -1,26 +1,28 @@
 import { useMimessage } from "../../context";
 import React, { useState } from "react";
-import { useChatById } from "../../hooks/dataHooks";
+import { useChatMap } from "../../hooks/dataHooks";
 import { NativeModal } from "../NativeModal";
+import { getConversationForExport } from "../../utils/conversation-export";
 
 export const ExportChat = ({ onClose }: { onClose: () => void }) => {
   const chatId = useMimessage((state) => state.chatId);
 
-  const chat = useChatById(chatId);
+  const chats = useChatMap();
+  const chat = chatId === null ? undefined : chats.get(chatId);
   const [includeAttachments, setIncludeAttachments] = useState(false);
   const [fullExport, setFullExport] = useState(false);
   const [format, setFormat] = useState<"json" | "txt" | "csv">("json");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const onExport = async () => {
-    if (isExporting) {
+    if (isExporting || !chat) {
       return;
     }
     setExportError(null);
     setIsExporting(true);
     try {
       const didExport = (await ipcRenderer.invoke("export", {
-        chat,
+        chat: getConversationForExport(chat, chats),
         fullExport,
         format,
         includeAttachments,

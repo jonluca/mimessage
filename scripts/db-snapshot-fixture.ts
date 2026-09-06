@@ -3,7 +3,14 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import SqliteDb from "better-sqlite3";
-import { copyDbAtPath, stageDbSnapshot, verifyDbSnapshot } from "../electron-src/data/db-file-utils";
+import {
+  copyDbAtPath,
+  discardStagedDb,
+  isUnchangedDbSnapshot,
+  stageDbSnapshot,
+  verifyDbSnapshot,
+} from "../electron-src/data/db-file-utils";
+import { MessageTextIndex } from "../electron-src/data/text-index";
 
 const createMessagesFixture = (databasePath: string) => {
   const database = new SqliteDb(databasePath);
@@ -62,7 +69,8 @@ const run = async () => {
     assert.ok((await fs.stat(`${validPath}-wal`)).size > 0);
     await copyDbAtPath(validPath, destinationPath);
     verifyDbSnapshot(destinationPath);
-    const installed = new SqliteDb(destinationPath, { readonly: true });
+    const installed = new SqliteDb(destinationPath);
+    let indexStatus;
     try {
       assert.deepEqual(installed.prepare("SELECT guid, text FROM message").all(), [
         { guid: "wal-message", text: "committed in WAL" },
@@ -71,11 +79,92 @@ const run = async () => {
         installed.prepare<[], { count: number }>("SELECT COUNT(*) AS count FROM chat_message_join").get()?.count,
         1,
       );
+      const textIndex = new MessageTextIndex(installed);
+      await textIndex.start();
+      indexStatus = textIndex.getStatus();
+      assert.ok(indexStatus?.complete);
+      await textIndex.stop();
     } finally {
       installed.close();
     }
     assert.equal(validSource.prepare<[], { count: number }>("SELECT COUNT(*) AS count FROM message").get()?.count, 1);
-    console.log("Database snapshot fixture passed: schema rejection, destination preservation, and WAL import");
+    const indexedBytes = await fs.readFile(destinationPath);
+    const unchangedStage = await stageDbSnapshot(validPath, destinationPath);
+    try {
+      assert.equal(await isUnchangedDbSnapshot(unchangedStage, destinationPath), true);
+    } finally {
+      await discardStagedDb(unchangedStage);
+    }
+    await copyDbAtPath(validPath, destinationPath);
+    assert.deepEqual(
+      await fs.readFile(destinationPath),
+      indexedBytes,
+      "unchanged refresh preserves every installed byte",
+    );
+    const reopened = new SqliteDb(destinationPath);
+    try {
+      const reopenedIndex = new MessageTextIndex(reopened);
+      await reopenedIndex.start();
+      assert.deepEqual(reopenedIndex.getStatus(), indexStatus, "restart preserves the semantic snapshot identity");
+      await reopenedIndex.stop();
+    } finally {
+      reopened.close();
+    }
+
+    validSource.pragma("wal_checkpoint(TRUNCATE)");
+    const checkpointedStage = await stageDbSnapshot(validPath, destinationPath);
+    try {
+      assert.equal(
+        await isUnchangedDbSnapshot(checkpointedStage, destinationPath),
+        true,
+        "checkpointing unchanged source data must preserve its snapshot identity",
+      );
+    } finally {
+      await discardStagedDb(checkpointedStage);
+    }
+
+    // Counts and max ROWID alone cannot detect edits or replacement databases.
+    validSource.exec("UPDATE message SET text = 'edited in WAL' WHERE guid = 'wal-message'");
+    const changedStage = await stageDbSnapshot(validPath, destinationPath);
+    try {
+      assert.equal(await isUnchangedDbSnapshot(changedStage, destinationPath), false);
+    } finally {
+      await discardStagedDb(changedStage);
+    }
+    await copyDbAtPath(validPath, destinationPath);
+    const updated = new SqliteDb(destinationPath, { readonly: true });
+    try {
+      assert.equal(updated.prepare<[], { text: string }>("SELECT text FROM message").get()?.text, "edited in WAL");
+      assert.equal(
+        updated.prepare("SELECT 1 FROM sqlite_schema WHERE name = 'mimessage_text_index_state'").get(),
+        undefined,
+        "changed source cannot inherit the previous projection or semantic identity",
+      );
+    } finally {
+      updated.close();
+    }
+
+    const damagedPath = path.join(directory, "damaged-local-copy.db");
+    await fs.writeFile(damagedPath, "damaged local copy");
+    await copyDbAtPath(validPath, damagedPath);
+    verifyDbSnapshot(damagedPath);
+    const repaired = new SqliteDb(damagedPath, { readonly: true });
+    try {
+      assert.equal(
+        repaired.prepare<[], { text: string }>("SELECT text FROM message").get()?.text,
+        "edited in WAL",
+        "an unreadable installed snapshot cannot prevent a verified replacement from repairing it",
+      );
+    } finally {
+      repaired.close();
+    }
+    assert.equal(
+      (await fs.readdir(directory)).some((filename) => filename.includes(".staged-")),
+      false,
+    );
+    console.log(
+      "Database snapshot fixture passed: rejected imports preserve data, WAL import/checkpoint, unchanged index reuse, edits, and damaged-copy recovery",
+    );
   } finally {
     validSource?.close();
     await fs.rm(directory, { force: true, recursive: true });
