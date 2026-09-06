@@ -57,6 +57,7 @@ jobs:
             test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.personal-information.addressbook' "$plist")" = true
           done
       - run: yarn test:semantic
+      - run: yarn test:signing
       - run: yarn test:wrapped
       - run: yarn test:messages
       - run: yarn test:snapshots

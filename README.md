@@ -22,6 +22,8 @@ The release job requires these repository Actions secrets:
 
 The legacy `APPLE_ID` and `APPLE_ID_PASSWORD` secrets are not required by the API-key workflow.
 
+Electron Builder is pinned to 26.15.3 with the [upstream temporary-keychain password fix](https://github.com/electron-userland/electron-builder/pull/10172) applied during installation. `yarn test:signing` verifies that keychain operations use the keychain password while each certificate import uses its own archive password. Remove the patch when upgrading to a release that includes this fix.
+
 ## Features
 
 This alternative UI provides several advanced features, including:
